@@ -30,8 +30,8 @@ class DAOBase:
         """
         Inicia uma transação no banco de dados
         """
-        self._db.begin()
 
+        self._db.begin()
     def commit(self):
         """
         Faz commit na transação corrente no banco de dados (se houver uma).
@@ -144,6 +144,8 @@ class DAOBase:
                         operator = '>'
                     elif condiction.operator == FilterOperator.LESS_THAN:
                         operator = '<'
+                    elif condiction.operator == FilterOperator.LIKE:
+                        operator =  'like'
 
                     # Making condiction alias
                     condiction_alias = f"ft_{condiction.operator.value}_{filter_field}_{idx}"

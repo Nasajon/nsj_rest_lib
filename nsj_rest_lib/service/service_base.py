@@ -1,9 +1,10 @@
-from ast import Delete
+from ast import Delete, operator
 import enum
 import uuid
 import copy
 
 from typing import Any, Dict, List, Set
+from xmlrpc.client import boolean
 
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.descriptor.dto_field import DTOFieldFilter
@@ -88,12 +89,15 @@ class ServiceBase:
 
         return entity_field_name
 
-    def _create_entity_filters(self, filters: Dict[str, Any]) -> Dict[str, List[Filter]]:
+    def _create_entity_filters(self, filters: Dict[str, Any], for_search: bool = False) -> Dict[str, List[Filter]]:
         """
         Converting DTO filters to Entity filters.
 
         Returns a Dict (indexed by entity field name) of List of Filter.
         """
+        filter_operator  = FilterOperator.EQUALS
+        if for_search:
+            filter_operator = FilterOperator.LIKE
 
         if filters is None:
             return None
@@ -107,7 +111,7 @@ class ServiceBase:
                 field_filter = self._dto_class.field_filters_map[filter]
             elif filter in self._dto_class.fields_map:
                 # Creating filter config to a DTOField (equals operator)
-                field_filter = DTOFieldFilter(filter)
+                field_filter = DTOFieldFilter(filter, filter_operator)
                 field_filter.set_field_name(filter)
             # TODO Refatorar para usar um mapa de fields do entity
             elif filter in self._entity_class().__dict__:
@@ -133,6 +137,9 @@ class ServiceBase:
                 if isinstance(value, str):
                     value = value.strip()
 
+                    if for_search:
+                        value = f'%{value}%'
+
                 if not is_entity_filter:
                     entity_filter = Filter(
                         field_filter.operator,
@@ -140,7 +147,7 @@ class ServiceBase:
                     )
                 else:
                     entity_filter = Filter(
-                        FilterOperator.EQUALS,
+                        filter_operator,
                         value
                     )
 
@@ -171,7 +178,7 @@ class ServiceBase:
         limit: int,
         fields: Dict[str, Set[str]],
         order_fields: List[str],
-        filters: Dict[str, Any]
+        filters: Dict[str, Any], 
     ) -> List[DTOBase]:
         # Resolving fields
         fields = self._resolving_fields(fields)
