@@ -96,13 +96,6 @@ class DTOField:
         Default validator (ckecking default constraints: not null, type, min, max and enum types).
         """
 
-        # Montando expressões regulares para as validações
-        matcher_uuid = re.compile(
-            '^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$')
-        matcher_datetime = re.compile(
-            '^(\d\d\d\d)-(\d\d)-(\d\d)[T,t](\d\d):(\d\d):(\d\d)$')
-        matcher_date = re.compile('^(\d\d\d\d)-(\d\d)-(\d\d)$')
-
         # Checking not null constraint
         if (self.not_null) and (value is None or (isinstance(value, str) and len(value.strip()) <= 0)):
             raise ValueError(
@@ -111,62 +104,7 @@ class DTOField:
         # Checking type constraint
         # TODO Ver como suportar typing
         if self.expected_type is not None and not isinstance(value, self.expected_type) and value is not None:
-            # Transformando de str para datetime.date, ou datetime.datetime (se desejado e possível)
-            if (
-                self.expected_type is datetime.datetime
-                or self.expected_type is datetime.date
-            ) and isinstance(value, str):
-                # Verificando se pode ser alterado de str para UUID
-                match_datetime = matcher_datetime.search(value)
-                match_date = matcher_date.search(value)
-
-                if match_datetime:
-                    ano = int(match_datetime.group(1))
-                    mes = int(match_datetime.group(2))
-                    dia = int(match_datetime.group(3))
-                    hora = int(match_datetime.group(4))
-                    minuto = int(match_datetime.group(5))
-                    segundo = int(match_datetime.group(6))
-
-                    value = datetime.datetime(
-                        year=ano, month=mes, day=dia, hour=hora, minute=minuto, second=segundo)
-                elif match_date:
-                    ano = int(match_date.group(1))
-                    mes = int(match_date.group(2))
-                    dia = int(match_date.group(3))
-
-                    value = datetime.date(year=ano, month=mes, day=dia)
-
-            # Validando os tipos
-            if isinstance(self.expected_type, enum.EnumMeta):
-                try:
-                    value = self.expected_type(value)
-                except ValueError as e:
-                    raise ValueError(
-                        f"{self.storage_name} não é um {self.expected_type.__name__} válido. Valor recebido: {value}.")
-            elif self.expected_type is bool and isinstance(value, int):
-                # Converting int to bool (0 is False, otherwise is True)
-                value = (value == 0)
-            elif self.expected_type is datetime.datetime and isinstance(value, datetime.date):
-                # Assumindo hora 0, minuto 0 e segundo 0 (quanto é recebida uma data para campo data + hora)
-                value = datetime.datetime(
-                    value.year, value.month, value.day, 0, 0, 0)
-            elif self.expected_type is datetime.date and isinstance(value, datetime.datetime):
-                # Desprezando hora , minuto e segundo (quanto é recebida uma data + hora, para campo de data)
-                value = datetime.date(
-                    value.year, value.month, value.day)
-            elif self.expected_type is uuid.UUID and isinstance(value, str):
-                # Verificando se pode ser alterado de str para UUID
-                match_uuid = matcher_uuid.search(value)
-
-                if match_uuid:
-                    value = uuid.UUID(value)
-                else:
-                    raise ValueError(
-                        f"{self.storage_name} deve ser do tipo {self.expected_type.__name__}. Valor recebido: {value}.")
-            else:
-                raise ValueError(
-                    f"{self.storage_name} deve ser do tipo {self.expected_type.__name__}. Valor recebido: {value}.")
+            value = self.validate_type(value)
 
         # Checking min constraint
         if self.min is not None:
@@ -189,5 +127,102 @@ class DTOField:
         # Striping strings (if desired)
         if isinstance(value, str) and self.strip:
             value = value.strip()
+
+        return value
+
+    def validate_type(self, value):
+        """
+        Valida o value recebido, de acordo com o tipo esperado, e faz as conversões necessárias (se possível).
+        """
+
+        # Montando expressões regulares para as validações
+        matcher_uuid = re.compile(
+            '^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$')
+        matcher_datetime = re.compile(
+            '^(\d\d\d\d)-(\d\d)-(\d\d)[T,t](\d\d):(\d\d):(\d\d)$')
+        matcher_date = re.compile('^(\d\d\d\d)-(\d\d)-(\d\d)$')
+
+        # Validação por regex
+        if (
+            self.expected_type is datetime.datetime
+            or self.expected_type is datetime.date
+        ) and isinstance(value, str):
+            # Verificando se pode ser alterado de str para UUID
+            match_datetime = matcher_datetime.search(value)
+            match_date = matcher_date.search(value)
+
+            if match_datetime:
+                ano = int(match_datetime.group(1))
+                mes = int(match_datetime.group(2))
+                dia = int(match_datetime.group(3))
+                hora = int(match_datetime.group(4))
+                minuto = int(match_datetime.group(5))
+                segundo = int(match_datetime.group(6))
+
+                value = datetime.datetime(
+                    year=ano, month=mes, day=dia, hour=hora, minute=minuto, second=segundo)
+            elif match_date:
+                ano = int(match_date.group(1))
+                mes = int(match_date.group(2))
+                dia = int(match_date.group(3))
+
+                value = datetime.date(year=ano, month=mes, day=dia)
+
+        # Validação direta de tipos
+        erro_tipo = False
+        if isinstance(self.expected_type, enum.EnumMeta):
+            # Enumerados
+            try:
+                value = self.expected_type(value)
+            except ValueError as e:
+                raise ValueError(
+                    f"{self.storage_name} não é um {self.expected_type.__name__} válido. Valor recebido: {value}.")
+        elif self.expected_type is bool and isinstance(value, int):
+            # Booleanos
+            # Converting int to bool (0 is False, otherwise is True)
+            value = (value == 0)
+        elif self.expected_type is datetime.datetime and isinstance(value, datetime.date):
+            # Datetime
+            # Assumindo hora 0, minuto 0 e segundo 0 (quanto é recebida uma data para campo data + hora)
+            value = datetime.datetime(
+                value.year, value.month, value.day, 0, 0, 0)
+        elif self.expected_type is datetime.date and isinstance(value, datetime.datetime):
+            # Date
+            # Desprezando hora , minuto e segundo (quanto é recebida uma data + hora, para campo de data)
+            value = datetime.date(
+                value.year, value.month, value.day)
+        elif self.expected_type is uuid.UUID and isinstance(value, str):
+            # UUID
+            # Verificando se pode ser alterado de str para UUID
+            match_uuid = matcher_uuid.search(value)
+
+            if match_uuid:
+                value = uuid.UUID(value)
+            else:
+                erro_tipo = True
+        elif self.expected_type is int:
+            # Int
+            try:
+                value = int(value)
+            except:
+                erro_tipo = True
+        elif self.expected_type is float:
+            # Int
+            try:
+                value = float(value)
+            except:
+                erro_tipo = True
+        elif self.expected_type is Decimal:
+            # Int
+            try:
+                value = Decimal(value)
+            except:
+                erro_tipo = True
+        else:
+            erro_tipo = True
+
+        if erro_tipo:
+            raise ValueError(
+                f"{self.storage_name} deve ser do tipo {self.expected_type.__name__}. Valor recebido: {value}.")
 
         return value
