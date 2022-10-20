@@ -6,3 +6,4 @@ class FilterOperator(enum.Enum):
     DIFFERENT = 'diferent'
     GREATER_THAN = 'greater_than'
     LESS_THAN = 'less_than'
+    LIKE = 'like'

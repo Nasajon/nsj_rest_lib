@@ -3,6 +3,7 @@ from nasajon.settings import DATABASE_PASS
 from nasajon.settings import DATABASE_PORT
 from nasajon.settings import DATABASE_NAME
 from nasajon.settings import DATABASE_USER
+from nasajon.settings import DB_DRIVER
 
 import sqlalchemy
 
@@ -19,5 +20,5 @@ def create_pool(database_conn_url):
     return db_pool
 
 
-database_conn_url = f'mysql+pymysql://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}'
+database_conn_url = f'{DB_DRIVER}://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}'
 db_pool = create_pool(database_conn_url)
