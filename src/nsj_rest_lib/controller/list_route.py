@@ -50,7 +50,8 @@ class ListRoute(RouteBase):
                 base_url = request.base_url
                 args = request.args
                 limit = int(args.get('limit', DEFAULT_PAGE_SIZE))
-                current_after = args.get('after') or args.get('offset')
+                current_after = args.get('after')
+                offset =  int(args.get('offset', 0))
 
                 # Tratando dos fields
                 fields = args.get('fields')
@@ -95,7 +96,7 @@ class ListRoute(RouteBase):
                 # Chamando o service (método list)
                 # TODO Rever parametro order_fields abaixo
                 data = service.list(current_after, limit,
-                                    fields, None, filters)
+                                    fields, None, filters, offset)
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
                 dict_data = [dto.convert_to_dict(fields) for dto in data]
@@ -107,7 +108,7 @@ class ListRoute(RouteBase):
                     current_after=current_after,
                     current_before=None,
                     result=dict_data,
-                    id_field='id'  # TODO Rever esse parâmetro
+                    id_field=self._dto_class.pk_field  # TODO Rever esse parâmetro
                 )
 
                 # Retornando a resposta da requuisição

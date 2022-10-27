@@ -184,7 +184,8 @@ class DAOBase:
         limit: int,
         fields: List[str],
         order_fields: List[str],
-        filters: Dict[str, List[Filter]]
+        filters: Dict[str, List[Filter]],
+        offset: int = None
     ) -> List[EntityBase]:
         """
         Returns a paginated entity list.
@@ -264,6 +265,9 @@ class DAOBase:
         # Adding limit if received
         if limit is not None:
             sql += f"        limit {limit}"
+        
+        if offset is not None:
+            sql += f"       offset {offset}"
 
         # Making the values dict
         kwargs = {

@@ -171,7 +171,8 @@ class ServiceBase:
         limit: int,
         fields: Dict[str, Set[str]],
         order_fields: List[str],
-        filters: Dict[str, Any]
+        filters: Dict[str, Any],
+        offset: int = None
     ) -> List[DTOBase]:
         # Resolving fields
         fields = self._resolving_fields(fields)
@@ -193,7 +194,7 @@ class ServiceBase:
 
         # Retrieving from DAO
         entity_list = self._dao.list(
-            after, limit, entity_fields, order_fields, entity_filters)
+            after, limit, entity_fields, order_fields, entity_filters, offset)
 
         # Convertendo para uma lista de DTOs
         # dto_list = [self._dto_class().convert_from_entity(entity)
