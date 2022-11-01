@@ -12,3 +12,6 @@ class Filter:
     ):
         self.operator = operator
         self.value = value
+
+    def __repr__(self) -> str:
+        return f'{self.value}'
