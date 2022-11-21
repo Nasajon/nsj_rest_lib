@@ -4,7 +4,7 @@ from typing import Callable
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.exception import DTOConfigException, MissingParameterException
+from nsj_rest_lib.exception import DTOConfigException, MissingParameterException, ConflictException
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 
 from nsj_gcf_utils.json_util import json_dumps, json_loads, JsonLoadException
@@ -102,6 +102,11 @@ class PostRoute(RouteBase):
                     return self._handle_exception(e)
                 else:
                     return (format_json_error(e), 400, {})
+            except ConflictException as e:
+                if self._handle_exception is not None:
+                    return self._handle_exception(e)
+                else: 
+                    return (format_json_error(e), 409, {})
             except Exception as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)

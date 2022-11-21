@@ -11,7 +11,7 @@ from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.entity.filter import Filter
-from nsj_rest_lib.exception import DTOListFieldConfigException
+from nsj_rest_lib.exception import DTOListFieldConfigException, ConflictException, NotFoundException
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 
 
@@ -328,6 +328,8 @@ class ServiceBase:
 
             # Invocando o DAO
             if insert:
+                if self.entity_exists(entity):
+                    raise ConflictException(f"Já existe um registro no banco com o identificador '{getattr(entity, entity_pk_field)}'")
                 entity = self._dao.insert(entity)
             else:
                 # Montando os filtros
@@ -499,3 +501,21 @@ class ServiceBase:
 
         # Chamando o DAO para a exclusão
         self._dao.delete(entity_filters)
+    
+    def entity_exists(self, entity: EntityBase):
+        # Getting values
+        entity_pk_field = entity.get_pk_field()
+        entity_pk_value = getattr(entity, entity_pk_field)
+        grupo_empresarial = getattr(entity, 'grupo_empresarial', None)
+        tenant = getattr(entity, 'tenant', None)
+
+        if entity_pk_value is None:
+            return False
+
+        # Searching entity in DB 
+        try:
+            self._dao.get(entity_pk_value, [entity.get_pk_column_name()], grupo_empresarial=grupo_empresarial, tenant=tenant)
+        except NotFoundException as e:
+            return False
+        
+        return True
