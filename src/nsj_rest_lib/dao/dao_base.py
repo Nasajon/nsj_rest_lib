@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.entity.entity_base import EntityBase, EMPTY
 from nsj_rest_lib.entity.filter import Filter
-from nsj_rest_lib.exception import NotFoundException
+from nsj_rest_lib.exception import NotFoundException, AfterRecordNotFoundException
 
 from nsj_gcf_utils.db_adapter2 import DBAdapter2
 from nsj_gcf_utils.json_util import convert_to_dumps
@@ -204,10 +204,15 @@ class DAOBase:
         order_map = {field: None for field in order_fields}
 
         if after is not None:
-            after_obj = self.get(after)
-            if len(after_obj) > 0:
+            try:
+                after_obj = self.get(after)
+            except NotFoundException as e:
+                raise AfterRecordNotFoundException(
+                    f'Identificador recebido no parâmetro after {id}, não encontrado para a entidade {self._entity_class.__name__}.')
+
+            if after_obj is not None:
                 for field in order_fields:
-                    order_map[field] = getattr(after_obj[0], field, None)
+                    order_map[field] = getattr(after_obj, field, None)
 
         # Making default order by clause
         order_by = f"""

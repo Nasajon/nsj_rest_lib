@@ -17,5 +17,10 @@ class MissingParameterException(Exception):
 class NotFoundException(Exception):
     pass
 
+
 class ConflictException(Exception):
+    pass
+
+
+class AfterRecordNotFoundException(Exception):
     pass
