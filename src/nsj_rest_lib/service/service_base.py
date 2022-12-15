@@ -5,6 +5,8 @@ import copy
 
 from typing import Any, Dict, List, Set
 
+from flask import g
+
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.descriptor.dto_field import DTOFieldFilter
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
@@ -32,6 +34,8 @@ class ServiceBase:
         self._dto_class = dto_class
         self._entity_class = entity_class
         self._dto_post_response_class = dto_post_response_class
+        self._created_by_property = 'criado_por'
+        self._updated_by_property = 'atualizado_por'
 
     def get(
         self,
@@ -325,6 +329,25 @@ class ServiceBase:
                 for entity_field, value in relation_field_map.items():
                     if hasattr(entity, entity_field):
                         setattr(entity, entity_field, value)
+            
+            # Setando campos criado_por e atualizado_por quando existirem
+            if hasattr(g, 'profile') and g.profile is not None:
+                auth_type_is_api_key = g.profile["authentication_type"] == "api_key"
+                user = g.profile["email"]
+                if insert and hasattr(entity, self._created_by_property):
+                    if not auth_type_is_api_key:
+                        setattr(entity, self._created_by_property, user)
+                    else:
+                        value = getattr(entity, self._created_by_property)
+                        if value is None or value == '':
+                            raise ValueError(f"É necessário preencher o campo '{self._created_by_property}'.")
+                if hasattr(entity, self._updated_by_property):
+                    if not auth_type_is_api_key:
+                        setattr(entity, self._updated_by_property, user)
+                    else:
+                        value = getattr(entity, self._updated_by_property)
+                        if value is None or value == '':
+                            raise ValueError(f"É necessário preencher o campo '{self._updated_by_property}'")
 
             # Invocando o DAO
             if insert:
