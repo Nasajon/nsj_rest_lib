@@ -1,12 +1,19 @@
 from sqlalchemy.engine.base import Connection
 
+db_pool = None
+
 
 class NsjInjectorFactoryBase:
     _db_connection: Connection
 
     def __enter__(self):
-        from nsj_rest_lib.db_pool_config import db_pool
-        self._db_connection = db_pool.connect()
+        from nsj_rest_lib.db_pool_config import db_pool as internal_db_pool
+
+        pool = internal_db_pool
+        if db_pool is not None:
+            pool = db_pool
+
+        self._db_connection = pool.connect()
 
         return self
 
