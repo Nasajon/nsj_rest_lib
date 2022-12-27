@@ -144,6 +144,10 @@ class DAOBase:
                         operator = '>'
                     elif condiction.operator == FilterOperator.LESS_THAN:
                         operator = '<'
+                    elif condiction.operator == FilterOperator.LIKE:
+                        operator = 'like'
+                    elif condiction.operator == FilterOperator.ILIKE:
+                        operator = 'ilike'
 
                     # Making condiction alias
                     condiction_alias = f"ft_{condiction.operator.value}_{filter_field}_{idx}"
