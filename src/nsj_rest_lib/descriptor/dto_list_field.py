@@ -68,7 +68,31 @@ class DTOListField:
         else:
             value = self.validator(value)
 
+        # Preenchendo os campos de particionanmento, se necessário (normalmente: tenant e grupo_empresarial)
+        self.set_partition_fields(instance, value)
+
         instance.__dict__[self.storage_name] = value
+
+    def set_partition_fields(self, instance, value):
+        """
+        Preenchendo os campos de particionanmento dos objetos da lista, se necessário (normalmente: tenant e grupo_empresarial).
+        """
+
+        if hasattr(instance.__class__, 'partition_fields') and value is not None:
+            for item in value:
+                for partition_field in instance.__class__.partition_fields:
+                    if (
+                        hasattr(instance, partition_field)
+                        and hasattr(item, partition_field)
+                        # TODO Analisar se devo descomentar a comparação abaixo que deixa gravar com campos de partição
+                        # diferentes entre classe mestre e detalhe (caso se especifique diferente no detalhe)
+                        # Talvez falte aqui a comparação de tipo de relacionamento como composição (quando não é composição
+                        # a diferença pode fazer sentido)
+                        # and getattr(item, partition_field) is None
+                        and getattr(instance, partition_field) != getattr(item, partition_field)
+                    ):
+                        partition_value = getattr(instance, partition_field)
+                        setattr(item, partition_field, partition_value)
 
     def validate(self, value):
         """
@@ -78,27 +102,27 @@ class DTOListField:
         # Checking not null constraint
         if (self.not_null) and (value is None or (isinstance(value, list) and len(value) <= 0)):
             raise ValueError(
-                f"{self.storage_name} must be not null (nor empty). Received value: {value}.")
+                f"O campo {self.storage_name} deve ser preechido. Valor recebido: {value}.")
 
         # Checking if received value is a list
         if value is not None and not isinstance(value, list):
             raise ValueError(
-                f"{self.storage_name} is not list. Received value: {value}.")
+                f"O valor recebido para o campo {self.storage_name} deveria ser uma lista. Valor recebido: {value}.")
 
         # Checking type constraint
         # TODO Ver como suportar typing
         if self.dto_type is not None and value is not None and len(value) > 0 and not isinstance(value[0], self.dto_type):
             raise ValueError(
-                f"{self.storage_name} must be of type {self.dto_type.__name__}. Received value: {value}.")
+                f"Os items da lista {self.storage_name} deveriam se do tipo {self.dto_type.__name__}. Valor recebido: {value}.")
 
         # Checking min constraint
         if self.min is not None and len(value) < self.min:
             raise ValueError(
-                f"{self.storage_name} must have more than {self.min} itens. Received value: {value}.")
+                f"A lista {self.storage_name} deve ter mais do que {self.min} itens. Valor recebido: {value}.")
 
         # Checking min constraint
         if self.max is not None and len(value) > self.max:
             raise ValueError(
-                f"{self.storage_name} must have less than {self.max} caracters. Received value: {value}.")
+                f"A lista {self.storage_name} deve ter menos do que {self.max} itens. Valor recebido: {value}.")
 
         return value
