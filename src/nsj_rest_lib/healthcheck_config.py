@@ -20,8 +20,8 @@ class HealthCheckConfig:
     ):
         self._flask_application = flask_application
         self._injector_factory_class = injector_factory_class or NsjInjectorFactoryBase
-        self._app_name = app_name or os.environ['APP_NAME']
-        self._rabbitmq_host = rabbitmq_host or os.environ['RABBITMQ_HOST']
+        self._app_name = app_name or os.getenv('APP_NAME')
+        self._rabbitmq_host = rabbitmq_host or os.getenv('RABBITMQ_HOST')
         self._rabbitmq_http_port = rabbitmq_http_port or int(
             os.getenv('RABBITMQ_HTTP_PORT', 15672))
         self._rabbitmq_user = rabbitmq_user or os.getenv(
@@ -75,5 +75,9 @@ class HealthCheckConfig:
             health.add_check(self.check_rabbit_mq)
 
         # Registrando a rota do HealthCheck
-        self._flask_application.add_url_rule(f"/{self._app_name}/healthcheck", "healthcheck",
-                                             view_func=lambda: health.run())
+        if self._app_name is not None:
+            self._flask_application.add_url_rule(f"/{self._app_name}/healthcheck", "healthcheck",
+                                                 view_func=lambda: health.run())
+        else:
+            self._flask_application.add_url_rule(f"/healthcheck", "healthcheck",
+                                                 view_func=lambda: health.run())
