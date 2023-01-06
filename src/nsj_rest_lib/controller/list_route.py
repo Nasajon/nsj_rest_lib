@@ -1,6 +1,7 @@
 from flask import request
 from typing import Callable
 
+from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
@@ -111,19 +112,19 @@ class ListRoute(RouteBase):
                 )
 
                 # Retornando a resposta da requuisição
-                return (json_dumps(page), 200, {})
+                return (json_dumps(page), 200, {**DEFAULT_RESP_HEADERS})
             except MissingParameterException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 400, {})
+                    return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
             except PaginationException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 400, {})
+                    return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
             except Exception as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {})
+                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {**DEFAULT_RESP_HEADERS})

@@ -13,7 +13,7 @@ from nsj_gcf_utils.pagination_util import PaginationException
 from nsj_gcf_utils.rest_error_util import format_json_error
 
 
-class GetRoute(RouteBase):
+class DeleteRoute(RouteBase):
     def __init__(
         self,
         url: str,
@@ -41,17 +41,13 @@ class GetRoute(RouteBase):
 
     def handle_request(self, id):
         """
-        Tratando requisições HTTP Get para recuperar uma instância de uma entidade.
+        Tratando requisições HTTP Delete para excluir uma instância de uma entidade.
         """
 
         with self._injector_factory() as factory:
             try:
                 # Recuperando os parâmetros básicos
                 args = request.args
-
-                # Tratando dos fields
-                fields = args.get('fields')
-                fields = self._parse_fields(fields)
 
                 # Tratando do tenant e do grupo_empresarial
                 # TODO Refatorar para exibir os dois erros ao mesmo tempo
@@ -79,19 +75,11 @@ class GetRoute(RouteBase):
 
                 # Chamando o service (método get)
                 # TODO Rever parametro order_fields abaixo
-                data = service.get(id, grupo_empresarial, tenant, fields)
-
-                # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                dict_data = data.convert_to_dict(fields)
+                service.delete(id, grupo_empresarial, tenant)
 
                 # Retornando a resposta da requuisição
-                return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})
+                return ('', 204, {**DEFAULT_RESP_HEADERS})
             except MissingParameterException as e:
-                if self._handle_exception is not None:
-                    return self._handle_exception(e)
-                else:
-                    return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
-            except PaginationException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:

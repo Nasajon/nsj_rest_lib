@@ -1,6 +1,7 @@
 from flask import request
 from typing import Callable
 
+from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
@@ -83,32 +84,32 @@ class PostRoute(RouteBase):
                     dict_data = data.convert_to_dict()
 
                     # Retornando a resposta da requuisição
-                    return (json_dumps(dict_data), 200, {})
+                    return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})
                 else:
                     # Retornando a resposta da requuisição
-                    return ('', 201, {})
+                    return ('', 201, {**DEFAULT_RESP_HEADERS})
             except JsonLoadException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 400, {})
+                    return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
             except MissingParameterException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 400, {})
+                    return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
             except ValueError as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 400, {})
+                    return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
             except ConflictException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
-                else: 
-                    return (format_json_error(e), 409, {})
+                else:
+                    return (format_json_error(e), 409, {**DEFAULT_RESP_HEADERS})
             except Exception as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {})
+                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {**DEFAULT_RESP_HEADERS})

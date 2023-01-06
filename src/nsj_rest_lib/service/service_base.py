@@ -242,6 +242,7 @@ class ServiceBase:
 
                 # Making filter to relation
                 filters = {
+                    # TODO Adicionar os campos de particionamento de dados
                     list_field.related_entity_field: getattr(
                         dto, self._dto_class.pk_field)
                 }
@@ -329,7 +330,7 @@ class ServiceBase:
                 for entity_field, value in relation_field_map.items():
                     if hasattr(entity, entity_field):
                         setattr(entity, entity_field, value)
-            
+
             # Setando campos criado_por e atualizado_por quando existirem
             if hasattr(g, 'profile') and g.profile is not None:
                 auth_type_is_api_key = g.profile["authentication_type"] == "api_key"
@@ -340,19 +341,22 @@ class ServiceBase:
                     else:
                         value = getattr(entity, self._created_by_property)
                         if value is None or value == '':
-                            raise ValueError(f"É necessário preencher o campo '{self._created_by_property}'.")
+                            raise ValueError(
+                                f"É necessário preencher o campo '{self._created_by_property}'.")
                 if hasattr(entity, self._updated_by_property):
                     if not auth_type_is_api_key:
                         setattr(entity, self._updated_by_property, user)
                     else:
                         value = getattr(entity, self._updated_by_property)
                         if value is None or value == '':
-                            raise ValueError(f"É necessário preencher o campo '{self._updated_by_property}'")
+                            raise ValueError(
+                                f"É necessário preencher o campo '{self._updated_by_property}'")
 
             # Invocando o DAO
             if insert:
                 if self.entity_exists(entity):
-                    raise ConflictException(f"Já existe um registro no banco com o identificador '{getattr(entity, entity_pk_field)}'")
+                    raise ConflictException(
+                        f"Já existe um registro no banco com o identificador '{getattr(entity, entity_pk_field)}'")
                 entity = self._dao.insert(entity)
             else:
                 # Montando os filtros
@@ -524,7 +528,7 @@ class ServiceBase:
 
         # Chamando o DAO para a exclusão
         self._dao.delete(entity_filters)
-    
+
     def entity_exists(self, entity: EntityBase):
         # Getting values
         entity_pk_field = entity.get_pk_field()
@@ -535,10 +539,102 @@ class ServiceBase:
         if entity_pk_value is None:
             return False
 
-        # Searching entity in DB 
+        # Searching entity in DB
         try:
-            self._dao.get(entity_pk_value, [entity.get_pk_column_name()], grupo_empresarial=grupo_empresarial, tenant=tenant)
+            self._dao.get(entity_pk_value, [entity.get_pk_column_name(
+            )], grupo_empresarial=grupo_empresarial, tenant=tenant)
         except NotFoundException as e:
             return False
-        
+
         return True
+
+    def delete(
+        self,
+        id: str,
+        grupo_empresarial: str,
+        tenant: str
+    ) -> DTOBase:
+
+        self._delete(
+            id,
+            grupo_empresarial,
+            tenant,
+            manage_transaction=True
+        )
+
+    def _delete(
+        self,
+        id: str,
+        grupo_empresarial: str,
+        tenant: str,
+        manage_transaction: bool
+    ) -> DTOBase:
+
+        try:
+            if manage_transaction:
+                self._dao.begin()
+
+            # Tratando das propriedades de lista
+            if len(self._dto_class.list_fields_map) > 0:
+                self._delete_related_lists(id, grupo_empresarial, tenant)
+
+            # Excluindo a entity principal
+            self._dao.delete(id, grupo_empresarial, tenant)
+
+        except:
+            if manage_transaction:
+                self._dao.rollback()
+            raise
+        finally:
+            if manage_transaction:
+                self._dao.commit()
+
+    def _delete_related_lists(
+        self,
+        id,
+        grupo_empresarial: str,
+        tenant: str
+    ):
+
+        # Handling each related list
+        for _, list_field in self._dto_class.list_fields_map.items():
+
+            # Getting service instance
+            # TODO Refatorar para suportar services customizados
+            service = ServiceBase(
+                self._injector_factory,
+                DAOBase(self._injector_factory.db_adapter(),
+                        list_field.entity_type),
+                list_field.dto_type,
+                list_field.entity_type
+            )
+
+            # Making filter to relation
+            filters = {
+                # TODO Adicionar os campos de particionamento de dados
+                list_field.related_entity_field: id
+            }
+
+            # Getting related data
+            related_dto_list = service.list(
+                None, None, {"root": set()}, None, filters)
+
+            # Excluindo cada entidade detalhe
+            for related_dto in related_dto_list:
+
+                # Checking if pk_field exists
+                if list_field.dto_type.pk_field is None:
+                    raise DTOListFieldConfigException(
+                        f"PK field not found in class: {self._dto_class}")
+
+                if not (list_field.dto_type.pk_field in related_dto.__dict__):
+                    raise DTOListFieldConfigException(
+                        f"PK field not found in DTO: {self._dto_class}")
+
+                # Recuperando o ID da entidade detalhe
+                related_id = getattr(
+                    related_dto, list_field.dto_type.pk_field)
+
+                # Chamando a exclusão recursivamente
+                service._delete(related_id, grupo_empresarial,
+                                tenant, manage_transaction=False)
