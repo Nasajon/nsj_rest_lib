@@ -83,7 +83,7 @@ class PostRoute(RouteBase):
                     dict_data = data.convert_to_dict()
 
                     # Retornando a resposta da requuisição
-                    return (json_dumps(dict_data), 200, {})
+                    return (json_dumps(dict_data), 200, {'Content-Type' : 'application/json'})
                 else:
                     # Retornando a resposta da requuisição
                     return ('', 201, {})
@@ -91,24 +91,24 @@ class PostRoute(RouteBase):
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 400, {})
+                    return (format_json_error(e), 400, {'Content-Type' : 'application/json'})
             except MissingParameterException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 400, {})
+                    return (format_json_error(e), 400, {'Content-Type' : 'application/json'})
             except ValueError as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 400, {})
+                    return (format_json_error(e), 400, {'Content-Type' : 'application/json'})
             except ConflictException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else: 
-                    return (format_json_error(e), 409, {})
+                    return (format_json_error(e), 409, {'Content-Type' : 'application/json'})
             except Exception as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {})
+                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {'Content-Type' : 'application/json'})

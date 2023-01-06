@@ -440,7 +440,7 @@ class DAOBase:
 
         if rowcount <= 0:
             raise NotFoundException(
-                f'{self._entity_class.__name__} com id {values_map[pk_field]} não encontrado.')
+                f'{self._entity_class.__name__} com id {values_map[self._entity_class.get_pk_field()]} não encontrado.')
 
         # Complementando o objeto com os dados de retorno
         if returning_fields is not None and USE_SQL_RETURNING_CLAUSE:

@@ -400,6 +400,8 @@ class ServiceBase:
             if manage_transaction:
                 self._dao.commit()
 
+
+        
     def _save_related_lists(
         self,
         insert: bool,
@@ -542,3 +544,42 @@ class ServiceBase:
             return False
         
         return True
+    
+    
+    def delete_related_lists(self, id_main: Any,  aditional_filters: Dict[str, Any] = None):
+        
+        for master_dto_field, list_field in self._dto_class.list_fields_map.items():
+            
+            detail_dao = DAOBase(self._injector_factory.db_adapter(),
+                                 list_field.entity_type)
+
+            # Getting service instance
+            # TODO Refatorar para suportar services customizados
+            detail_service = ServiceBase(
+                self._injector_factory,
+                detail_dao,
+                list_field.dto_type,
+                list_field.entity_type,
+                list_field.dto_post_response_type
+            )
+
+
+            # Recuperando todos os IDs dos itens de lista já salvos no BD (se for um update)
+            old_detail_ids = None
+            # Montando o filtro para recuperar os objetos detalhe pré-existentes
+            relation_condiction = Filter(
+                FilterOperator.EQUALS,
+                id_main
+            )
+
+            relation_filter = {
+                list_field.related_entity_field: [relation_condiction]
+            }
+
+            # Recuperando do BD
+            old_detail_ids = detail_dao.list_ids(relation_filter)
+            
+            for id in old_detail_ids:
+                detail_service.delete(id, aditional_filters=aditional_filters)
+                
+

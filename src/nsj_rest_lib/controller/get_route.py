@@ -84,24 +84,24 @@ class GetRoute(RouteBase):
                 dict_data = data.convert_to_dict(fields)
 
                 # Retornando a resposta da requuisição
-                return (json_dumps(dict_data), 200, {})
+                return (json_dumps(dict_data), 200, {'Content-Type' : 'application/json'})
             except MissingParameterException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 400, {})
+                    return (format_json_error(e), 400, {'Content-Type' : 'application/json'})
             except PaginationException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 400, {})
+                    return (format_json_error(e), 400, {'Content-Type' : 'application/json'})
             except NotFoundException as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(e), 404, {})
+                    return (format_json_error(e), 404, {'Content-Type' : 'application/json'})
             except Exception as e:
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {})
+                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {'Content-Type' : 'application/json'})
