@@ -91,7 +91,7 @@ class RouteBase:
         fields = fields.split(',')
 
         matcher_dot = re.compile('(.+)\.(.+)')
-        matcher_par = re.compile('(.+)\((.+)\)')
+        matcher_par = re.compile('([^(]*)\(([^)].*)\)')
 
         # Construindo o mapa de retorno
         fields_map = {}
@@ -115,10 +115,11 @@ class RouteBase:
 
                 field_list = fields_map.setdefault(key, set())
                 field_list.add(value)
+                
             elif match_par is not None:
                 # Tratando fields=entidade_aninhada(propriedade1, propriedade2)
-                key = match_dot.group(1)
-                value = match_dot.group(2)
+                key = match_par.group(1)
+                value = match_par.group(2)
 
                 field_list = fields_map.setdefault(key, set())
 
@@ -128,7 +129,7 @@ class RouteBase:
                     root_field_list.add(key)
 
                 # Tratando cada campo dentro do parêntese
-                for val in value.split(','):
+                for val in value.split(';'):
                     val = val.strip()
 
                     field_list.add(val)
