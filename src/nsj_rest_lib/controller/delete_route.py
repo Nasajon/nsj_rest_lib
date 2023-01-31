@@ -67,8 +67,6 @@ class DeleteRoute(RouteBase):
 
                 service = self._get_service(factory)
                 
-                if len(self._dto_class.list_fields_map):
-                    service.delete_related_lists(id, filters)
                 service.delete(id, filters)
 
             response =  ({}, 204 , {'Content-Type' : 'application/json'}) 

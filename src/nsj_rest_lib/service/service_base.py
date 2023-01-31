@@ -1,5 +1,3 @@
-from ast import Delete
-import enum
 import uuid
 import copy
 
@@ -15,7 +13,6 @@ from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.entity.filter import Filter
 from nsj_rest_lib.exception import DTOListFieldConfigException, ConflictException, NotFoundException
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
-
 
 class ServiceBase:
     _dao: DAOBase
@@ -524,6 +521,8 @@ class ServiceBase:
         pk_field = self._entity_class().get_pk_field()
         entity_filters[pk_field] = [id_condiction]
 
+        if len(self._dto_class.list_fields_map):
+            self.delete_related_lists(id, aditional_filters)
         # Chamando o DAO para a exclusão
         self._dao.delete(entity_filters)
     
@@ -548,7 +547,7 @@ class ServiceBase:
     
     def delete_related_lists(self, id_main: Any,  aditional_filters: Dict[str, Any] = None):
         
-        for master_dto_field, list_field in self._dto_class.list_fields_map.items():
+        for master_dto_field, list_field  in self._dto_class.list_fields_map.items():
             
             detail_dao = DAOBase(self._injector_factory.db_adapter(),
                                  list_field.entity_type)
@@ -562,8 +561,7 @@ class ServiceBase:
                 list_field.entity_type,
                 list_field.dto_post_response_type
             )
-
-
+            
             # Recuperando todos os IDs dos itens de lista já salvos no BD (se for um update)
             old_detail_ids = None
             # Montando o filtro para recuperar os objetos detalhe pré-existentes

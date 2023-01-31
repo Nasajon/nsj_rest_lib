@@ -1,6 +1,6 @@
 import re
 
-from typing import Callable, Dict, List, Set
+from typing import Any, Callable, Dict, List, Set
 
 from nsj_rest_lib.controller.funtion_route_wrapper import FunctionRouteWrapper
 from nsj_rest_lib.dao.dao_base import DAOBase
@@ -139,3 +139,4 @@ class RouteBase:
                 root_field_list.add(field)
 
         return fields_map
+
