@@ -54,15 +54,10 @@ class DTO:
                     attr.expected_type = cls.__annotations__[key]
 
                 # Checking if it is a resume field (to store)
-                # TODO Refatorar para guardar os campos de resumo do DTO (e não da entidade)
                 if attr.resume:
-                    entity_field_name = key
-                    if attr.entity_field is not None:
-                        entity_field_name = attr.entity_field
-
                     resume_fields = getattr(cls, 'resume_fields')
-                    if not (entity_field_name in resume_fields):
-                        resume_fields.add(entity_field_name)
+                    if not (key in resume_fields):
+                        resume_fields.add(key)
 
                 # TODO Refatorar para suportar PKs compostas
                 # Setting PK info
