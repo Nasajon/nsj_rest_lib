@@ -465,6 +465,9 @@ class ServiceBase:
 
                 # Recuperando do BD
                 old_detail_ids = detail_dao.list_ids(relation_filter)
+            
+            # Lista de DTOs detalhes a criar ou atualizar
+            detail_upsert_list = []
 
             # Salvando cada DTO detalhe
             for detail_dto in detail_list:
@@ -472,6 +475,8 @@ class ServiceBase:
                 # Recuperando o ID da entidade relacionada
                 detail_pk_field = detail_dto.__class__.pk_field
                 detail_pk = getattr(detail_dto, detail_pk_field)
+                if isinstance(detail_pk, uuid.UUID):
+                    detail_pk = str(detail_pk)
 
                 # Verificando se é um update ou insert
                 is_detail_insert = True
@@ -488,19 +493,27 @@ class ServiceBase:
                     raise DTOListFieldConfigException(
                         f"PK field not found in DTO: {self._dto_class}")
 
-                # Salvando o dto dependende (detalhe)
-                respose_detail_dto = detail_service._save(
-                    is_detail_insert, detail_dto, False, partial_update, relation_field_map, detail_pk)
-
-                # Guardando o DTO na lista de retorno
-                response_list.append(respose_detail_dto)
+                # Salvando o dto dependende (detalhe) na lista
+                detail_upsert_list.append({
+                    'is_detail_insert': is_detail_insert,
+                    'detail_dto': detail_dto,
+                    'detail_pk': detail_pk
+                })
 
             # Verificando se sobraram relacionamentos anteriores para remover
             if not partial_update and old_detail_ids is not None and len(old_detail_ids) > 0:
 
                 for old_id in old_detail_ids:
                     # Apagando cada relacionamento removido
-                    detail_service.delete(old_id, aditional_filters)
+                    detail_service.delete(old_id, **aditional_filters)
+            
+            # Salvando cada DTO detalhe
+            for item in detail_upsert_list:
+                response_detail_dto = detail_service._save(
+                    item["is_detail_insert"], item["detail_dto"], False, partial_update, relation_field_map, item["detail_pk"])
+
+                # Guardando o DTO na lista de retorno
+                response_list.append(response_detail_dto)
 
             # Setting dto property
             if response_dto is not None and master_dto_field in response_dto.list_fields_map and list_field.dto_post_response_type is not None:
