@@ -3,7 +3,7 @@ import os
 # Lendo variáveis de ambiente
 DEFAULT_PAGE_SIZE = int(os.getenv('DEFAULT_PAGE_SIZE', 20))
 USE_SQL_RETURNING_CLAUSE = (
-    os.getenv('USE_SQL_RETURNING_CLAUSE', 'true').lower == 'true')
+    os.getenv('USE_SQL_RETURNING_CLAUSE', 'true').lower() == 'true')
 
 DATABASE_HOST = os.getenv('DATABASE_HOST', '')
 DATABASE_PASS = os.getenv('DATABASE_PASS', '')
