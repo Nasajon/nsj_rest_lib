@@ -73,6 +73,8 @@ class GetRoute(RouteBase):
                     if not ('grupo_empresarial' in self._dto_class.fields_map):
                         raise DTOConfigException(
                             f"Missing 'grupo_empresarial' field declaration on DTOClass: {self._dto_class}")
+                else:
+                    grupo_empresarial = None
 
                 # Construindo os objetos
                 service = self._get_service(factory)
