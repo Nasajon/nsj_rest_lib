@@ -180,7 +180,7 @@ class DTOField:
         elif self.expected_type is bool and isinstance(value, int):
             # Booleanos
             # Converting int to bool (0 is False, otherwise is True)
-            value = (value == 0)
+            value = bool(value)
         elif self.expected_type is datetime.datetime and isinstance(value, datetime.date):
             # Datetime
             # Assumindo hora 0, minuto 0 e segundo 0 (quanto é recebida uma data para campo data + hora)
