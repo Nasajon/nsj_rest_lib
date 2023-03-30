@@ -23,7 +23,7 @@ class DTOBase(abc.ABC):
 
         # Transformando a entity em dict (se houver uma entity)
         if entity is not None:
-            kwargs =  entity if type(entity) is dict else copy.deepcopy(entity.__dict__)
+            kwargs =  copy.deepcopy(entity) if type(entity) is dict else copy.deepcopy(entity.__dict__)
 
         # Setando os campos registrados como fields simples
         for field in self.__class__.fields_map:
