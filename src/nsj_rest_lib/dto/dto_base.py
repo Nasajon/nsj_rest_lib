@@ -2,7 +2,7 @@ import abc
 import copy
 # import uuid
 
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Set, Union
 
 from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
 from nsj_rest_lib.descriptor.dto_field import DTOField, DTOFieldFilter
@@ -18,12 +18,12 @@ class DTOBase(abc.ABC):
     pk_field: str
     fixed_filters: Dict[str, Any]
 
-    def __init__(self, entity: EntityBase = None, **kwargs) -> None:
+    def __init__(self, entity: Union[EntityBase, dict] = None, **kwargs) -> None:
         super().__init__()
 
         # Transformando a entity em dict (se houver uma entity)
         if entity is not None:
-            kwargs = copy.deepcopy(entity.__dict__)
+            kwargs =  entity if type(entity) is dict else copy.deepcopy(entity.__dict__)
 
         # Setando os campos registrados como fields simples
         for field in self.__class__.fields_map:
