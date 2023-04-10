@@ -368,10 +368,10 @@ class DAOBase:
         # Building SQL fields
         if ignore_nones:
             fields = [f"{k} = :{k}" for k in entity.__dict__ if not callable(
-                getattr(entity, k, None)) and not k.startswith('_') and getattr(entity, k) is not None]
+                getattr(entity, k, None)) and not k.startswith('_') and getattr(entity, k) is not None and k not in entity.get_const_fields()]
         else:
             fields = [f"{k} = :{k}" for k in entity.__dict__ if not callable(
-                getattr(entity, k, None)) and not k.startswith('_')]
+                getattr(entity, k, None)) and not k.startswith('_') and k not in entity.get_const_fields()]
 
         return ', '.join(fields)
 
@@ -521,44 +521,3 @@ class DAOBase:
         if rowcount <= 0:
             raise NotFoundException(
                 f'{self._entity_class.__name__} não encontrado. Filtros: {filters}')
-
-    def delete(self, id: uuid.UUID, grupo_empresarial=None, tenant=None):
-        """
-        Returns an entity instance by its ID.
-        """
-
-        # Creating a entity instance
-        entity = self._entity_class()
-
-        # Building query
-        sql = f"""
-        delete
-        from
-            {entity.get_table_name()} as t0
-        where
-            t0.{entity.get_pk_column_name()} = :id
-        """
-
-        # TODO Refatorar para suportar outros nomes para as colunas grupo_empresarial e tenant
-        if grupo_empresarial is not None:
-            sql += "\n"
-            sql += "    and t0.grupo_empresarial = :grupo_empresarial"
-
-        if tenant is not None:
-            sql += "\n"
-            sql += "    and t0.tenant = :tenant"
-
-        # Running query
-        resp = self._db.execute(
-            sql,
-            id=id,
-            grupo_empresarial=grupo_empresarial,
-            tenant=tenant
-        )
-
-        # Checking if ID was found
-        if len(resp) <= 0:
-            raise NotFoundException(
-                f'{self._entity_class.__name__} com id {id} não encontrado.')
-
-        return resp[0]
