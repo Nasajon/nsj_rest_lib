@@ -9,6 +9,10 @@ class EMPTY:
 
 class EntityBase(abc.ABC):
 
+    def initialize_fields(self):
+        for annotation in self.__annotations__:
+            self.__setattr__(annotation, None)  
+
     def get_pk_column_name(self) -> str:
         return 'id'
 
