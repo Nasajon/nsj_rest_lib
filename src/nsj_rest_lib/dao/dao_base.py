@@ -559,6 +559,6 @@ class DAOBase:
         # Checking if ID was found
         if len(resp) <= 0:
             raise NotFoundException(
-                f'{self._entity_class.__name__} com id {id} nÃ£o encontrado.')
+                f'{self._entity_class.__name__} com id {id} não encontrado.')
 
         return resp[0]
