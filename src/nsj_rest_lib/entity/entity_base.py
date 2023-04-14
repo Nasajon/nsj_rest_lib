@@ -8,7 +8,7 @@ class EMPTY:
 
 
 class EntityBase(abc.ABC):
-    
+
     
     def initialize_fields(self):
         for annotation in self.__annotations__:
@@ -34,3 +34,6 @@ class EntityBase(abc.ABC):
 
     def get_update_returning_fields(self) -> List[str]:
         return None
+    
+    def get_const_fields(self) -> List[str]:
+        return ['criado_em','criado_por']

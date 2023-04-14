@@ -368,10 +368,10 @@ class DAOBase:
         # Building SQL fields
         if ignore_nones:
             fields = [f"{k} = :{k}" for k in entity.__dict__ if not callable(
-                getattr(entity, k, None)) and not k.startswith('_') and getattr(entity, k) is not None]
+                getattr(entity, k, None)) and not k.startswith('_') and getattr(entity, k) is not None and k not in entity.get_const_fields()]
         else:
             fields = [f"{k} = :{k}" for k in entity.__dict__ if not callable(
-                getattr(entity, k, None)) and not k.startswith('_')]
+                getattr(entity, k, None)) and not k.startswith('_') and k not in entity.get_const_fields()]
 
         return ', '.join(fields)
 
