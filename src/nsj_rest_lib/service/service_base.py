@@ -505,7 +505,7 @@ class ServiceBase:
 
                 for old_id in old_detail_ids:
                     # Apagando cada relacionamento removido
-                    detail_service.delete(old_id, **aditional_filters)
+                    detail_service.deleteByGrupoTenant(old_id, **aditional_filters)
             
             # Salvando cada DTO detalhe
             for item in detail_upsert_list:
