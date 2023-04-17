@@ -75,7 +75,7 @@ class DeleteRoute(RouteBase):
 
                 # Chamando o service (método get)
                 # TODO Rever parametro order_fields abaixo
-                service.delete(id, grupo_empresarial, tenant)
+                service.deleteByGrupoTenant(id, grupo_empresarial, tenant)
 
                 # Retornando a resposta da requuisição
                 return ('', 204, {**DEFAULT_RESP_HEADERS})

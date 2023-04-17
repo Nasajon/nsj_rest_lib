@@ -522,7 +522,7 @@ class DAOBase:
             raise NotFoundException(
                 f'{self._entity_class.__name__} não encontrado. Filtros: {filters}')
 
-    def delete(self, id: uuid.UUID, grupo_empresarial=None, tenant=None):
+    def deleteByGrupoTenant(self, id: uuid.UUID, grupo_empresarial=None, tenant=None):
         """
         Returns an entity instance by its ID.
         """

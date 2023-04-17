@@ -561,7 +561,7 @@ class ServiceBase:
 
         return True
 
-    def delete(
+    def deleteByGrupoTenant(
         self,
         id: str,
         grupo_empresarial: str,
@@ -592,7 +592,7 @@ class ServiceBase:
                 self._delete_related_lists(id, grupo_empresarial, tenant)
 
             # Excluindo a entity principal
-            self._dao.delete(id, grupo_empresarial, tenant)
+            self._dao.deleteByGrupoTenant(id, grupo_empresarial, tenant)
 
         except:
             if manage_transaction:
