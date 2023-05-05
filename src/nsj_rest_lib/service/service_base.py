@@ -20,6 +20,7 @@ from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 class ServiceBase:
     _dao: DAOBase
     _dto_class: DTOBase
+    _entity_class: EntityBase
 
     def __init__(
         self,
@@ -332,25 +333,26 @@ class ServiceBase:
                         setattr(entity, entity_field, value)
 
             # Setando campos criado_por e atualizado_por quando existirem
-            if hasattr(g, 'profile') and g.profile is not None:
-                auth_type_is_api_key = g.profile["authentication_type"] == "api_key"
-                user = g.profile["email"]
-                if insert and hasattr(entity, self._created_by_property):
-                    if not auth_type_is_api_key:
-                        setattr(entity, self._created_by_property, user)
-                    else:
-                        value = getattr(entity, self._created_by_property)
-                        if value is None or value == '':
-                            raise ValueError(
-                                f"É necessário preencher o campo '{self._created_by_property}'.")
-                if hasattr(entity, self._updated_by_property):
-                    if not auth_type_is_api_key:
-                        setattr(entity, self._updated_by_property, user)
-                    else:
-                        value = getattr(entity, self._updated_by_property)
-                        if value is None or value == '':
-                            raise ValueError(
-                                f"É necessário preencher o campo '{self._updated_by_property}'")
+            if (insert and hasattr(entity, self._created_by_property)) or (hasattr(entity, self._updated_by_property)):
+                if hasattr(g, 'profile') and g.profile is not None:
+                    auth_type_is_api_key = g.profile["authentication_type"] == "api_key"
+                    user = g.profile["email"]
+                    if insert and hasattr(entity, self._created_by_property):
+                        if not auth_type_is_api_key:
+                            setattr(entity, self._created_by_property, user)
+                        else:
+                            value = getattr(entity, self._created_by_property)
+                            if value is None or value == '':
+                                raise ValueError(
+                                    f"É necessário preencher o campo '{self._created_by_property}'.")
+                    if hasattr(entity, self._updated_by_property):
+                        if not auth_type_is_api_key:
+                            setattr(entity, self._updated_by_property, user)
+                        else:
+                            value = getattr(entity, self._updated_by_property)
+                            if value is None or value == '':
+                                raise ValueError(
+                                    f"É necessário preencher o campo '{self._updated_by_property}'")
 
             # Invocando o DAO
             if insert:
