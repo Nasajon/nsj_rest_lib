@@ -40,8 +40,7 @@ class ServiceBase:
     def get(
         self,
         id: str,
-        grupo_empresarial: str,
-        tenant: str,
+        partition_fields: Dict[str, Any],
         fields: Dict[str, List[str]]
     ) -> DTOBase:
         # Resolving fields
@@ -51,7 +50,7 @@ class ServiceBase:
         entity_fields = self._convert_to_entity_fields(fields['root'])
 
         # Recuperando a entity
-        entity = self._dao.get(id, entity_fields, grupo_empresarial, tenant)
+        entity = self._dao.get(id, entity_fields, partition_fields)
 
         # Convertendo para DTO
         dto = self._dto_class(entity)
@@ -354,7 +353,7 @@ class ServiceBase:
 
             # Invocando o DAO
             if insert:
-                if self.entity_exists(entity):
+                if self.entity_exists(entity, aditional_filters):
                     raise ConflictException(
                         f"Já existe um registro no banco com o identificador '{getattr(entity, entity_pk_field)}'")
                 entity = self._dao.insert(entity)
@@ -505,7 +504,7 @@ class ServiceBase:
 
                 for old_id in old_detail_ids:
                     # Apagando cada relacionamento removido
-                    detail_service.deleteByGrupoTenant(old_id, **aditional_filters)
+                    detail_service.delete(old_id, aditional_filters)
             
             # Salvando cada DTO detalhe
             for item in detail_upsert_list:
@@ -522,32 +521,16 @@ class ServiceBase:
     def delete(
         self,
         id: Any,
-        aditional_filters: Dict[str, Any] = None
+        additional_filters: Dict[str, Any] = None
     ) -> DTOBase:
+        self._delete(id,manage_transaction=True,additional_filters=additional_filters)
+        
 
-        # Convertendo os filtros para os filtros de entidade
-        entity_filters = {}
-        if aditional_filters is not None:
-            entity_filters = self._create_entity_filters(aditional_filters)
-
-        # Adicionando o ID nos filtros
-        id_condiction = Filter(
-            FilterOperator.EQUALS,
-            id
-        )
-
-        pk_field = self._entity_class().get_pk_field()
-        entity_filters[pk_field] = [id_condiction]
-
-        # Chamando o DAO para a exclusão
-        self._dao.delete(entity_filters)
-
-    def entity_exists(self, entity: EntityBase):
+    def entity_exists(self, entity: EntityBase, partition_fields: Dict[str, Any]):
         # Getting values
         entity_pk_field = entity.get_pk_field()
         entity_pk_value = getattr(entity, entity_pk_field)
-        grupo_empresarial = getattr(entity, 'grupo_empresarial', None)
-        tenant = getattr(entity, 'tenant', None)
+        
 
         if entity_pk_value is None:
             return False
@@ -555,44 +538,44 @@ class ServiceBase:
         # Searching entity in DB
         try:
             self._dao.get(entity_pk_value, [entity.get_pk_column_name(
-            )], grupo_empresarial=grupo_empresarial, tenant=tenant)
+            )], partition_fields)
         except NotFoundException as e:
             return False
 
         return True
 
-    def deleteByGrupoTenant(
-        self,
-        id: str,
-        grupo_empresarial: str,
-        tenant: str
-    ) -> DTOBase:
-
-        self._delete(
-            id,
-            grupo_empresarial,
-            tenant,
-            manage_transaction=True
-        )
-
     def _delete(
         self,
         id: str,
-        grupo_empresarial: str,
-        tenant: str,
-        manage_transaction: bool
+        manage_transaction: bool,
+        additional_filters: Dict[str, Any] = None
     ) -> DTOBase:
 
         try:
             if manage_transaction:
                 self._dao.begin()
 
+            # Convertendo os filtros para os filtros de entidade
+            entity_filters = {}
+            if additional_filters is not None:
+                entity_filters = self._create_entity_filters(additional_filters)
+
+            # Adicionando o ID nos filtros
+            id_condiction = Filter(
+                FilterOperator.EQUALS,
+                id
+            )
+
+            pk_field = self._entity_class().get_pk_field()
+            entity_filters[pk_field] = [id_condiction]
+
+            
             # Tratando das propriedades de lista
             if len(self._dto_class.list_fields_map) > 0:
-                self._delete_related_lists(id, grupo_empresarial, tenant)
+                self._delete_related_lists(id, additional_filters)
 
             # Excluindo a entity principal
-            self._dao.deleteByGrupoTenant(id, grupo_empresarial, tenant)
+            self._dao.delete(entity_filters)
 
         except:
             if manage_transaction:
@@ -605,8 +588,7 @@ class ServiceBase:
     def _delete_related_lists(
         self,
         id,
-        grupo_empresarial: str,
-        tenant: str
+        additional_filters: Dict[str, Any] = None
     ):
 
         # Handling each related list
@@ -649,5 +631,4 @@ class ServiceBase:
                     related_dto, list_field.dto_type.pk_field)
 
                 # Chamando a exclusão recursivamente
-                service._delete(related_id, grupo_empresarial,
-                                tenant, manage_transaction=False)
+                service._delete(related_id, manage_transaction=False, additional_filters=additional_filters)

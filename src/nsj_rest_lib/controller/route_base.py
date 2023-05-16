@@ -22,8 +22,6 @@ class RouteBase:
     _dto_class: DTOBase
     _entity_class: EntityBase
     _dto_response_class: DTOBase
-    _require_tenant: bool
-    _require_grupo_emprearial: bool
 
     def __init__(
         self,
@@ -35,8 +33,6 @@ class RouteBase:
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
-        require_tenant: bool = True,
-        require_grupo_emprearial: bool = True
     ):
         super().__init__()
 
@@ -50,8 +46,6 @@ class RouteBase:
         self._dto_class = dto_class
         self._entity_class = entity_class
         self._dto_response_class = dto_response_class
-        self._require_tenant = require_tenant
-        self._require_grupo_emprearial = require_grupo_emprearial
 
     def __call__(self, func):
         self.function_wrapper = FunctionRouteWrapper(self, func)

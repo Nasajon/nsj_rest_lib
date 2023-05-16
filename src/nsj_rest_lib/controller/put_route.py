@@ -23,8 +23,6 @@ class PutRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
-        require_tenant: bool = True,
-        require_grupo_emprearial: bool = True
     ):
         super().__init__(
             url=url,
@@ -35,8 +33,6 @@ class PutRoute(RouteBase):
             injector_factory=injector_factory,
             service_name=service_name,
             handle_exception=handle_exception,
-            require_tenant=require_tenant,
-            require_grupo_emprearial=require_grupo_emprearial,
         )
 
     def handle_request(self, id):
@@ -50,43 +46,24 @@ class PutRoute(RouteBase):
                 data = request.get_data(as_text=True)
                 data = json_loads(data)
 
-                # Tratando do tenant e do grupo_empresarial
-                tenant = data.get('tenant')
-                grupo_empresarial = data.get('grupo_empresarial')
-
-                if self._require_tenant:
-                    if tenant is None:
-                        raise MissingParameterException('tenant')
-
-                    if not ('tenant' in self._dto_class.fields_map):
-                        raise DTOConfigException(
-                            f"Missing 'tenant' field declaration on DTOClass: {self._dto_class}")
-
-                if self._require_grupo_emprearial:
-                    if grupo_empresarial is None:
-                        raise MissingParameterException('grupo_empresarial')
-
-                    if not ('grupo_empresarial' in self._dto_class.fields_map):
-                        raise DTOConfigException(
-                            f"Missing 'grupo_empresarial' field declaration on DTOClass: {self._dto_class}")
-
-                # Montando os filtros de particao de dados
-                patition_filters = {}
-
-                if tenant is not None:
-                    patition_filters['tenant'] = tenant
-
-                if grupo_empresarial is not None:
-                    patition_filters['grupo_empresarial'] = grupo_empresarial
-
                 # Convertendo os dados para o DTO
                 data = self._dto_class(**data)
+
+                # Montando os filtros de particao de dados
+                partition_filters = {}
+                
+                for field in data.partition_fields:
+                    value = getattr(data, field)
+                    if value is None:
+                        raise MissingParameterException(field)
+                    elif value is not None:
+                        partition_filters[field] = value
 
                 # Construindo os objetos
                 service = self._get_service(factory)
 
                 # Chamando o service (método insert)
-                data = service.update(data, id, patition_filters)
+                data = service.update(data, id, partition_filters)
 
                 if data is not None:
                     # Convertendo para o formato de dicionário

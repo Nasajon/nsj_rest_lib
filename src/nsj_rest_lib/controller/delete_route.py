@@ -23,8 +23,6 @@ class DeleteRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
-        require_tenant: bool = True,
-        require_grupo_emprearial: bool = True
     ):
         super().__init__(
             url=url,
@@ -35,8 +33,6 @@ class DeleteRoute(RouteBase):
             injector_factory=injector_factory,
             service_name=service_name,
             handle_exception=handle_exception,
-            require_tenant=require_tenant,
-            require_grupo_emprearial=require_grupo_emprearial,
         )
 
     def handle_request(self, id):
@@ -75,7 +71,7 @@ class DeleteRoute(RouteBase):
 
                 # Chamando o service (método get)
                 # TODO Rever parametro order_fields abaixo
-                service.deleteByGrupoTenant(id, grupo_empresarial, tenant)
+                service.delete(id, grupo_empresarial, tenant)
 
                 # Retornando a resposta da requuisição
                 return ('', 204, {**DEFAULT_RESP_HEADERS})
