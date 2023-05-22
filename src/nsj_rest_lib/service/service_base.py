@@ -246,6 +246,11 @@ class ServiceBase:
                         dto, self._dto_class.pk_field)
                 }
 
+                # Tratando campos de particionamento
+                for field in self._dto_class.partition_fields:
+                    filters[field] = getattr(
+                        dto, field)
+
                 # Resolvendo os fields da entidade aninhada
                 fields_to_list = copy.deepcopy(fields)
                 if master_dto_attr in fields:
