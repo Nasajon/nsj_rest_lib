@@ -471,8 +471,10 @@ class ServiceBase:
                 # Tratando campos de particionamento
                 for field in self._dto_class.partition_fields:
                     if field in list_field.dto_type.partition_fields:
-                        relation_filter[field] = getattr(
-                            dto, field)
+                        relation_filter[field] = [Filter(
+                            FilterOperator.EQUALS,
+                            getattr(dto, field)
+                        )]
 
                 # Recuperando do BD
                 old_detail_ids = detail_dao.list_ids(relation_filter)
