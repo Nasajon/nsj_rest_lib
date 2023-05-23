@@ -49,12 +49,6 @@ class PostRoute(RouteBase):
                 # Convertendo os dados para o DTO
                 data = self._dto_class(**data)
 
-                #Verificando os campos de partição
-                for field in data.partition_fields:
-                    value = getattr(data, field)
-                    if value is None:
-                        raise MissingParameterException(field)
-
                 # Construindo os objetos
                 service = self._get_service(factory)
 
