@@ -23,8 +23,6 @@ class GetRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
-        require_tenant: bool = True,
-        require_grupo_emprearial: bool = True
     ):
         super().__init__(
             url=url,
@@ -34,9 +32,7 @@ class GetRoute(RouteBase):
             dto_response_class=None,
             injector_factory=injector_factory,
             service_name=service_name,
-            handle_exception=handle_exception,
-            require_tenant=require_tenant,
-            require_grupo_emprearial=require_grupo_emprearial,
+            handle_exception=handle_exception
         )
 
     def handle_request(self, id):
@@ -53,33 +49,21 @@ class GetRoute(RouteBase):
                 fields = args.get('fields')
                 fields = self._parse_fields(fields)
 
-                # Tratando do tenant e do grupo_empresarial
-                # TODO Refatorar para exibir os dois erros ao mesmo tempo
-                tenant = args.get('tenant')
-                grupo_empresarial = args.get('grupo_empresarial')
-
-                if self._require_tenant:
-                    if tenant is None:
-                        raise MissingParameterException('tenant')
-
-                    if not ('tenant' in self._dto_class.fields_map):
-                        raise DTOConfigException(
-                            f"Missing 'tenant' field declaration on DTOClass: {self._dto_class}")
-
-                if self._require_grupo_emprearial:
-                    if grupo_empresarial is None:
-                        raise MissingParameterException('grupo_empresarial')
-
-                    if not ('grupo_empresarial' in self._dto_class.fields_map):
-                        raise DTOConfigException(
-                            f"Missing 'grupo_empresarial' field declaration on DTOClass: {self._dto_class}")
+                partition_fields = {}
+                # Tratando campos de particionamento
+                for field in self._dto_class.partition_fields:
+                    value = args.get(field)
+                    if value is None:
+                        raise MissingParameterException(field)
+                    
+                    partition_fields[field] = value
 
                 # Construindo os objetos
                 service = self._get_service(factory)
 
                 # Chamando o service (método get)
                 # TODO Rever parametro order_fields abaixo
-                data = service.get(id, grupo_empresarial, tenant, fields)
+                data = service.get(id, partition_fields, fields)
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
                 dict_data = data.convert_to_dict(fields)

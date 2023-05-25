@@ -24,8 +24,6 @@ class ListRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
-        require_tenant: bool = True,
-        require_grupo_emprearial: bool = True
     ):
         super().__init__(
             url=url,
@@ -36,8 +34,6 @@ class ListRoute(RouteBase):
             injector_factory=injector_factory,
             service_name=service_name,
             handle_exception=handle_exception,
-            require_tenant=require_tenant,
-            require_grupo_emprearial=require_grupo_emprearial,
         )
 
     def handle_request(self):
@@ -65,30 +61,13 @@ class ListRoute(RouteBase):
 
                     filters[arg] = args.get(arg)
 
-                # Tratando do tenant e do grupo_empresarial
-                # TODO Refatorar para exibir os dois erros ao mesmo tempo
-                tenant = args.get('tenant')
-                grupo_empresarial = args.get('grupo_empresarial')
-
-                if self._require_tenant:
-                    if tenant is None:
-                        raise MissingParameterException('tenant')
-
-                    if not ('tenant' in self._dto_class.fields_map):
-                        raise DTOConfigException(
-                            f"Missing 'tenant' field declaration on DTOClass: {self._dto_class}")
-
-                    filters['tenant'] = tenant
-
-                if self._require_grupo_emprearial:
-                    if grupo_empresarial is None:
-                        raise MissingParameterException('grupo_empresarial')
-
-                    if not ('grupo_empresarial' in self._dto_class.fields_map):
-                        raise DTOConfigException(
-                            f"Missing 'grupo_empresarial' field declaration on DTOClass: {self._dto_class}")
-
-                    filters['grupo_empresarial'] = grupo_empresarial
+                # Tratando campos de particionamento
+                for field in self._dto_class.partition_fields:
+                    value = args.get(field)
+                    if value is None:
+                        raise MissingParameterException(field)
+                    
+                    filters[field] = value
 
                 # Construindo os objetos
                 service = self._get_service(factory)
