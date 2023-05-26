@@ -215,6 +215,12 @@ class DTOField:
         elif self.expected_type is Decimal:
             # Int
             try:
+                value = str(value)
+            except:
+                erro_tipo = True
+        elif self.expected_type is str:
+            # Int
+            try:
                 value = Decimal(value)
             except:
                 erro_tipo = True

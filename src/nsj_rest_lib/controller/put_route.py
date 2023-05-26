@@ -43,8 +43,7 @@ class PutRoute(RouteBase):
         with self._injector_factory() as factory:
             try:
                 # Recuperando os dados do corpo da rquisição
-                data = request.get_data(as_text=True)
-                data = json_loads(data)
+                data = request.json
 
                 # Convertendo os dados para o DTO
                 data = self._dto_class(**data)
