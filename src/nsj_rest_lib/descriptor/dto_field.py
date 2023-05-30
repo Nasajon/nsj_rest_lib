@@ -142,14 +142,10 @@ class DTOField:
             '^(\d\d\d\d)-(\d\d)-(\d\d)[T,t](\d\d):(\d\d):(\d\d)$')
         matcher_date = re.compile('^(\d\d\d\d)-(\d\d)-(\d\d)$')
 
-        # Validação por regex
-        if (
-            self.expected_type is datetime.datetime
-            or self.expected_type is datetime.date
-        ) and isinstance(value, str):
-            # Verificando se pode ser alterado de str para UUID
+        # Validação direta de tipos
+        erro_tipo = False
+        if self.expected_type is datetime.datetime and isinstance(value, str):
             match_datetime = matcher_datetime.search(value)
-            match_date = matcher_date.search(value)
 
             if match_datetime:
                 ano = int(match_datetime.group(1))
@@ -161,16 +157,21 @@ class DTOField:
 
                 value = datetime.datetime(
                     year=ano, month=mes, day=dia, hour=hora, minute=minuto, second=segundo)
-            elif match_date:
+            else:
+                erro_tipo=True
+        elif self.expected_type is datetime.date and isinstance(value, str):
+
+            match_date = matcher_date.search(value)
+
+            if match_date:
                 ano = int(match_date.group(1))
                 mes = int(match_date.group(2))
                 dia = int(match_date.group(3))
 
                 value = datetime.date(year=ano, month=mes, day=dia)
-
-        # Validação direta de tipos
-        erro_tipo = False
-        if isinstance(self.expected_type, enum.EnumMeta):
+            else:
+                erro_tipo=True
+        elif isinstance(self.expected_type, enum.EnumMeta):
             # Enumerados
             try:
                 value = self.expected_type(value)
@@ -215,13 +216,13 @@ class DTOField:
         elif self.expected_type is Decimal:
             # Int
             try:
-                value = str(value)
+                value = Decimal(value)
             except:
                 erro_tipo = True
         elif self.expected_type is str:
             # Int
             try:
-                value = Decimal(value)
+                value = str(value)
             except:
                 erro_tipo = True
         else:

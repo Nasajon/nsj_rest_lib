@@ -70,13 +70,16 @@ class DAOBase:
 
         return ', '.join(fields)
 
-    def get(self, id: uuid.UUID, fields: List[str] = None, partition_fields=None) -> EntityBase:
+    def get(self, id: uuid.UUID, fields: List[str] = None, filters=None) -> EntityBase:
         """
         Returns an entity instance by its ID.
         """
 
         # Creating a entity instance
         entity = self._entity_class()
+
+        # Organizando o where dos filtros
+        filters_where, filter_values_map = self._make_filters_sql(filters)
 
         # Building query
         sql = f"""
@@ -85,14 +88,11 @@ class DAOBase:
         from
             {entity.get_table_name()} as t0
         where
-            t0.{entity.get_pk_column_name()} = :id
+            t0.{entity.get_pk_field()} = :id
+            {filters_where}
         """
         values = {"id": id}
-
-        if partition_fields is not None:
-            for field in partition_fields:
-                sql += f" \n and t0.{field} = :{field}"
-                values[field] = partition_fields[field]
+        values.update(filter_values_map)
                 
         # Running query
         resp = self._db.execute_query_to_model(
@@ -457,7 +457,7 @@ class DAOBase:
         entity = self._entity_class()
 
         # Recuperando o campo de chave primária
-        pk_field = entity.get_pk_column_name()
+        pk_field = entity.get_pk_field()
 
         # Organizando o where dos filtros
         filters_where, filter_values_map = self._make_filters_sql(filters)

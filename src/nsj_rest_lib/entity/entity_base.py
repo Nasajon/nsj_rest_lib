@@ -14,9 +14,6 @@ class EntityBase(abc.ABC):
         for annotation in self.__annotations__:
             self.__setattr__(annotation, None)  
 
-    def get_pk_column_name(self) -> str:
-        return 'id'
-
     @abc.abstractmethod
     def get_table_name(self) -> str:
         pass

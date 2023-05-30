@@ -49,8 +49,10 @@ class ServiceBase:
         # Handling the fields to retrieve
         entity_fields = self._convert_to_entity_fields(fields['root'])
 
+        entity_filters = self._create_entity_filters(partition_fields)
+
         # Recuperando a entity
-        entity = self._dao.get(id, entity_fields, partition_fields)
+        entity = self._dao.get(id, entity_fields, entity_filters)
 
         # Convertendo para DTO
         dto = self._dto_class(entity)
@@ -551,7 +553,7 @@ class ServiceBase:
 
         # Searching entity in DB
         try:
-            self._dao.get(entity_pk_value, [entity.get_pk_column_name(
+            self._dao.get(entity_pk_value, [entity.get_pk_field(
             )], partition_fields)
         except NotFoundException as e:
             return False
