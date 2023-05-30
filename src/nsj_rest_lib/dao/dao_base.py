@@ -88,7 +88,7 @@ class DAOBase:
         from
             {entity.get_table_name()} as t0
         where
-            t0.{entity.get_pk_column_name()} = :id
+            t0.{entity.get_pk_field()} = :id
             {filters_where}
         """
         values = {"id": id}
@@ -457,7 +457,7 @@ class DAOBase:
         entity = self._entity_class()
 
         # Recuperando o campo de chave primária
-        pk_field = entity.get_pk_column_name()
+        pk_field = entity.get_pk_field()
 
         # Organizando o where dos filtros
         filters_where, filter_values_map = self._make_filters_sql(filters)

@@ -553,7 +553,7 @@ class ServiceBase:
 
         # Searching entity in DB
         try:
-            self._dao.get(entity_pk_value, [entity.get_pk_column_name(
+            self._dao.get(entity_pk_value, [entity.get_pk_field(
             )], partition_fields)
         except NotFoundException as e:
             return False
