@@ -10,11 +10,8 @@ from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 
 
 class DTOFieldFilter:
-
     def __init__(
-        self,
-        name: str = None,
-        operator: FilterOperator = FilterOperator.EQUALS
+        self, name: str = None, operator: FilterOperator = FilterOperator.EQUALS
     ):
         self.name = name
         self.operator = operator
@@ -41,7 +38,7 @@ class DTOField:
         pk: bool = False,
         use_default_validator: bool = True,
         default_value: typing.Union[typing.Callable, typing.Any] = None,
-        partition_data: bool = False
+        partition_data: bool = False,
     ):
         """
         -----------
@@ -97,32 +94,51 @@ class DTOField:
         """
 
         # Checking not null constraint
-        if (self.not_null) and (value is None or (isinstance(value, str) and len(value.strip()) <= 0)):
+        if (self.not_null) and (
+            value is None or (isinstance(value, str) and len(value.strip()) <= 0)
+        ):
             raise ValueError(
-                f"{self.storage_name} deve estar preenchido. Valor recebido: {value}.")
+                f"{self.storage_name} deve estar preenchido. Valor recebido: {value}."
+            )
 
         # Checking type constraint
         # TODO Ver como suportar typing
-        if self.expected_type is not None and not isinstance(value, self.expected_type) and value is not None:
+        if (
+            self.expected_type is not None
+            and not isinstance(value, self.expected_type)
+            and value is not None
+        ):
             value = self.validate_type(value)
 
         # Checking min constraint
         if self.min is not None:
             if isinstance(value, str) and (len(value) < self.min):
                 raise ValueError(
-                    f"{self.storage_name} deve conter no mínimo {self.min} caracteres. Valor recebido: {value}.")
-            elif (isinstance(value, int) or isinstance(value, float) or isinstance(value, Decimal)) and (value < self.min):
+                    f"{self.storage_name} deve conter no mínimo {self.min} caracteres. Valor recebido: {value}."
+                )
+            elif (
+                isinstance(value, int)
+                or isinstance(value, float)
+                or isinstance(value, Decimal)
+            ) and (value < self.min):
                 raise ValueError(
-                    f"{self.storage_name} deve ser maior ou igual a {self.min}. Valor recebido: {value}.")
+                    f"{self.storage_name} deve ser maior ou igual a {self.min}. Valor recebido: {value}."
+                )
 
         # Checking min constraint
         if self.max is not None:
             if isinstance(value, str) and (len(value) > self.max):
                 raise ValueError(
-                    f"{self.storage_name} deve conter no máximo {self.max} caracteres. Valor recebido: {value}.")
-            elif (isinstance(value, int) or isinstance(value, float) or isinstance(value, Decimal)) and (value > self.max):
+                    f"{self.storage_name} deve conter no máximo {self.max} caracteres. Valor recebido: {value}."
+                )
+            elif (
+                isinstance(value, int)
+                or isinstance(value, float)
+                or isinstance(value, Decimal)
+            ) and (value > self.max):
                 raise ValueError(
-                    f"{self.storage_name} deve ser menor ou igual a {self.max}. Valor recebido: {value}.")
+                    f"{self.storage_name} deve ser menor ou igual a {self.max}. Valor recebido: {value}."
+                )
 
         # Striping strings (if desired)
         if isinstance(value, str) and self.strip:
@@ -137,15 +153,18 @@ class DTOField:
 
         # Montando expressões regulares para as validações
         matcher_uuid = re.compile(
-            '^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$')
+            "^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$"
+        )
         matcher_datetime = re.compile(
-            '^(\d\d\d\d)-(\d\d)-(\d\d)[T,t](\d\d):(\d\d):(\d\d)$')
-        matcher_date = re.compile('^(\d\d\d\d)-(\d\d)-(\d\d)$')
+            "^(\d\d\d\d)-(\d\d)-(\d\d)[T,t](\d\d):(\d\d):(\d\d)$"
+        )
+        matcher_date = re.compile("^(\d\d\d\d)-(\d\d)-(\d\d)$")
 
         # Validação direta de tipos
         erro_tipo = False
         if self.expected_type is datetime.datetime and isinstance(value, str):
             match_datetime = matcher_datetime.search(value)
+            match_date = matcher_date.search(value)
 
             if match_datetime:
                 ano = int(match_datetime.group(1))
@@ -156,11 +175,24 @@ class DTOField:
                 segundo = int(match_datetime.group(6))
 
                 value = datetime.datetime(
-                    year=ano, month=mes, day=dia, hour=hora, minute=minuto, second=segundo)
-            else:
-                erro_tipo=True
-        elif self.expected_type is datetime.date and isinstance(value, str):
+                    year=ano,
+                    month=mes,
+                    day=dia,
+                    hour=hora,
+                    minute=minuto,
+                    second=segundo,
+                )
+            elif match_date:
+                ano = int(match_date.group(1))
+                mes = int(match_date.group(2))
+                dia = int(match_date.group(3))
 
+                value = datetime.datetime(
+                    year=ano, month=mes, day=dia, hour=0, minute=0, second=0
+                )
+            else:
+                erro_tipo = True
+        elif self.expected_type is datetime.date and isinstance(value, str):
             match_date = matcher_date.search(value)
 
             if match_date:
@@ -170,28 +202,19 @@ class DTOField:
 
                 value = datetime.date(year=ano, month=mes, day=dia)
             else:
-                erro_tipo=True
+                erro_tipo = True
         elif isinstance(self.expected_type, enum.EnumMeta):
             # Enumerados
             try:
                 value = self.expected_type(value)
             except ValueError as e:
                 raise ValueError(
-                    f"{self.storage_name} não é um {self.expected_type.__name__} válido. Valor recebido: {value}.")
+                    f"{self.storage_name} não é um {self.expected_type.__name__} válido. Valor recebido: {value}."
+                )
         elif self.expected_type is bool and isinstance(value, int):
             # Booleanos
             # Converting int to bool (0 is False, otherwise is True)
             value = bool(value)
-        elif self.expected_type is datetime.datetime and isinstance(value, datetime.date):
-            # Datetime
-            # Assumindo hora 0, minuto 0 e segundo 0 (quanto é recebida uma data para campo data + hora)
-            value = datetime.datetime(
-                value.year, value.month, value.day, 0, 0, 0)
-        elif self.expected_type is datetime.date and isinstance(value, datetime.datetime):
-            # Date
-            # Desprezando hora , minuto e segundo (quanto é recebida uma data + hora, para campo de data)
-            value = datetime.date(
-                value.year, value.month, value.day)
         elif self.expected_type is uuid.UUID and isinstance(value, str):
             # UUID
             # Verificando se pode ser alterado de str para UUID
@@ -230,6 +253,7 @@ class DTOField:
 
         if erro_tipo:
             raise ValueError(
-                f"{self.storage_name} deve ser do tipo {self.expected_type.__name__}. Valor recebido: {value}.")
+                f"{self.storage_name} deve ser do tipo {self.expected_type.__name__}. Valor recebido: {value}."
+            )
 
         return value
