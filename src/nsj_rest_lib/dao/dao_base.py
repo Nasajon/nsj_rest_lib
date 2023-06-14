@@ -162,6 +162,9 @@ class DAOBase:
                     else:
                         filter_values_map[condiction_alias] = condiction.value
 
+                    if operator == 'like' or operator == 'ilike':
+                        filter_values_map[condiction_alias] = f'%{filter_values_map[condiction_alias]}%'
+
                 # Formating condictions (with OR)
                 field_filter_where = ' or '.join(field_filter_where)
                 if field_filter_where.strip() != '':
