@@ -215,6 +215,16 @@ class DTOField:
             # Booleanos
             # Converting int to bool (0 is False, otherwise is True)
             value = bool(value)
+        elif self.expected_type is datetime.datetime and isinstance(value, datetime.date):
+            # Datetime
+            # Assumindo hora 0, minuto 0 e segundo 0 (quanto é recebida uma data para campo data + hora)
+            value = datetime.datetime(
+                value.year, value.month, value.day, 0, 0, 0)
+        elif self.expected_type is datetime.date and isinstance(value, datetime.datetime):
+            # Date
+            # Desprezando hora , minuto e segundo (quanto é recebida uma data + hora, para campo de data)
+            value = datetime.date(
+                value.year, value.month, value.day)
         elif self.expected_type is uuid.UUID and isinstance(value, str):
             # UUID
             # Verificando se pode ser alterado de str para UUID
