@@ -298,14 +298,16 @@ class ServiceBase:
     def partial_update(
         self,
         dto: DTOBase,
-        id: Any
+        id: Any,
+        aditional_filters: Dict[str, Any] = None
     ) -> DTOBase:
         return self._save(
             insert=False,
             dto=dto,
             manage_transaction=True,
             partial_update=True,
-            id=id
+            id=id,
+            aditional_filters=aditional_filters
         )
 
     def _save(
@@ -490,8 +492,6 @@ class ServiceBase:
                 # Recuperando o ID da entidade relacionada
                 detail_pk_field = detail_dto.__class__.pk_field
                 detail_pk = getattr(detail_dto, detail_pk_field)
-                if isinstance(detail_pk, uuid.UUID):
-                    detail_pk = str(detail_pk)
 
                 # Verificando se é um update ou insert
                 is_detail_insert = True
