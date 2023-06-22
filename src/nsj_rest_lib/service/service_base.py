@@ -194,20 +194,18 @@ class ServiceBase:
         entity_filters = self._create_entity_filters(all_filters)
 
         # Retrieving from DAO
-        t = time.time()
         entity_list = self._dao.list(
             after, limit, entity_fields, order_fields, entity_filters
-        )
-        print(f"----- {str(time.time()-t)} seconds --- listagem entidade")
+
         # Convertendo para uma lista de DTOs
         # dto_list = [self._dto_class().convert_from_entity(entity)
         #             for entity in entity_list]
         dto_list = [self._dto_class(entity) for entity in entity_list]
-        t = time.time()
+        
         # Retrieving related lists
         if len(self._dto_class.list_fields_map) > 0:
             self._retrieve_related_lists(dto_list, fields)
-        print(f"----- {str(time.time()-t)} seconds --- listagem filhos")
+            
         # Returning
         return dto_list
 
