@@ -195,7 +195,7 @@ class ServiceBase:
 
         # Retrieving from DAO
         entity_list = self._dao.list(
-            after, limit, entity_fields, order_fields, entity_filters
+            after, limit, entity_fields, order_fields, entity_filters)
 
         # Convertendo para uma lista de DTOs
         # dto_list = [self._dto_class().convert_from_entity(entity)
