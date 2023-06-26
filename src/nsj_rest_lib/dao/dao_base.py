@@ -141,6 +141,10 @@ class DAOBase:
                         operator = ">"
                     elif condiction.operator == FilterOperator.LESS_THAN:
                         operator = "<"
+                    elif condiction.operator == FilterOperator.GREATER_OR_EQUAL_THAN:
+                        operator = ">="
+                    elif condiction.operator == FilterOperator.LESS_OR_EQUAL_THAN:
+                        operator = "<="
                     elif condiction.operator == FilterOperator.LIKE:
                         operator = "like"
                     elif condiction.operator == FilterOperator.ILIKE:
