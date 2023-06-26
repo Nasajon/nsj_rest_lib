@@ -163,7 +163,8 @@ class ServiceBase:
             result = {"root": set()}
         else:
             result = copy.deepcopy(fields)
-            result["root"] = result["root"].union(self._dto_class.resume_fields)
+            result["root"] = result["root"].union(
+                self._dto_class.resume_fields)
 
         return result
 
@@ -201,11 +202,11 @@ class ServiceBase:
         # dto_list = [self._dto_class().convert_from_entity(entity)
         #             for entity in entity_list]
         dto_list = [self._dto_class(entity) for entity in entity_list]
-        
+
         # Retrieving related lists
         if len(self._dto_class.list_fields_map) > 0:
             self._retrieve_related_lists(dto_list, fields)
-            
+
         # Returning
         return dto_list
 
@@ -373,7 +374,8 @@ class ServiceBase:
                 entity_filters = {**id_filters, **aditional_entity_filters}
 
                 # Executando o update pelo DAO
-                entity = self._dao.update(entity, entity_filters, partial_update)
+                entity = self._dao.update(
+                    entity, entity_filters, partial_update)
 
             # Convertendo a entity para o DTO de resposta (se houver um)
             if self._dto_post_response_class is not None:
@@ -533,7 +535,8 @@ class ServiceBase:
                 setattr(response_dto, master_dto_field, response_list)
 
     def delete(self, id: Any, additional_filters: Dict[str, Any] = None) -> DTOBase:
-        self._delete(id, manage_transaction=True, additional_filters=additional_filters)
+        self._delete(id, manage_transaction=True,
+                     additional_filters=additional_filters)
 
     def entity_exists(self, entity: EntityBase, partition_fields: Dict[str, Any]):
         # Getting values
@@ -545,7 +548,8 @@ class ServiceBase:
 
         # Searching entity in DB
         try:
-            self._dao.get(entity_pk_value, [entity.get_pk_field()], partition_fields)
+            self._dao.get(entity_pk_value, [
+                          entity.get_pk_field()], partition_fields)
         except NotFoundException as e:
             return False
 
@@ -564,7 +568,8 @@ class ServiceBase:
             # Convertendo os filtros para os filtros de entidade
             entity_filters = {}
             if additional_filters is not None:
-                entity_filters = self._create_entity_filters(additional_filters)
+                entity_filters = self._create_entity_filters(
+                    additional_filters)
 
             # Adicionando o ID nos filtros
             id_condiction = Filter(FilterOperator.EQUALS, id)
@@ -594,7 +599,8 @@ class ServiceBase:
             # TODO Refatorar para suportar services customizados
             service = ServiceBase(
                 self._injector_factory,
-                DAOBase(self._injector_factory.db_adapter(), list_field.entity_type),
+                DAOBase(self._injector_factory.db_adapter(),
+                        list_field.entity_type),
                 list_field.dto_type,
                 list_field.entity_type,
             )
@@ -606,7 +612,8 @@ class ServiceBase:
             }
 
             # Getting related data
-            related_dto_list = service.list(None, None, {"root": set()}, None, filters)
+            related_dto_list = service.list(
+                None, None, {"root": set()}, None, filters)
 
             # Excluindo cada entidade detalhe
             for related_dto in related_dto_list:
