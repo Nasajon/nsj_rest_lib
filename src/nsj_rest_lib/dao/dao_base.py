@@ -124,7 +124,8 @@ class DAOBase:
 
             # Iterating fields with filters
             for filter_field in filters:
-                field_filter_where = []
+                field_filter_where_or = []
+                field_filter_where_and = []
 
                 # Iterating condictions
                 idx = -1
@@ -132,46 +133,66 @@ class DAOBase:
                     idx += 1
 
                     # Resolving condiction
-                    operator = '='
+                    operator = "="
                     if condiction.operator == FilterOperator.DIFFERENT:
-                        operator = '<>'
+                        operator = "<>"
                     elif condiction.operator == FilterOperator.GREATER_THAN:
-                        operator = '>'
+                        operator = ">"
                     elif condiction.operator == FilterOperator.LESS_THAN:
-                        operator = '<'
+                        operator = "<"
+                    elif condiction.operator == FilterOperator.GREATER_OR_EQUAL_THAN:
+                        operator = ">="
+                    elif condiction.operator == FilterOperator.LESS_OR_EQUAL_THAN:
+                        operator = "<="
                     elif condiction.operator == FilterOperator.LIKE:
-                        operator = 'like'
+                        operator = "like"
                     elif condiction.operator == FilterOperator.ILIKE:
-                        operator = 'ilike'
+                        operator = "ilike"
 
                     # Making condiction alias
-                    condiction_alias = f"ft_{condiction.operator.value}_{filter_field}_{idx}"
+                    condiction_alias = (
+                        f"ft_{condiction.operator.value}_{filter_field}_{idx}"
+                    )
 
                     # Making condiction buffer
                     if use_table_alias:
-                        condiction_buffer = f"t0.{filter_field} {operator} :{condiction_alias}"
+                        condiction_buffer = (
+                            f"t0.{filter_field} {operator} :{condiction_alias}"
+                        )
                     else:
-                        condiction_buffer = f"{filter_field} {operator} :{condiction_alias}"
+                        condiction_buffer = (
+                            f"{filter_field} {operator} :{condiction_alias}"
+                        )
 
                     # Storing field filter where
-                    field_filter_where.append(condiction_buffer)
+                    if operator == "=" or operator == "like" or operator == "ilike":
+                        field_filter_where_or.append(condiction_buffer)
+                    else:
+                        field_filter_where_and.append(condiction_buffer)
 
                     # Storing condiction value
-                    if condiction.value is not None and isinstance(condiction.value.__class__, enum.EnumMeta):
+                    if condiction.value is not None and isinstance(
+                        condiction.value.__class__, enum.EnumMeta
+                    ):
                         filter_values_map[condiction_alias] = condiction.value.value
                     else:
                         filter_values_map[condiction_alias] = condiction.value
 
-                    if operator == 'like' or operator == 'ilike':
-                        filter_values_map[condiction_alias] = f'%{filter_values_map[condiction_alias]}%'
+                    if operator == "like" or operator == "ilike":
+                        filter_values_map[
+                            condiction_alias
+                        ] = f"%{filter_values_map[condiction_alias]}%"
 
                 # Formating condictions (with OR)
-                field_filter_where = ' or '.join(field_filter_where)
-                if field_filter_where.strip() != '':
-                    field_filter_where = f"({field_filter_where})"
+                field_filter_where_or = " or ".join(field_filter_where_or)
+                field_filter_where_and = " and ".join(field_filter_where_and)
+                if field_filter_where_or.strip() != "":
+                    field_filter_where_or = f"({field_filter_where_or})"
+                    filters_where.append(field_filter_where_or)
 
-                # Storing all condictions to a field
-                filters_where.append(field_filter_where)
+                if field_filter_where_and.strip() != "":
+                    field_filter_where_and = f"({field_filter_where_and})"
+                    filters_where.append(field_filter_where_and)
 
             # Formating all filters (with AND)
             filters_where = '\n and '.join(filters_where)
