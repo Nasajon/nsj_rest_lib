@@ -7,7 +7,7 @@ from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import DTOConfigException, MissingParameterException
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
-from nsj_rest_lib.settings import DEFAULT_PAGE_SIZE
+from nsj_rest_lib.settings import get_logger, DEFAULT_PAGE_SIZE
 
 from nsj_gcf_utils.json_util import json_dumps
 from nsj_gcf_utils.pagination_util import page_body, PaginationException
@@ -93,16 +93,19 @@ class ListRoute(RouteBase):
                 # Retornando a resposta da requuisição
                 return (json_dumps(page), 200, {**DEFAULT_RESP_HEADERS})
             except MissingParameterException as e:
+                get_logger().warning(e)
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
                     return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
             except PaginationException as e:
+                get_logger().warning(e)
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
                     return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
             except Exception as e:
+                get_logger().exception(e)
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:

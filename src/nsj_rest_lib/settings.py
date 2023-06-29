@@ -1,3 +1,4 @@
+import logging
 import os
 
 # Lendo variáveis de ambiente
@@ -14,3 +15,7 @@ DATABASE_DRIVER = os.getenv('DATABASE_DRIVER', 'POSTGRES')
 
 CLOUD_SQL_CONN_NAME = os.getenv('CLOUD_SQL_CONN_NAME', '')
 ENV = os.getenv('ENV', '')
+
+def get_logger():
+    APP_NAME = os.getenv('APP_NAME', 'nsj_rest_lib')
+    return logging.getLogger(APP_NAME)
