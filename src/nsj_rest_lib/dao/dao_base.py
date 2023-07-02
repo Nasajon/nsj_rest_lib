@@ -3,6 +3,7 @@ import uuid
 
 from typing import Any, Dict, List, Tuple
 
+from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.entity.entity_base import EntityBase, EMPTY
 from nsj_rest_lib.entity.filter import Filter
@@ -18,11 +19,7 @@ class DAOBase:
     _db: DBAdapter2
     _entity_class: EntityBase
 
-    def __init__(
-        self,
-        db: DBAdapter2,
-        entity_class: EntityBase
-    ):
+    def __init__(self, db: DBAdapter2, entity_class: EntityBase):
         self._db = db
         self._entity_class = entity_class
 
@@ -65,10 +62,13 @@ class DAOBase:
 
         # Building SQL fields
         if fields is None:
-            fields = [f"t0.{k}" for k in entity.__dict__ if not callable(
-                getattr(entity, k, None)) and not k.startswith('_')]
+            fields = [
+                f"t0.{k}"
+                for k in entity.__dict__
+                if not callable(getattr(entity, k, None)) and not k.startswith("_")
+            ]
 
-        return ', '.join(fields)
+        return ", ".join(fields)
 
     def get(self, id: uuid.UUID, fields: List[str] = None, filters=None) -> EntityBase:
         """
@@ -93,22 +93,24 @@ class DAOBase:
         """
         values = {"id": id}
         values.update(filter_values_map)
-                
+
         # Running query
-        resp = self._db.execute_query_to_model(
-            sql,
-            self._entity_class,
-            **values
-        )
+        resp = self._db.execute_query_to_model(sql, self._entity_class, **values)
 
         # Checking if ID was found
         if len(resp) <= 0:
             raise NotFoundException(
-                f'{self._entity_class.__name__} com id {id} não encontrado.')
+                f"{self._entity_class.__name__} com id {id} não encontrado."
+            )
 
         return resp[0]
 
-    def _make_filters_sql(self, filters: Dict[str, List[Filter]], with_and: bool = True, use_table_alias: bool = True) -> Tuple[str, Dict[str, Any]]:
+    def _make_filters_sql(
+        self,
+        filters: Dict[str, List[Filter]],
+        with_and: bool = True,
+        use_table_alias: bool = True,
+    ) -> Tuple[str, Dict[str, Any]]:
         """
         Interpreta os filtros, retornando uma tupla com formato (filters_where, filter_values_map), onde
         filters_where: Parte do SQL, a ser adicionada na cláusula where, para realização dos filtros
@@ -117,7 +119,7 @@ class DAOBase:
         Se receber o parâmetro filters nulo ou vazio, retorna ('', {}).
         """
 
-        filters_where = ''
+        filters_where = ""
         filter_values_map = {}
         if filters is not None:
             filters_where = []
@@ -148,20 +150,27 @@ class DAOBase:
                         operator = "like"
                     elif condiction.operator == FilterOperator.ILIKE:
                         operator = "ilike"
+                    elif condiction.operator == FilterOperator.NOT_NULL:
+                        operator = "is not null"
 
                     # Making condiction alias
-                    condiction_alias = (
-                        f"ft_{condiction.operator.value}_{filter_field}_{idx}"
-                    )
+                    if not (condiction.operator == FilterOperator.NOT_NULL):
+                        condiction_alias = (
+                            f"ft_{condiction.operator.value}_{filter_field}_{idx}"
+                        )
+                        condiction_alias_subtituir = f":{condiction_alias}"
+                    else:
+                        condiction_alias = ""
+                        condiction_alias_subtituir = ""
 
                     # Making condiction buffer
                     if use_table_alias:
                         condiction_buffer = (
-                            f"t0.{filter_field} {operator} :{condiction_alias}"
+                            f"t0.{filter_field} {operator} {condiction_alias_subtituir}"
                         )
                     else:
                         condiction_buffer = (
-                            f"{filter_field} {operator} :{condiction_alias}"
+                            f"{filter_field} {operator} {condiction_alias_subtituir}"
                         )
 
                     # Storing field filter where
@@ -171,12 +180,18 @@ class DAOBase:
                         field_filter_where_and.append(condiction_buffer)
 
                     # Storing condiction value
-                    if condiction.value is not None and isinstance(
-                        condiction.value.__class__, enum.EnumMeta
-                    ):
-                        filter_values_map[condiction_alias] = condiction.value.value
-                    else:
-                        filter_values_map[condiction_alias] = condiction.value
+                    if condiction.value is not None:
+                        if isinstance(condiction.value.__class__, enum.EnumMeta):
+                            if isinstance(condiction.value.value, tuple):
+                                filter_values_map[
+                                    condiction_alias
+                                ] = condiction.value.value[1]
+                            else:
+                                filter_values_map[
+                                    condiction_alias
+                                ] = condiction.value.value
+                        else:
+                            filter_values_map[condiction_alias] = condiction.value
 
                     if operator == "like" or operator == "ilike":
                         filter_values_map[
@@ -195,8 +210,8 @@ class DAOBase:
                     filters_where.append(field_filter_where_and)
 
             # Formating all filters (with AND)
-            filters_where = '\n and '.join(filters_where)
-            if filters_where.strip() != '' and with_and:
+            filters_where = "\n and ".join(filters_where)
+            if filters_where.strip() != "" and with_and:
                 filters_where = f"and {filters_where}"
 
         return (filters_where, filter_values_map)
@@ -207,7 +222,9 @@ class DAOBase:
         limit: int,
         fields: List[str],
         order_fields: List[str],
-        filters: Dict[str, List[Filter]]
+        filters: Dict[str, List[Filter]],
+        conjunto_type: ConjuntoType = None,
+        conjunto_field: str = None,
     ) -> List[EntityBase]:
         """
         Returns a paginated entity list.
@@ -231,7 +248,8 @@ class DAOBase:
                 after_obj = self.get(after)
             except NotFoundException as e:
                 raise AfterRecordNotFoundException(
-                    f'Identificador recebido no parâmetro after {id}, não encontrado para a entidade {self._entity_class.__name__}.')
+                    f"Identificador recebido no parâmetro after {id}, não encontrado para a entidade {self._entity_class.__name__}."
+                )
 
             if after_obj is not None:
                 for field in order_fields:
@@ -243,21 +261,21 @@ class DAOBase:
         """
 
         # Organizando o where da paginação
-        pagination_where = ''
+        pagination_where = ""
         if after is not None:
-
             # Making a list of pagination condictions
             list_page_where = []
             old_fields = []
             for field in order_fields:
                 # Making equals condictions
-                buffer_old_fields = 'true'
+                buffer_old_fields = "true"
                 for of in old_fields:
                     buffer_old_fields += f" and t0.{of} = :{of}"
 
                 # Making current more than condiction
                 list_page_where.append(
-                    f"({buffer_old_fields} and t0.{field} > :{field})")
+                    f"({buffer_old_fields} and t0.{field} > :{field})"
+                )
 
                 # Storing current field as old
                 old_fields.append(field)
@@ -270,21 +288,39 @@ class DAOBase:
                 )
             """
 
+        # Resulvendo o join de conjuntos (se houver)
+        with_conjunto = ""
+        fields_conjunto = ""
+        join_conjuntos = ""
+        conjunto_map = {}
+        if conjunto_type is not None:
+            (
+                join_conjuntos,
+                with_conjunto,
+                fields_conjunto,
+                conjunto_map,
+            ) = self._make_conjunto_sql(conjunto_type, entity, filters, conjunto_field)
+
         # Organizando o where dos filtros
         filters_where, filter_values_map = self._make_filters_sql(filters)
 
         # Montando a query em si
         sql = f"""
+        {with_conjunto}
         select
 
+            {fields_conjunto}
             {self._sql_fields(fields)}
 
         from
             {entity.get_table_name()} as t0
+            {join_conjuntos}
+
         where
             true
             {pagination_where}
             {filters_where}
+
         order by
             {order_by}
         """
@@ -294,19 +330,64 @@ class DAOBase:
             sql += f"        limit {limit}"
 
         # Making the values dict
-        kwargs = {
-            **order_map,
-            **filter_values_map
-        }
+        kwargs = {**order_map, **filter_values_map, **conjunto_map}
 
         # Running the SQL query
-        resp = self._db.execute_query_to_model(
-            sql,
-            self._entity_class,
-            **kwargs
-        )
+        resp = self._db.execute_query_to_model(sql, self._entity_class, **kwargs)
 
         return resp
+
+    def _make_conjunto_sql(
+        self,
+        conjunto_type: ConjuntoType,
+        entity: EntityBase,
+        filters: Dict[str, List[Filter]],
+        conjunto_field: str = None,
+    ):
+        tabela_conjunto = f"ns.conjuntos{conjunto_type.name.lower()}"
+        cadastro = conjunto_type.value
+
+        with_conjunto = f"""
+            with grupos_conjuntos as (
+                select
+                    gemp0.grupoempresarial as grupo_empresarial_pk,
+                    gemp0.codigo as grupo_empresarial_codigo,
+                    est_c0.conjunto
+                from ns.gruposempresariais gemp0
+                join ns.empresas emp0 on (emp0.grupoempresarial = gemp0.grupoempresarial and gemp0.codigo in :grupo_empresarial_conjunto_codigo)
+                join ns.estabelecimentos est0 on (est0.empresa = emp0.empresa)
+                join ns.estabelecimentosconjuntos est_c0 on (
+                    est_c0.estabelecimento = est0.estabelecimento
+                    and est_c0.cadastro = :conjunto_cadastro
+                )
+                group by gemp0.grupoempresarial, gemp0.codigo, est_c0.conjunto
+            )    
+            """
+
+        join_conjuntos = f"""
+            join {tabela_conjunto} as cr0 on (t0.{entity.get_pk_field()} = cr0.registro)
+            join grupos_conjuntos as gc0 on (gc0.conjunto = cr0.conjunto)
+            """
+
+        fields_conjunto = f"""
+            gc0.grupo_empresarial_pk,
+            gc0.grupo_empresarial_codigo,
+            gc0.conjunto as conjunto,
+            """
+
+        # Motando os parâmetros de conjuntos para a query
+        valores_filtro = []
+        for filtro in filters[conjunto_field]:
+            valores_filtro.append(filtro.value)
+
+        conjunto_map = {
+            "conjunto_cadastro": cadastro,
+            "grupo_empresarial_conjunto_codigo": tuple(valores_filtro),
+        }
+
+        del filters[conjunto_field]
+
+        return join_conjuntos, with_conjunto, fields_conjunto, conjunto_map
 
     def _sql_insert_fields(self) -> str:
         """
@@ -319,17 +400,20 @@ class DAOBase:
         entity = self._entity_class()
 
         # Building SQL fields
-        fields = [f"{k}" for k in entity.__dict__ if not callable(
-            getattr(entity, k, None)) and not k.startswith('_')]
-        ref_values = [f":{k}" for k in entity.__dict__ if not callable(
-            getattr(entity, k, None)) and not k.startswith('_')]
+        fields = [
+            f"{k}"
+            for k in entity.__dict__
+            if not callable(getattr(entity, k, None)) and not k.startswith("_")
+        ]
+        ref_values = [
+            f":{k}"
+            for k in entity.__dict__
+            if not callable(getattr(entity, k, None)) and not k.startswith("_")
+        ]
 
-        return (', '.join(fields), ', '.join(ref_values))
+        return (", ".join(fields), ", ".join(ref_values))
 
-    def insert(
-        self,
-        entity: EntityBase
-    ):
+    def insert(self, entity: EntityBase):
         """
         Insere o objeto de entidade "entity" no banco de dados
         """
@@ -354,7 +438,7 @@ class DAOBase:
         returning_fields = entity.get_insert_returning_fields()
 
         if returning_fields is not None and USE_SQL_RETURNING_CLAUSE:
-            sql_returning = ', '.join(returning_fields)
+            sql_returning = ", ".join(returning_fields)
 
             sql += "\n"
             sql += f"returning {sql_returning}"
@@ -363,14 +447,12 @@ class DAOBase:
         values_map = convert_to_dumps(entity)
 
         # Realizando o insert no BD
-        rowcount, returning = self._db.execute(
-            sql,
-            **values_map
-        )
+        rowcount, returning = self._db.execute(sql, **values_map)
 
         if rowcount <= 0:
             raise Exception(
-                f"Erro inserindo {entity.__class__.__name__} no banco de dados")
+                f"Erro inserindo {entity.__class__.__name__} no banco de dados"
+            )
 
         # Complementando o objeto com os dados de retorno
         if returning_fields is not None and USE_SQL_RETURNING_CLAUSE:
@@ -386,19 +468,30 @@ class DAOBase:
 
         # Building SQL fields
         if ignore_nones:
-            fields = [f"{k} = :{k}" for k in entity.__dict__ if not callable(
-                getattr(entity, k, None)) and not k.startswith('_') and getattr(entity, k) is not None and k not in entity.get_const_fields()]
+            fields = [
+                f"{k} = :{k}"
+                for k in entity.__dict__
+                if not callable(getattr(entity, k, None))
+                and not k.startswith("_")
+                and getattr(entity, k) is not None
+                and k not in entity.get_const_fields()
+            ]
         else:
-            fields = [f"{k} = :{k}" for k in entity.__dict__ if not callable(
-                getattr(entity, k, None)) and not k.startswith('_') and k not in entity.get_const_fields()]
+            fields = [
+                f"{k} = :{k}"
+                for k in entity.__dict__
+                if not callable(getattr(entity, k, None))
+                and not k.startswith("_")
+                and k not in entity.get_const_fields()
+            ]
 
-        return ', '.join(fields)
+        return ", ".join(fields)
 
     def update(
         self,
         entity: EntityBase,
         filters: Dict[str, List[Filter]],
-        partial_update: bool = False
+        partial_update: bool = False,
     ):
         """
         Atualiza o objeto de entidade "entity" no banco de dados
@@ -408,13 +501,13 @@ class DAOBase:
         sql_fields = self._sql_update_fields(entity, partial_update)
 
         # Organizando o where dos filtros
-        filters_where, filter_values_map = self._make_filters_sql(
-            filters, False, False)
+        filters_where, filter_values_map = self._make_filters_sql(filters, False, False)
 
         # CUIDADO PARA NÂO ATUALIZAR O QUE NÃO DEVE
-        if filters_where is None or filters_where.strip() == '':
+        if filters_where is None or filters_where.strip() == "":
             raise NotFoundException(
-                f'{self._entity_class.__name__} não encontrado. Filtros: {filters}')
+                f"{self._entity_class.__name__} não encontrado. Filtros: {filters}"
+            )
 
         # Montando a query principal
         sql = f"""
@@ -431,7 +524,7 @@ class DAOBase:
         returning_fields = entity.get_update_returning_fields()
 
         if returning_fields is not None and USE_SQL_RETURNING_CLAUSE:
-            sql_returning = ', '.join(returning_fields)
+            sql_returning = ", ".join(returning_fields)
 
             sql += "\n"
             sql += f"returning {sql_returning}"
@@ -446,20 +539,15 @@ class DAOBase:
                     values_map[key] = None
 
         # Montado o map de valores a passar no update
-        kwargs = {
-            **values_map,
-            **filter_values_map
-        }
+        kwargs = {**values_map, **filter_values_map}
 
         # Realizando o update no BD
-        rowcount, returning = self._db.execute(
-            sql,
-            **kwargs
-        )
+        rowcount, returning = self._db.execute(sql, **kwargs)
 
         if rowcount <= 0:
             raise NotFoundException(
-                f'{self._entity_class.__name__} com id {values_map[self._entity_class().get_pk_field()]} não encontrado.')
+                f"{self._entity_class.__name__} com id {values_map[self._entity_class().get_pk_field()]} não encontrado."
+            )
 
         # Complementando o objeto com os dados de retorno
         if returning_fields is not None and USE_SQL_RETURNING_CLAUSE:
@@ -492,10 +580,7 @@ class DAOBase:
         """
 
         # Executando a query
-        resp = self._db.execute_query(
-            sql,
-            **filter_values_map
-        )
+        resp = self._db.execute_query(sql, **filter_values_map)
 
         # Retornando em formato de lista de IDs
         if resp is None:
@@ -511,19 +596,20 @@ class DAOBase:
         # Retorna None, se não receber filtros
         if filters is None or len(filters) <= 0:
             raise NotFoundException(
-                f'{self._entity_class.__name__} não encontrado. Filtros: {filters}')
+                f"{self._entity_class.__name__} não encontrado. Filtros: {filters}"
+            )
 
         # Montando uma entity fake
         entity = self._entity_class()
 
         # Organizando o where dos filtros
-        filters_where, filter_values_map = self._make_filters_sql(
-            filters, False, False)
+        filters_where, filter_values_map = self._make_filters_sql(filters, False, False)
 
         # CUIDADO PARA NÂO EXCLUIR O QUE NÃO DEVE
-        if filters_where is None or filters_where.strip() == '':
+        if filters_where is None or filters_where.strip() == "":
             raise NotFoundException(
-                f'{self._entity_class.__name__} não encontrado. Filtros: {filters}')
+                f"{self._entity_class.__name__} não encontrado. Filtros: {filters}"
+            )
 
         # Montando a query
         sql = f"""
@@ -531,12 +617,10 @@ class DAOBase:
         """
 
         # Executando a query
-        rowcount, _ = self._db.execute(
-            sql,
-            **filter_values_map
-        )
+        rowcount, _ = self._db.execute(sql, **filter_values_map)
 
         # Verificando se houve alguma deleção
         if rowcount <= 0:
             raise NotFoundException(
-                f'{self._entity_class.__name__} não encontrado. Filtros: {filters}')
+                f"{self._entity_class.__name__} não encontrado. Filtros: {filters}"
+            )

@@ -39,20 +39,33 @@ class DTOField:
         use_default_validator: bool = True,
         default_value: typing.Union[typing.Callable, typing.Any] = None,
         partition_data: bool = False,
+        convert_to_entity: typing.Callable = None,
+        convert_from_entity: typing.Callable = None,
     ):
         """
         -----------
         Parameters:
         -----------
-        type: Expected type for the field. If it is an enum.Enum, the receive value (to set), will be converted.
-        not_null: The field cannot be None (or empty, for strings).
-        resume: The field is used as a resume field (returned in get list request).
-        min: Min value expected (min length for strings, and min value for int, float or Decimal).
-        max: Max value expected (max length for strings, and amx value for int, float or Decimal).
-        validator: Function that receives the value (to be setted), and returns the same value (after any adjust).
-          This function overrides the default behaviour and all default constraints.
-        strip: Usefull only for strings. The value will be stript before stored.
-        entity_field: Name of equivalent field in entity class.
+        type: Tipo esperado para a propriedade. Se for do tipo enum.Enum, o valor recebido, para atribuição à propriedade, será convertido para o enumerado.
+        not_null: O campo não poderá ser None, ou vazio, no caso de strings.
+        resume: O campo será usado como resumo, isto é, será sempre rotornado num HTTP GET que liste os dados (mesmo que não seja solicitado por meio da query string "fields").
+        min: Menor valor permitido (ou menor comprimento, para strings).
+        max: Maior valor permitido (ou maior comprimento, para strings)
+        validator: Função que recebe o valor (a ser atribuído), e retorna o mesmo valor após algum tipo de tratamento (como adição ou remoção, automática, de formatação).
+        strip: O valor da string sofrerá strip (remoção de espaços no início e no fim), antes de ser guardado (só é útil para strings).
+        entity_field: Nome da propriedade equivalente na classe de entity (que reflete a estruturua do banco de dados).
+        filters: Lista de filtros adicionais suportados para esta propriedade (adicionais, porque todos as propriedades, por padrão, suportam filtros de igualdade, que podem ser passados por meio de uma query string, com mesmo nome da proriedade, e um valor qualquer a ser comparado).
+          Essa lista de filtros consiste em objetos do DTOFieldFilter (veja a documentação da classe para enteder a estrutura de declaração dos filtros).
+        pk: Flag indicando se o campo corresponde à chave da entidade corresponednte.
+        use_default_validator: Flag indicando se o validator padrão deve ser aplicado à propriedade (esse validator padrão verifica o tipo de dados passado, e as demais verificações recebidas no filed, como, por exemplo, valor máximo, mínio, not_null, etc).
+        default_value: Valor padrão de preenchimento da propriedade, caso não se receba conteúdo para a mesma (podendo ser um valor estático, ou uma função a ser chamada no preenchimento).
+        partition_data: Flag indicando se esta propriedade participa dos campos de particionamento da entidade, isto é, campos sempre usados nas queries de listagem gravação dos dados, inclusíve para recuperação de entidades relacionadas.
+        convert_to_entity: Função para converter o valor contido no DTO, para o(s) valor(es) a serem gravados no objeto de entidade (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
+          (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
+          A função recebida deve suportar os parâmetros (dto_value: Any, dto: DTOBase), e retornar um Dict[str, Any], como uma coleção de chaves e valores a serem atribuídos na entidade.
+        convert_from_entity: Função para converter o valor contido na Entity, para o(s) valor(es) a serem gravados no objeto DTO (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
+          (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
+          A função recebida deve suportar os parâmetros (entity_value: Any, entity_fields: Dict[str, Any]), e retornar um Dict[str, Any], como uma coleção de chaves e valores a serem atribuídos no DTO.
         """
         self.expected_type = type
         self.not_null = not_null
@@ -67,6 +80,8 @@ class DTOField:
         self.use_default_validator = use_default_validator
         self.default_value = default_value
         self.partition_data = partition_data
+        self.convert_to_entity = convert_to_entity
+        self.convert_from_entity = convert_from_entity
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -206,7 +221,10 @@ class DTOField:
         elif isinstance(self.expected_type, enum.EnumMeta):
             # Enumerados
             try:
-                value = self.expected_type(value)
+                if "convert_from_entity" in self.expected_type.__dict__:
+                    value = self.expected_type.convert_from_entity(value)
+                else:
+                    value = self.expected_type(value)
             except ValueError as e:
                 raise ValueError(
                     f"{self.storage_name} não é um {self.expected_type.__name__} válido. Valor recebido: {value}."
@@ -215,16 +233,18 @@ class DTOField:
             # Booleanos
             # Converting int to bool (0 is False, otherwise is True)
             value = bool(value)
-        elif self.expected_type is datetime.datetime and isinstance(value, datetime.date):
+        elif self.expected_type is datetime.datetime and isinstance(
+            value, datetime.date
+        ):
             # Datetime
             # Assumindo hora 0, minuto 0 e segundo 0 (quanto é recebida uma data para campo data + hora)
-            value = datetime.datetime(
-                value.year, value.month, value.day, 0, 0, 0)
-        elif self.expected_type is datetime.date and isinstance(value, datetime.datetime):
+            value = datetime.datetime(value.year, value.month, value.day, 0, 0, 0)
+        elif self.expected_type is datetime.date and isinstance(
+            value, datetime.datetime
+        ):
             # Date
             # Desprezando hora , minuto e segundo (quanto é recebida uma data + hora, para campo de data)
-            value = datetime.date(
-                value.year, value.month, value.day)
+            value = datetime.date(value.year, value.month, value.day)
         elif self.expected_type is uuid.UUID and isinstance(value, str):
             # UUID
             # Verificando se pode ser alterado de str para UUID

@@ -46,17 +46,20 @@ class ListRoute(RouteBase):
                 # Recuperando os parâmetros básicos
                 base_url = request.base_url
                 args = request.args
-                limit = int(args.get('limit', DEFAULT_PAGE_SIZE))
-                current_after = args.get('after') or args.get('offset')
+                limit = int(args.get("limit", DEFAULT_PAGE_SIZE))
+                current_after = args.get("after") or args.get("offset")
 
                 # Tratando dos fields
-                fields = args.get('fields')
+                fields = args.get("fields")
                 fields = self._parse_fields(fields)
 
                 # Tratando dos filters
                 filters = {}
                 for arg in args:
-                    if arg in ['limit', 'after', 'offset', 'fields', 'tenant', 'grupo_empresarial']:
+                    if arg in ["limit", "after", "offset", "fields"]:
+                        continue
+
+                    if arg in self._dto_class.partition_fields:
                         continue
 
                     filters[arg] = args.get(arg)
@@ -66,7 +69,7 @@ class ListRoute(RouteBase):
                     value = args.get(field)
                     if value is None:
                         raise MissingParameterException(field)
-                    
+
                     filters[field] = value
 
                 # Construindo os objetos
@@ -74,8 +77,7 @@ class ListRoute(RouteBase):
 
                 # Chamando o service (método list)
                 # TODO Rever parametro order_fields abaixo
-                data = service.list(current_after, limit,
-                                    fields, None, filters)
+                data = service.list(current_after, limit, fields, None, filters)
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
                 dict_data = [dto.convert_to_dict(fields) for dto in data]
@@ -87,7 +89,7 @@ class ListRoute(RouteBase):
                     current_after=current_after,
                     current_before=None,
                     result=dict_data,
-                    id_field='id'  # TODO Rever esse parâmetro
+                    id_field="id",  # TODO Rever esse parâmetro
                 )
 
                 # Retornando a resposta da requuisição
@@ -109,4 +111,8 @@ class ListRoute(RouteBase):
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {**DEFAULT_RESP_HEADERS})
+                    return (
+                        format_json_error(f"Erro desconhecido: {e}"),
+                        500,
+                        {**DEFAULT_RESP_HEADERS},
+                    )

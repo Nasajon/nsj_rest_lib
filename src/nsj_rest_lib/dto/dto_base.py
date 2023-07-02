@@ -1,10 +1,12 @@
 import abc
 import copy
+
 # import uuid
 
 from typing import Any, Dict, List, Set, Union
 
 from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
+from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField, DTOFieldFilter
 
 
@@ -17,13 +19,19 @@ class DTOBase(abc.ABC):
     # TODO Refatorar para suportar PK composto
     pk_field: str
     fixed_filters: Dict[str, Any]
+    conjunto_type: ConjuntoType
+    conjunto_field: str
 
     def __init__(self, entity: Union[EntityBase, dict] = None, **kwargs) -> None:
         super().__init__()
 
         # Transformando a entity em dict (se houver uma entity)
         if entity is not None:
-            kwargs =  copy.deepcopy(entity) if type(entity) is dict else copy.deepcopy(entity.__dict__)
+            kwargs = (
+                copy.deepcopy(entity)
+                if type(entity) is dict
+                else copy.deepcopy(entity.__dict__)
+            )
 
         # Setando os campos registrados como fields simples
         for field in self.__class__.fields_map:
@@ -39,10 +47,23 @@ class DTOBase(abc.ABC):
 
             # Verificando se é preciso converter o nome do field para o nome correspondente no Entity
             entity_field = field
-            if entity is not None:
-                if dto_field.entity_field is not None:
-                    entity_field = dto_field.entity_field
+            if dto_field.entity_field is not None:
+                entity_field = dto_field.entity_field
 
+            # Verificando se o campo carece de conversão customizada
+            if dto_field.convert_from_entity is not None:
+                fields_converted = dto_field.convert_from_entity(
+                    kwargs[entity_field], kwargs
+                )
+                if field not in fields_converted:
+                    setattr(self, field, None)
+
+                for converted_key in fields_converted:
+                    setattr(self, converted_key, fields_converted[converted_key])
+
+                continue
+
+            # Atribuindo o valor à propriedade do DTO
             if entity_field in kwargs:
                 setattr(self, field, kwargs[entity_field])
             else:
@@ -56,7 +77,8 @@ class DTOBase(abc.ABC):
                 if field in kwargs:
                     if not isinstance(kwargs[field], list):
                         raise ValueError(
-                            f"O campo {field} deveria ser uma lista do tipo {dto_list_field.dto_type}.")
+                            f"O campo {field} deveria ser uma lista do tipo {dto_list_field.dto_type}."
+                        )
 
                     related_itens = []
                     for item in kwargs[field]:
@@ -67,10 +89,10 @@ class DTOBase(abc.ABC):
                                     not (partition_field in item)
                                     or item[partition_field] is None
                                 )
-                                and partition_field in dto_list_field.dto_type.partition_fields
+                                and partition_field
+                                in dto_list_field.dto_type.partition_fields
                             ):
-                                partition_value = getattr(
-                                    self, partition_field)
+                                partition_value = getattr(self, partition_field)
                                 item[partition_field] = partition_value
 
                         # Criando o DTO relacionado
@@ -87,40 +109,6 @@ class DTOBase(abc.ABC):
         # if generate_pk_uuid:
         #     if getattr(self, self.__class__.pk_field) is None:
         #         setattr(self, self.__class__.pk_field, uuid.uuid4())
-
-    def convert_from_entity(self, obj: EntityBase):
-        """
-        Popula DTO a partir de um objeto de entidade (considerando
-        apenas as propriedades descritas como DTOFields).
-
-        Este método retorna self (a própria referencia ao objeto).
-        """
-
-        for attribute in self.__dict__:
-
-            # Ignoring non DTO fields
-            if not (attribute in self.__class__.fields_map):
-                continue
-
-            # Getting DTO field config
-            dto_field = self.__class__.fields_map[attribute]
-
-            # Checking if exists a different name to equivalent field in entity class
-            attr_name = attribute
-            if dto_field.entity_field is not None:
-                attr_name = dto_field.entity_field
-
-            # Checking if exists the equivalent attribute in entity object (skiping, if not)
-            if not hasattr(obj, attr_name):
-                continue
-
-            # Getting entity attribute
-            entity_attr = getattr(obj, attr_name, None)
-
-            # Setting value localy
-            setattr(self, attribute, entity_attr)
-
-        return self
 
     def convert_to_entity(self, entity_class: EntityBase, none_as_empty: bool = False):
         """
@@ -146,6 +134,20 @@ class DTOBase(abc.ABC):
             # Recuperando o valor
             value = getattr(self, field)
 
+            # Verificando se é necessária uma conversão customizada
+            if dto_field.convert_to_entity is not None:
+                fields_converted = dto_field.convert_to_entity(value, self)
+                if entity_field not in fields_converted:
+                    setattr(entity, entity_field, None if not none_as_empty else EMPTY)
+
+                for converted_key in fields_converted:
+                    value = fields_converted[converted_key]
+                    if value is None and none_as_empty:
+                        value = EMPTY
+                    setattr(entity, converted_key, value)
+
+                continue
+
             # Convertendo None para EMPTY (se desejado)
             if value is None and none_as_empty:
                 value = EMPTY
@@ -155,39 +157,41 @@ class DTOBase(abc.ABC):
 
         return entity
 
-    def convert_to_dict(self, fields: Dict[str, List[str]] = None, just_resume: bool = False):
+    def convert_to_dict(
+        self, fields: Dict[str, List[str]] = None, just_resume: bool = False
+    ):
         """
         Converte DTO para dict
         """
 
         # Resolving fields to use
         if fields is None:
-            fields = {'root': self.resume_fields}
+            fields = {"root": self.resume_fields}
 
         if just_resume:
-            fields = {'root': self.resume_fields}
+            fields = {"root": self.resume_fields}
         else:
-            fields['root'] = fields['root'].union(self.resume_fields)
+            fields["root"] = fields["root"].union(self.resume_fields)
 
         # Making result maps
         result = {}
 
         # Converting simple fields
         for field in self.fields_map:
-            if not field in fields['root']:
+            if not field in fields["root"]:
                 continue
 
             result[field] = getattr(self, field)
 
         # Converting list fields
         for field in self.list_fields_map:
-            if not field in fields['root']:
+            if not field in fields["root"]:
                 continue
 
             # Criando o mapa de fileds para a entidade aninhada
             internal_fields = None
             if field in fields:
-                internal_fields = {'root': fields[field]}
+                internal_fields = {"root": fields[field]}
 
             # Recuperando o valor do atributo
             value = getattr(self, field)
@@ -195,7 +199,8 @@ class DTOBase(abc.ABC):
                 value = []
 
             # Convetendo a lista de DTOs aninhados
-            result[field] = [item.convert_to_dict(
-                internal_fields, just_resume) for item in value]
+            result[field] = [
+                item.convert_to_dict(internal_fields, just_resume) for item in value
+            ]
 
         return result
