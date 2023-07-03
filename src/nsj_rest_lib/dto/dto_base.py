@@ -47,21 +47,22 @@ class DTOBase(abc.ABC):
 
             # Verificando se é preciso converter o nome do field para o nome correspondente no Entity
             entity_field = field
-            if dto_field.entity_field is not None:
-                entity_field = dto_field.entity_field
+            if entity is not None:
+                if dto_field.entity_field is not None:
+                    entity_field = dto_field.entity_field
 
-            # Verificando se o campo carece de conversão customizada
-            if dto_field.convert_from_entity is not None:
-                fields_converted = dto_field.convert_from_entity(
-                    kwargs[entity_field], kwargs
-                )
-                if field not in fields_converted:
-                    setattr(self, field, None)
+                # Verificando se o campo carece de conversão customizada
+                if dto_field.convert_from_entity is not None:
+                    fields_converted = dto_field.convert_from_entity(
+                        kwargs[entity_field], kwargs
+                    )
+                    if field not in fields_converted:
+                        setattr(self, field, None)
 
-                for converted_key in fields_converted:
-                    setattr(self, converted_key, fields_converted[converted_key])
+                    for converted_key in fields_converted:
+                        setattr(self, converted_key, fields_converted[converted_key])
 
-                continue
+                    continue
 
             # Atribuindo o valor à propriedade do DTO
             if entity_field in kwargs:
