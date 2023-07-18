@@ -21,9 +21,12 @@ class DTOBase(abc.ABC):
     fixed_filters: Dict[str, Any]
     conjunto_type: ConjuntoType
     conjunto_field: str
+    escape_validator: bool
 
-    def __init__(self, entity: Union[EntityBase, dict] = None, **kwargs) -> None:
+    def __init__(self, entity: Union[EntityBase, dict] = None, escape_validator: bool = False, **kwargs) -> None:
         super().__init__()
+
+        self.escape_validator = escape_validator
 
         # Transformando a entity em dict (se houver uma entity)
         if entity is not None:
@@ -110,6 +113,8 @@ class DTOBase(abc.ABC):
         # if generate_pk_uuid:
         #     if getattr(self, self.__class__.pk_field) is None:
         #         setattr(self, self.__class__.pk_field, uuid.uuid4())
+
+        self.escape_validator: bool = False
 
     def convert_to_entity(self, entity_class: EntityBase, none_as_empty: bool = False):
         """

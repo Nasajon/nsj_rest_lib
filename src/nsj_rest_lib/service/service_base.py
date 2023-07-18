@@ -57,7 +57,7 @@ class ServiceBase:
         entity = self._dao.get(id, entity_fields, entity_filters)
 
         # Convertendo para DTO
-        dto = self._dto_class(entity)
+        dto = self._dto_class(entity, escape_validator=True)
 
         # Tratando das propriedades de lista
         if len(self._dto_class.list_fields_map) > 0:
