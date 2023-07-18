@@ -216,7 +216,7 @@ class ServiceBase:
         )
 
         # Convertendo para uma lista de DTOs
-        dto_list = [self._dto_class(entity) for entity in entity_list]
+        dto_list = [self._dto_class(entity, escape_validator=True) for entity in entity_list]
 
         # Retrieving related lists
         if len(self._dto_class.list_fields_map) > 0:
@@ -393,7 +393,7 @@ class ServiceBase:
 
             # Convertendo a entity para o DTO de resposta (se houver um)
             if self._dto_post_response_class is not None:
-                response_dto = self._dto_post_response_class(entity)
+                response_dto = self._dto_post_response_class(entity, escape_validator=True)
             else:
                 # Retorna None, se não se espera um DTO de resposta
                 response_dto = None
