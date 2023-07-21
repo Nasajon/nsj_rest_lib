@@ -114,8 +114,6 @@ class DTOBase(abc.ABC):
         #     if getattr(self, self.__class__.pk_field) is None:
         #         setattr(self, self.__class__.pk_field, uuid.uuid4())
 
-        self.escape_validator: bool = False
-
     def convert_to_entity(self, entity_class: EntityBase, none_as_empty: bool = False):
         """
         Cria uma instância da entidade, e a popula com os dados do DTO
