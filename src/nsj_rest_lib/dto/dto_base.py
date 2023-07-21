@@ -21,9 +21,12 @@ class DTOBase(abc.ABC):
     fixed_filters: Dict[str, Any]
     conjunto_type: ConjuntoType
     conjunto_field: str
+    escape_validator: bool
 
-    def __init__(self, entity: Union[EntityBase, dict] = None, **kwargs) -> None:
+    def __init__(self, entity: Union[EntityBase, dict] = None, escape_validator: bool = False, **kwargs) -> None:
         super().__init__()
+
+        self.escape_validator = escape_validator
 
         # Transformando a entity em dict (se houver uma entity)
         if entity is not None:
@@ -87,7 +90,7 @@ class DTOBase(abc.ABC):
                         for partition_field in self.__class__.partition_fields:
                             if (
                                 (
-                                    not (partition_field in item)
+                                    partition_field not in item
                                     or item[partition_field] is None
                                 )
                                 and partition_field
