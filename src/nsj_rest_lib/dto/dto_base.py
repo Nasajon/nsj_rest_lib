@@ -87,14 +87,14 @@ class DTOBase(abc.ABC):
                     related_itens = []
                     for item in kwargs[field]:
                         # Preenchendo os campos de particionanmento, se necessário (normalmente: tenant e grupo_empresarial)
-                        for partition_field in dto_list_field.dto_type.partition_fields:
+                        for partition_field in self.__class__.partition_fields:
                             if (
                                 (
                                     partition_field not in item
                                     or item[partition_field] is None
                                 )
                                 and partition_field
-                                in self.__class__.__dict__
+                                in dto_list_field.dto_type.partition_fields
                             ):
                                 partition_value = getattr(self, partition_field)
                                 item[partition_field] = partition_value
