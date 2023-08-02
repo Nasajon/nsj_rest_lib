@@ -17,17 +17,17 @@ def create_pool(database_conn_url):
         pool_size=5,
         max_overflow=2,
         pool_timeout=30,
-        pool_recycle=1800
+        pool_recycle=1800,
     )
     return db_pool
 
 
-if DATABASE_DRIVER.upper() == 'SINGLE_STORE':
-    database_conn_url = f'mysql+pymysql://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}'
+if DATABASE_DRIVER.upper() in ["SINGLE_STORE", "MYSQL"]:
+    database_conn_url = f"mysql+pymysql://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
 else:
-    if ENV.upper() == 'GCP':
-        database_conn_url = f'postgresql+pg8000://{DATABASE_USER}:{DATABASE_PASS}@/{DATABASE_NAME}?unix_sock=/cloudsql/{CLOUD_SQL_CONN_NAME}/.s.PGSQL.{DATABASE_PORT}'
+    if ENV.upper() == "GCP":
+        database_conn_url = f"postgresql+pg8000://{DATABASE_USER}:{DATABASE_PASS}@/{DATABASE_NAME}?unix_sock=/cloudsql/{CLOUD_SQL_CONN_NAME}/.s.PGSQL.{DATABASE_PORT}"
     else:
-        database_conn_url = f'postgresql+pg8000://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}'
+        database_conn_url = f"postgresql+pg8000://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
 
 db_pool = create_pool(database_conn_url)

@@ -288,7 +288,7 @@ class DAOBase:
                 )
             """
 
-        # Resulvendo o join de conjuntos (se houver)
+        # Resolvendo o join de conjuntos (se houver)
         with_conjunto = ""
         fields_conjunto = ""
         join_conjuntos = ""
