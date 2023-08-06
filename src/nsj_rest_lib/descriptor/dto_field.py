@@ -93,7 +93,7 @@ class DTOField:
             return instance.__dict__[self.storage_name]
 
     def __set__(self, instance, value):
-        if not ("escape_validator" in instance.__dict__ and instance.__dict__["escape_validator"] == True):
+        try:
             if self.validator is None:
                 if self.use_default_validator:
                     value = self.validate(self, value)
@@ -101,6 +101,12 @@ class DTOField:
                 if self.use_default_validator:
                     value = self.validate(self, value)
                 value = self.validator(self, value)
+        except ValueError as e:
+            if not (
+                "escape_validator" in instance.__dict__
+                and instance.__dict__["escape_validator"] == True
+            ):
+                raise
 
         instance.__dict__[self.storage_name] = value
 

@@ -216,7 +216,9 @@ class ServiceBase:
         )
 
         # Convertendo para uma lista de DTOs
-        dto_list = [self._dto_class(entity, escape_validator=True) for entity in entity_list]
+        dto_list = [
+            self._dto_class(entity, escape_validator=True) for entity in entity_list
+        ]
 
         # Retrieving related lists
         if len(self._dto_class.list_fields_map) > 0:
@@ -369,11 +371,24 @@ class ServiceBase:
 
             # Invocando o DAO
             if insert:
+                # Verificando se há outro registro com mesma PK
+                # TODO Verificar a existência considerando os conjuntos
                 if self.entity_exists(entity, aditional_filters):
                     raise ConflictException(
                         f"Já existe um registro no banco com o identificador '{getattr(entity, entity_pk_field)}'"
                     )
+
+                # Inserindo o registro no banco
                 entity = self._dao.insert(entity)
+
+                # Inserindo os conjuntos (se necessário)
+                if self._dto_class.conjunto_type is not None:
+                    pk_value = getattr(entity, entity.get_pk_field())
+                    conjunto_field_value = getattr(dto, self._dto_class.conjunto_field)
+
+                    self._dao.insert_relacionamento_conjunto(
+                        pk_value, conjunto_field_value, self._dto_class.conjunto_type
+                    )
             else:
                 # Montando os filtros
                 id_condiction = Filter(FilterOperator.EQUALS, id)
@@ -393,7 +408,9 @@ class ServiceBase:
 
             # Convertendo a entity para o DTO de resposta (se houver um)
             if self._dto_post_response_class is not None:
-                response_dto = self._dto_post_response_class(entity, escape_validator=True)
+                response_dto = self._dto_post_response_class(
+                    entity, escape_validator=True
+                )
             else:
                 # Retorna None, se não se espera um DTO de resposta
                 response_dto = None

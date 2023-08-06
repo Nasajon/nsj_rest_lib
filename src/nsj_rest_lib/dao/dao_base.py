@@ -63,12 +63,13 @@ class DAOBase:
         # Building SQL fields
         if fields is None:
             fields = [
-                f"t0.{k}"
+                f"k"
                 for k in entity.__dict__
                 if not callable(getattr(entity, k, None)) and not k.startswith("_")
             ]
 
-        return ", ".join(fields)
+        resp = ", t0.".join(fields)
+        return f"t0.{resp}"
 
     def get(self, id: uuid.UUID, fields: List[str] = None, filters=None) -> EntityBase:
         """
@@ -389,6 +390,54 @@ class DAOBase:
 
         return join_conjuntos, with_conjunto, fields_conjunto, conjunto_map
 
+    def insert_relacionamento_conjunto(
+        self,
+        id: str,
+        conjunto_field_value: str,
+        conjunto_type: ConjuntoType = None,
+    ):
+        # Recuperando o conjunto correspondente ao grupo_empresarial
+        tabela_conjunto = f"ns.conjuntos{conjunto_type.name.lower()}"
+        cadastro = conjunto_type.value
+
+        sql = f"""
+        select
+            gemp0.grupoempresarial as grupo_empresarial_pk,
+            est_c0.conjunto
+        from ns.gruposempresariais gemp0
+        join ns.empresas emp0 on (emp0.grupoempresarial = gemp0.grupoempresarial and gemp0.codigo = :grupo_empresarial_conjunto_codigo)
+        join ns.estabelecimentos est0 on (est0.empresa = emp0.empresa)
+        join ns.estabelecimentosconjuntos est_c0 on (
+            est_c0.estabelecimento = est0.estabelecimento
+            and est_c0.cadastro = :conjunto_cadastro
+        )
+        group by gemp0.grupoempresarial, est_c0.conjunto
+        """
+
+        data = {
+            "conjunto_cadastro": cadastro,
+            "grupo_empresarial_conjunto_codigo": conjunto_field_value,
+        }
+        resp = self._db.execute_query(sql, **data)
+
+        if len(resp) > 1:
+            raise Exception(
+                f"A biblioteca nsj_rest_lib ainda não suporta inserção de registros onde há mais de um conjunto, de um mesmo tipo ({cadastro}), num mesmo grupo_empresarial ({conjunto_field_value})."
+            )
+
+        if len(resp) < 1:
+            raise Exception(
+                f"Não foi encontrado um conjunto correspondente ao grupo empresarial {conjunto_field_value}, para um tipo de cadastro {cadastro}."
+            )
+
+        # Inserindo o relacionamento com o conjunto
+        sql = f"""
+        insert into {tabela_conjunto} (conjunto, registro) values (:conjunto, :registro)
+        """
+
+        data = {"conjunto": resp[0]["conjunto"], "registro": id}
+        self._db.execute(sql, **data)
+
     def _sql_insert_fields(self) -> str:
         """
         Retorna uma tupla com duas partes: (sql_fields, sql_ref_values), onde:
@@ -436,8 +485,13 @@ class DAOBase:
 
         # Montando as cláusulas returning
         returning_fields = entity.get_insert_returning_fields()
+        if returning_fields is None:
+            returning_fields = []
 
-        if returning_fields is not None and USE_SQL_RETURNING_CLAUSE:
+        if entity.get_pk_field() not in returning_fields:
+            returning_fields.append(entity.get_pk_field())
+
+        if USE_SQL_RETURNING_CLAUSE:
             sql_returning = ", ".join(returning_fields)
 
             sql += "\n"
