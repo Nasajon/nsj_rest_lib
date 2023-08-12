@@ -1,5 +1,6 @@
 import abc
 import copy
+import enum
 
 # import uuid
 
@@ -23,7 +24,12 @@ class DTOBase(abc.ABC):
     conjunto_field: str
     escape_validator: bool
 
-    def __init__(self, entity: Union[EntityBase, dict] = None, escape_validator: bool = False, **kwargs) -> None:
+    def __init__(
+        self,
+        entity: Union[EntityBase, dict] = None,
+        escape_validator: bool = False,
+        **kwargs,
+    ) -> None:
         super().__init__()
 
         self.escape_validator = escape_validator
@@ -152,14 +158,64 @@ class DTOBase(abc.ABC):
 
                 continue
 
-            # Convertendo None para EMPTY (se desejado)
-            if value is None and none_as_empty:
-                value = EMPTY
+            # Convertendo o value para o correspondente nos fields
+            value = self._convert_field_to_entity(value, dto_field, none_as_empty)
 
             # Setando na entidade
             setattr(entity, entity_field, value)
 
         return entity
+
+    def _convert_field_to_entity(
+        self,
+        value: Any,
+        dto_field: DTOField,
+        none_as_empty: bool,
+    ) -> Any:
+        # Enumerados
+        if isinstance(dto_field.expected_type, enum.EnumMeta):
+            return self._convert_enum_to_entity(value, dto_field)
+
+        # Convertendo None para EMPTY (se desejado)
+        if value is None:
+            if none_as_empty:
+                return EMPTY
+            else:
+                return value
+
+        return value
+
+    def _convert_enum_to_entity(
+        self,
+        value: Any,
+        dto_field: DTOField,
+    ):
+        lista_enum = list(dto_field.expected_type)
+
+        # Se o enum estiver vazio
+        if len(lista_enum) <= 0:
+            return None
+
+        # Verificando o tipo dos valores do enum
+        if isinstance(lista_enum[0].value, tuple):
+            # Recuperando o item correspondente do enumerado
+            enumerado = value
+            if not isinstance(value, dto_field.expected_type):
+                for item in dto_field.expected_type:
+                    lista_valores = list(item.value)
+                    for valor in lista_valores:
+                        if valor == value:
+                            enumerado = item
+
+            # Convertendo do enumerado para o valor desejado na entidade
+            if "get_entity_index" in enumerado.__dict__:
+                tuple_index = enumerado.get_entity_index()
+            else:
+                tuple_index = 1
+
+            return enumerado.value[tuple_index]
+        else:
+            return dto_field.expected_type(value)
 
     def convert_to_dict(
         self, fields: Dict[str, List[str]] = None, just_resume: bool = False

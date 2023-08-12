@@ -2,9 +2,10 @@ import datetime
 import enum
 import re
 import typing
+import uuid
 
 from decimal import Decimal
-import uuid
+from typing import Any
 
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 
@@ -228,11 +229,8 @@ class DTOField:
         elif isinstance(self.expected_type, enum.EnumMeta):
             # Enumerados
             try:
-                if "convert_from_entity" in self.expected_type.__dict__:
-                    value = self.expected_type.convert_from_entity(value)
-                else:
-                    value = self.expected_type(value)
-            except ValueError as e:
+                value = self._convert_enum_from_entity(value)
+            except ValueError:
                 raise ValueError(
                     f"{self.storage_name} não é um {self.expected_type.__name__} válido. Valor recebido: {value}."
                 )
@@ -294,3 +292,20 @@ class DTOField:
             )
 
         return value
+
+    def _convert_enum_from_entity(self, value: Any):
+        lista_enum = list(self.expected_type)
+
+        # Se o enum estiver vazio
+        if len(lista_enum) <= 0:
+            return None
+
+        # Verificando o tipo dos valores do enum
+        if isinstance(lista_enum[0].value, tuple):
+            for item in self.expected_type:
+                lista_valores = list(item.value)
+                for valor in lista_valores:
+                    if valor == value:
+                        return item
+        else:
+            return self.expected_type(value)
