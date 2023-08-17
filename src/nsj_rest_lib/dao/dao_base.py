@@ -63,7 +63,7 @@ class DAOBase:
         # Building SQL fields
         if fields is None:
             fields = [
-                f"k"
+                f"{k}"
                 for k in entity.__dict__
                 if not callable(getattr(entity, k, None)) and not k.startswith("_")
             ]
@@ -71,7 +71,12 @@ class DAOBase:
         resp = ", t0.".join(fields)
         return f"t0.{resp}"
 
-    def get(self, id: uuid.UUID, fields: List[str] = None, filters=None) -> EntityBase:
+    def get(self,
+            id: uuid.UUID,
+            fields: List[str] = None,
+            filters=None,
+            conjunto_type: ConjuntoType = None,
+            conjunto_field: str = None,) -> EntityBase:
         """
         Returns an entity instance by its ID.
         """
@@ -79,24 +84,42 @@ class DAOBase:
         # Creating a entity instance
         entity = self._entity_class()
 
+        # Resolvendo o join de conjuntos (se houver)
+        with_conjunto = ""
+        fields_conjunto = ""
+        join_conjuntos = ""
+        conjunto_map = {}
+        if conjunto_type is not None:
+            (
+                join_conjuntos,
+                with_conjunto,
+                fields_conjunto,
+                conjunto_map,
+            ) = self._make_conjunto_sql(conjunto_type, entity, filters, conjunto_field)
+
         # Organizando o where dos filtros
         filters_where, filter_values_map = self._make_filters_sql(filters)
 
         # Building query
         sql = f"""
+        {with_conjunto}
         select
+            {fields_conjunto}
             {self._sql_fields(fields)}
         from
             {entity.get_table_name()} as t0
+            {join_conjuntos}
         where
             t0.{entity.get_pk_field()} = :id
             {filters_where}
         """
         values = {"id": id}
         values.update(filter_values_map)
+        values.update(conjunto_map)
 
         # Running query
-        resp = self._db.execute_query_to_model(sql, self._entity_class, **values)
+        resp = self._db.execute_query_to_model(
+            sql, self._entity_class, **values)
 
         # Checking if ID was found
         if len(resp) <= 0:
@@ -334,7 +357,8 @@ class DAOBase:
         kwargs = {**order_map, **filter_values_map, **conjunto_map}
 
         # Running the SQL query
-        resp = self._db.execute_query_to_model(sql, self._entity_class, **kwargs)
+        resp = self._db.execute_query_to_model(
+            sql, self._entity_class, **kwargs)
 
         return resp
 
@@ -348,6 +372,29 @@ class DAOBase:
         tabela_conjunto = f"ns.conjuntos{conjunto_type.name.lower()}"
         cadastro = conjunto_type.value
 
+        # Motando os parâmetros de conjuntos para a query
+        valores_filtro_codigo = []
+        valores_filtro_id = []
+        for filtro in filters[conjunto_field]:
+            if self.is_valid_uuid(filtro.value):
+                valores_filtro_id.append(filtro.value)
+            else:
+                valores_filtro_codigo.append(filtro.value)
+
+        conjunto_map = {
+            "conjunto_cadastro": cadastro,
+            "grupo_empresarial_conjunto_codigo": tuple(valores_filtro_codigo),
+            "grupo_empresarial_conjunto_id": tuple(valores_filtro_id),
+        }
+
+        query_grupo = ''
+        if valores_filtro_codigo and valores_filtro_id:
+            query_grupo = 'and (gemp0.codigo in :grupo_empresarial_conjunto_codigo or gemp0.grupoempresarial in :grupo_empresarial_conjunto_id)'
+        elif valores_filtro_codigo:
+            query_grupo = 'and gemp0.codigo in :grupo_empresarial_conjunto_codigo'
+        elif valores_filtro_id:
+            query_grupo = 'and gemp0.grupoempresarial in :grupo_empresarial_conjunto_id'
+
         with_conjunto = f"""
             with grupos_conjuntos as (
                 select
@@ -355,7 +402,7 @@ class DAOBase:
                     gemp0.codigo as grupo_empresarial_codigo,
                     est_c0.conjunto
                 from ns.gruposempresariais gemp0
-                join ns.empresas emp0 on (emp0.grupoempresarial = gemp0.grupoempresarial and gemp0.codigo in :grupo_empresarial_conjunto_codigo)
+                join ns.empresas emp0 on (emp0.grupoempresarial = gemp0.grupoempresarial {query_grupo})
                 join ns.estabelecimentos est0 on (est0.empresa = emp0.empresa)
                 join ns.estabelecimentosconjuntos est_c0 on (
                     est_c0.estabelecimento = est0.estabelecimento
@@ -375,16 +422,6 @@ class DAOBase:
             gc0.grupo_empresarial_codigo,
             gc0.conjunto as conjunto,
             """
-
-        # Motando os parâmetros de conjuntos para a query
-        valores_filtro = []
-        for filtro in filters[conjunto_field]:
-            valores_filtro.append(filtro.value)
-
-        conjunto_map = {
-            "conjunto_cadastro": cadastro,
-            "grupo_empresarial_conjunto_codigo": tuple(valores_filtro),
-        }
 
         del filters[conjunto_field]
 
@@ -555,7 +592,8 @@ class DAOBase:
         sql_fields = self._sql_update_fields(entity, partial_update)
 
         # Organizando o where dos filtros
-        filters_where, filter_values_map = self._make_filters_sql(filters, False, False)
+        filters_where, filter_values_map = self._make_filters_sql(
+            filters, False, False)
 
         # CUIDADO PARA NÂO ATUALIZAR O QUE NÃO DEVE
         if filters_where is None or filters_where.strip() == "":
@@ -657,7 +695,8 @@ class DAOBase:
         entity = self._entity_class()
 
         # Organizando o where dos filtros
-        filters_where, filter_values_map = self._make_filters_sql(filters, False, False)
+        filters_where, filter_values_map = self._make_filters_sql(
+            filters, False, False)
 
         # CUIDADO PARA NÂO EXCLUIR O QUE NÃO DEVE
         if filters_where is None or filters_where.strip() == "":
@@ -678,3 +717,11 @@ class DAOBase:
             raise NotFoundException(
                 f"{self._entity_class.__name__} não encontrado. Filtros: {filters}"
             )
+
+    def is_valid_uuid(self, value):
+        try:
+            uuid.UUID(str(value))
+
+            return True
+        except ValueError:
+            return False

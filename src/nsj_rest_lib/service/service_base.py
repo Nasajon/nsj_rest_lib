@@ -54,7 +54,9 @@ class ServiceBase:
         entity_filters = self._create_entity_filters(partition_fields)
 
         # Recuperando a entity
-        entity = self._dao.get(id, entity_fields, entity_filters)
+        entity = self._dao.get(id, entity_fields, entity_filters,
+                               conjunto_type=self._dto_class.conjunto_type,
+                               conjunto_field=self._dto_class.conjunto_field,)
 
         # Convertendo para DTO
         dto = self._dto_class(entity, escape_validator=True)
@@ -578,7 +580,11 @@ class ServiceBase:
 
         # Searching entity in DB
         try:
-            self._dao.get(entity_pk_value, [entity.get_pk_field()], partition_fields)
+            self._dao.get(entity_pk_value,
+                          [entity.get_pk_field()],
+                          partition_fields,
+                          conjunto_type=self._dto_class.conjunto_type,
+                          conjunto_field=self._dto_class.conjunto_field,)
         except NotFoundException as e:
             return False
 
