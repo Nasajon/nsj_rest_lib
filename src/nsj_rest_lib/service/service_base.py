@@ -54,9 +54,13 @@ class ServiceBase:
         entity_filters = self._create_entity_filters(partition_fields)
 
         # Recuperando a entity
-        entity = self._dao.get(id, entity_fields, entity_filters,
-                               conjunto_type=self._dto_class.conjunto_type,
-                               conjunto_field=self._dto_class.conjunto_field,)
+        entity = self._dao.get(
+            id,
+            entity_fields,
+            entity_filters,
+            conjunto_type=self._dto_class.conjunto_type,
+            conjunto_field=self._dto_class.conjunto_field,
+        )
 
         # Convertendo para DTO
         dto = self._dto_class(entity, escape_validator=True)
@@ -113,7 +117,6 @@ class ServiceBase:
 
         Returns a Dict (indexed by entity field name) of List of Filter.
         """
-
         if filters is None:
             return None
 
@@ -155,14 +158,34 @@ class ServiceBase:
                 if isinstance(value, str):
                     value = value.strip()
 
-                if not is_entity_filter and not is_conjunto_filter:
-                    entity_filter = Filter(field_filter.operator, value)
-                else:
-                    entity_filter = Filter(FilterOperator.EQUALS, value)
+                # Convertendo os valores para o formato esperado no entity
+                converted_values = self._dto_class.custom_convert_value_to_entity(
+                    value,
+                    self._dto_class.fields_map[field_filter.field_name],
+                    entity_field_name,
+                    False,
+                    filters,
+                )
+                if len(converted_values) <= 0:
+                    value = self._dto_class.convert_value_to_entity(
+                        value,
+                        self._dto_class.fields_map[field_filter.field_name],
+                        False,
+                    )
+                    converted_values = {entity_field_name: value}
 
-                # Storing filter in dict
-                filter_list = entity_filters.setdefault(entity_field_name, [])
-                filter_list.append(entity_filter)
+                # Tratando cada valor convertido
+                for converted in converted_values:
+                    converted_value = converted_values[converted]
+
+                    if not is_entity_filter and not is_conjunto_filter:
+                        entity_filter = Filter(field_filter.operator, converted_value)
+                    else:
+                        entity_filter = Filter(FilterOperator.EQUALS, converted_value)
+
+                    # Storing filter in dict
+                    filter_list = entity_filters.setdefault(converted, [])
+                    filter_list.append(entity_filter)
 
         return entity_filters
 
@@ -290,9 +313,13 @@ class ServiceBase:
                     # Setting dto property
                     setattr(dto, master_dto_attr, related_dto_list)
 
-    def insert(self, dto: DTOBase) -> DTOBase:
+    def insert(self, dto: DTOBase, aditional_filters: Dict[str, Any] = None) -> DTOBase:
         return self._save(
-            insert=True, dto=dto, manage_transaction=True, partial_update=False
+            insert=True,
+            dto=dto,
+            manage_transaction=True,
+            partial_update=False,
+            aditional_filters=aditional_filters,
         )
 
     def update(
@@ -371,13 +398,31 @@ class ServiceBase:
                                 f"É necessário preencher o campo '{self._updated_by_property}'"
                             )
 
+            # Montando os filtros recebidos (de partição, normalmente)
+            if aditional_filters is not None:
+                aditional_entity_filters = self._create_entity_filters(
+                    aditional_filters
+                )
+            else:
+                aditional_entity_filters = {}
+
             # Invocando o DAO
             if insert:
                 # Verificando se há outro registro com mesma PK
                 # TODO Verificar a existência considerando os conjuntos
-                if self.entity_exists(entity, aditional_filters):
+                if self.entity_exists(entity, aditional_entity_filters):
                     raise ConflictException(
                         f"Já existe um registro no banco com o identificador '{getattr(entity, entity_pk_field)}'"
+                    )
+
+                # Validando as uniques declaradas
+                for unique in self._dto_class.uniques:
+                    unique = self._dto_class.uniques[unique]
+                    self._check_unique(
+                        dto,
+                        entity,
+                        aditional_entity_filters,
+                        unique,
                     )
 
                 # Inserindo o registro no banco
@@ -395,13 +440,6 @@ class ServiceBase:
                 # Montando os filtros
                 id_condiction = Filter(FilterOperator.EQUALS, id)
                 id_filters = {entity_pk_field: [id_condiction]}
-
-                if aditional_filters is not None:
-                    aditional_entity_filters = self._create_entity_filters(
-                        aditional_filters
-                    )
-                else:
-                    aditional_entity_filters = {}
 
                 entity_filters = {**id_filters, **aditional_entity_filters}
 
@@ -570,7 +608,11 @@ class ServiceBase:
     def delete(self, id: Any, additional_filters: Dict[str, Any] = None) -> DTOBase:
         self._delete(id, manage_transaction=True, additional_filters=additional_filters)
 
-    def entity_exists(self, entity: EntityBase, partition_fields: Dict[str, Any]):
+    def entity_exists(
+        self,
+        entity: EntityBase,
+        entity_filters: Dict[str, List[Filter]],
+    ):
         # Getting values
         entity_pk_field = entity.get_pk_field()
         entity_pk_value = getattr(entity, entity_pk_field)
@@ -580,13 +622,47 @@ class ServiceBase:
 
         # Searching entity in DB
         try:
-            self._dao.get(entity_pk_value,
-                          [entity.get_pk_field()],
-                          partition_fields,)
+            self._dao.get(entity_pk_value, [entity.get_pk_field()], entity_filters)
         except NotFoundException as e:
             return False
 
         return True
+
+    def _check_unique(
+        self,
+        dto: DTOBase,
+        entity: EntityBase,
+        entity_filters: Dict[str, List[Filter]],
+        unique: Set[str],
+    ):
+        # Tratando dos filtros recebidos (de partição), e adicionando os filtros da unique
+        unique_filter = {}
+        for field in unique:
+            value = getattr(dto, field)
+            unique_filter[field] = value
+
+        # Convertendo o filtro para o formato de filtro de entidades
+        unique_entity_filters = self._create_entity_filters(unique_filter)
+
+        # Montando o entity filter final
+        entity_filters = {**entity_filters, **unique_entity_filters}
+
+        # Searching entity in DB
+        try:
+            encontrados = self._dao.list(
+                None,
+                1,
+                [entity.get_pk_field()],
+                None,
+                entity_filters,
+            )
+
+            if len(encontrados) >= 1:
+                raise ConflictException(
+                    f"Restrição de unicidade violada para a unique: {unique}"
+                )
+        except NotFoundException:
+            return
 
     def _delete(
         self,

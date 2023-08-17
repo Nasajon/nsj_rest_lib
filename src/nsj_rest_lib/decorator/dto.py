@@ -49,6 +49,9 @@ class DTO:
         # Criando a propriedade "partition_fields" na classe "cls", se necessário
         self._check_class_attribute(cls, "partition_fields", set())
 
+        # Criando a propriedade "uniques" na classe "cls", se necessário
+        self._check_class_attribute(cls, "uniques", {})
+
         # Iterating for the class attributes
         for key, attr in cls.__dict__.items():
             # Test if the attribute uses the DTOFiel descriptor
@@ -82,6 +85,12 @@ class DTO:
                     partition_fields = getattr(cls, "partition_fields")
                     if not (key in partition_fields):
                         partition_fields.add(key)
+
+                # Verifica se é um campo pertencente a uma unique, a populando o dicionário de uniques
+                if attr.unique:
+                    uniques = getattr(cls, "uniques")
+                    fields_unique = uniques.setdefault(attr.unique, set())
+                    fields_unique.add(key)
 
             elif isinstance(attr, DTOListField):
                 # Storing field in fields_map

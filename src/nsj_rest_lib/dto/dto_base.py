@@ -23,6 +23,7 @@ class DTOBase(abc.ABC):
     conjunto_type: ConjuntoType
     conjunto_field: str
     escape_validator: bool
+    uniques: Dict[str, Set[str]]
 
     def __init__(
         self,
@@ -144,37 +145,54 @@ class DTOBase(abc.ABC):
             # Recuperando o valor
             value = getattr(self, field)
 
-            # Verificando se é necessária uma conversão customizada
-            if dto_field.convert_to_entity is not None:
-                fields_converted = dto_field.convert_to_entity(value, self)
-                if entity_field not in fields_converted:
-                    setattr(entity, entity_field, None if not none_as_empty else EMPTY)
+            # Verificando se é necessária alguma conversão customizada
+            custom_value_conveted = DTOBase.custom_convert_value_to_entity(
+                value, dto_field, entity_field, none_as_empty, self.__dict__
+            )
+            for key in custom_value_conveted:
+                setattr(entity, key, custom_value_conveted[key])
 
-                for converted_key in fields_converted:
-                    value = fields_converted[converted_key]
-                    if value is None and none_as_empty:
-                        value = EMPTY
-                    setattr(entity, converted_key, value)
-
+            if len(custom_value_conveted) > 0:
                 continue
 
             # Convertendo o value para o correspondente nos fields
-            value = self._convert_field_to_entity(value, dto_field, none_as_empty)
+            value = DTOBase.convert_value_to_entity(value, dto_field, none_as_empty)
 
             # Setando na entidade
             setattr(entity, entity_field, value)
 
         return entity
 
-    def _convert_field_to_entity(
-        self,
+    def custom_convert_value_to_entity(
+        value: Any,
+        dto_field: DTOField,
+        entity_field: str,
+        none_as_empty: bool,
+        dto_values: Dict[str, any],
+    ):
+        # Verificando se é necessária uma conversão customizada
+        retorno = {}
+        if dto_field.convert_to_entity is not None:
+            fields_converted = dto_field.convert_to_entity(value, dto_values)
+            if entity_field not in fields_converted:
+                retorno[entity_field] = None if not none_as_empty else EMPTY
+
+            for converted_key in fields_converted:
+                value = fields_converted[converted_key]
+                if value is None and none_as_empty:
+                    value = EMPTY
+                retorno[converted_key] = value
+
+        return retorno
+
+    def convert_value_to_entity(
         value: Any,
         dto_field: DTOField,
         none_as_empty: bool,
     ) -> Any:
         # Enumerados
         if isinstance(dto_field.expected_type, enum.EnumMeta):
-            return self._convert_enum_to_entity(value, dto_field)
+            return DTOBase._convert_enum_to_entity(value, dto_field)
 
         # Convertendo None para EMPTY (se desejado)
         if value is None:
@@ -186,7 +204,6 @@ class DTOBase(abc.ABC):
         return value
 
     def _convert_enum_to_entity(
-        self,
         value: Any,
         dto_field: DTOField,
     ):

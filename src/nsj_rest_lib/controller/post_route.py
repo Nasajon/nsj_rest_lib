@@ -5,7 +5,11 @@ from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.exception import DTOConfigException, MissingParameterException, ConflictException
+from nsj_rest_lib.exception import (
+    DTOConfigException,
+    MissingParameterException,
+    ConflictException,
+)
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger
 
@@ -49,11 +53,21 @@ class PostRoute(RouteBase):
                 # Convertendo os dados para o DTO
                 data = self._dto_class(**data)
 
+                # Montando os filtros de particao de dados
+                partition_filters = {}
+
+                for field in data.partition_fields:
+                    value = getattr(data, field)
+                    if value is None:
+                        raise MissingParameterException(field)
+                    elif value is not None:
+                        partition_filters[field] = value
+
                 # Construindo os objetos
                 service = self._get_service(factory)
 
                 # Chamando o service (método insert)
-                data = service.insert(data)
+                data = service.insert(data, partition_filters)
 
                 if data is not None:
                     # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
@@ -63,7 +77,7 @@ class PostRoute(RouteBase):
                     return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})
                 else:
                     # Retornando a resposta da requuisição
-                    return ('', 201, {**DEFAULT_RESP_HEADERS})
+                    return ("", 201, {**DEFAULT_RESP_HEADERS})
             except JsonLoadException as e:
                 get_logger().warning(e)
                 if self._handle_exception is not None:
@@ -93,4 +107,8 @@ class PostRoute(RouteBase):
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {**DEFAULT_RESP_HEADERS})
+                    return (
+                        format_json_error(f"Erro desconhecido: {e}"),
+                        500,
+                        {**DEFAULT_RESP_HEADERS},
+                    )

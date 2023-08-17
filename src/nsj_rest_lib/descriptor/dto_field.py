@@ -42,6 +42,7 @@ class DTOField:
         partition_data: bool = False,
         convert_to_entity: typing.Callable = None,
         convert_from_entity: typing.Callable = None,
+        unique: str = None,
     ):
         """
         -----------
@@ -67,6 +68,7 @@ class DTOField:
         convert_from_entity: Função para converter o valor contido na Entity, para o(s) valor(es) a serem gravados no objeto DTO (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
           (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
           A função recebida deve suportar os parâmetros (entity_value: Any, entity_fields: Dict[str, Any]), e retornar um Dict[str, Any], como uma coleção de chaves e valores a serem atribuídos no DTO.
+        unique: Permite indicar um nome de chave de unicidade. Cada chave de unicidade é considerada no momento de uma inserção no BD (impedindo duplicações indesejadas).
         """
         self.expected_type = type
         self.not_null = not_null
@@ -83,6 +85,7 @@ class DTOField:
         self.partition_data = partition_data
         self.convert_to_entity = convert_to_entity
         self.convert_from_entity = convert_from_entity
+        self.unique = unique
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
