@@ -124,15 +124,21 @@ class ServiceBase:
         for filter in filters:
             is_entity_filter = False
             is_conjunto_filter = False
+            dto_field = None
+
             if filter in self._dto_class.field_filters_map:
                 # Retrieving filter config
                 field_filter = self._dto_class.field_filters_map[filter]
+                aux = self._dto_class.field_filters_map[filter].field_name
+                dto_field = self._dto_class.fields_map[aux]
             elif filter == self._dto_class.conjunto_field:
                 is_conjunto_filter = True
+                dto_field = self._dto_class.fields_map[self._dto_class.conjunto_field]
             elif filter in self._dto_class.fields_map:
                 # Creating filter config to a DTOField (equals operator)
                 field_filter = DTOFieldFilter(filter)
                 field_filter.set_field_name(filter)
+                dto_field = self._dto_class.fields_map[filter]
             # TODO Refatorar para usar um mapa de fields do entity
             elif filter in self._entity_class().__dict__:
                 is_entity_filter = True
@@ -159,19 +165,22 @@ class ServiceBase:
                     value = value.strip()
 
                 # Convertendo os valores para o formato esperado no entity
-                converted_values = self._dto_class.custom_convert_value_to_entity(
-                    value,
-                    self._dto_class.fields_map[field_filter.field_name],
-                    entity_field_name,
-                    False,
-                    filters,
-                )
-                if len(converted_values) <= 0:
-                    value = self._dto_class.convert_value_to_entity(
+                if not is_entity_filter:
+                    converted_values = self._dto_class.custom_convert_value_to_entity(
                         value,
-                        self._dto_class.fields_map[field_filter.field_name],
+                        dto_field,
+                        entity_field_name,
                         False,
+                        filters,
                     )
+                    if len(converted_values) <= 0:
+                        value = self._dto_class.convert_value_to_entity(
+                            value,
+                            dto_field,
+                            False,
+                        )
+                        converted_values = {entity_field_name: value}
+                else:
                     converted_values = {entity_field_name: value}
 
                 # Tratando cada valor convertido

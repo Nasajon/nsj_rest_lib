@@ -172,7 +172,7 @@ class DTOBase(abc.ABC):
     ):
         # Verificando se é necessária uma conversão customizada
         retorno = {}
-        if dto_field.convert_to_entity is not None:
+        if value is not None and dto_field.convert_to_entity is not None:
             fields_converted = dto_field.convert_to_entity(value, dto_values)
             if entity_field not in fields_converted:
                 retorno[entity_field] = None if not none_as_empty else EMPTY
@@ -192,7 +192,12 @@ class DTOBase(abc.ABC):
     ) -> Any:
         # Enumerados
         if isinstance(dto_field.expected_type, enum.EnumMeta):
-            return DTOBase._convert_enum_to_entity(value, dto_field)
+            try:
+                return DTOBase._convert_enum_to_entity(value, dto_field)
+            except ValueError:
+                # Retornando o pórpio valor, caso se deseje converter um enumerado que não seja válido
+                # Isso é, aceitando enumerados inválidos (só para os filtros)
+                return str(value)
 
         # Convertendo None para EMPTY (se desejado)
         if value is None:
