@@ -582,9 +582,7 @@ class ServiceBase:
         try:
             self._dao.get(entity_pk_value,
                           [entity.get_pk_field()],
-                          partition_fields,
-                          conjunto_type=self._dto_class.conjunto_type,
-                          conjunto_field=self._dto_class.conjunto_field,)
+                          partition_fields,)
         except NotFoundException as e:
             return False
 
