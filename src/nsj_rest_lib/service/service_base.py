@@ -1,10 +1,7 @@
-from ast import Delete
-import enum
-import time
 import uuid
 import copy
 
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Set, Tuple
 
 from flask import g
 
@@ -20,6 +17,7 @@ from nsj_rest_lib.exception import (
     NotFoundException,
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
+from nsj_rest_lib.validator.validate_data import validate_uuid
 
 
 class ServiceBase:
@@ -43,7 +41,10 @@ class ServiceBase:
         self._updated_by_property = "atualizado_por"
 
     def get(
-        self, id: str, partition_fields: Dict[str, Any], fields: Dict[str, List[str]]
+        self,
+        id: str,
+        partition_fields: Dict[str, Any],
+        fields: Dict[str, List[str]],
     ) -> DTOBase:
         # Resolving fields
         fields = self._resolving_fields(fields)
@@ -53,9 +54,16 @@ class ServiceBase:
 
         entity_filters = self._create_entity_filters(partition_fields)
 
+        # Resolve o campo de chave sendo utilizado
+        entity_key_field, entity_id_value = self._resolve_field_key(
+            id,
+            partition_fields,
+        )
+
         # Recuperando a entity
         entity = self._dao.get(
-            id,
+            entity_key_field,
+            entity_id_value,
             entity_fields,
             entity_filters,
             conjunto_type=self._dto_class.conjunto_type,
@@ -70,6 +78,71 @@ class ServiceBase:
             self._retrieve_related_lists([dto], fields)
 
         return dto
+
+    def _resolve_field_key(
+        self,
+        id_value: Any,
+        partition_fields: Dict[str, Any],
+    ) -> Tuple[str, Any]:
+        """
+        Verificando se o tipo de campo recebido bate com algum dos tipos dos campos chave,
+        começando pela chave primária.
+
+        Retorna uma tupla: (nome_campo_chave_na_entity, valor_chave_tratado_convertido_para_entity)
+        """
+
+        # Montando a lista de campos chave (começando pela chave primária)
+        key_fields = [self._dto_class.pk_field]
+
+        for key in self._dto_class.fields_map:
+            if self._dto_class.fields_map[key].candidate_key:
+                key_fields.append(key)
+
+        # Verificando se ocorre o match em algum dos campos chave:
+        retornar = False
+        for candidate_key in key_fields:
+            candidate_key_field = self._dto_class.fields_map[candidate_key]
+
+            if isinstance(id_value, candidate_key_field.expected_type):
+                retornar = True
+            elif candidate_key_field.expected_type == uuid.UUID and validate_uuid(
+                id_value
+            ):
+                retornar = True
+                id_value = uuid.UUID(id_value)
+
+            if retornar:
+                if candidate_key_field.validator is not None:
+                    id_value = candidate_key_field.validator(
+                        candidate_key_field, id_value
+                    )
+
+                # Convertendo o valor para o correspoendente na entity
+                entity_key_field = self._convert_to_entity_field(candidate_key)
+                converted_values = self._dto_class.custom_convert_value_to_entity(
+                    id_value,
+                    candidate_key_field,
+                    entity_key_field,
+                    False,
+                    partition_fields,
+                )
+                if len(converted_values) <= 0:
+                    value = self._dto_class.convert_value_to_entity(
+                        id_value,
+                        candidate_key_field,
+                        False,
+                    )
+                    converted_values = {entity_key_field: value}
+
+                # Utilizando apenas o valor correspondente ao da chave selecionada
+                id_value = converted_values[entity_key_field]
+
+                return (entity_key_field, id_value)
+
+        # Se não pode encontrar uma chave correspondente
+        raise ValueError(
+            f"Não foi possível identificar o ID recebido com qualquer das chaves candidatas reconhecidas. Valor recebido: {id_value}."
+        )
 
     def _convert_to_entity_fields(self, fields: Set[str]) -> List[str]:
         """
@@ -184,8 +257,8 @@ class ServiceBase:
                     converted_values = {entity_field_name: value}
 
                 # Tratando cada valor convertido
-                for converted in converted_values:
-                    converted_value = converted_values[converted]
+                for entity_field in converted_values:
+                    converted_value = converted_values[entity_field]
 
                     if not is_entity_filter and not is_conjunto_filter:
                         entity_filter = Filter(field_filter.operator, converted_value)
@@ -193,7 +266,7 @@ class ServiceBase:
                         entity_filter = Filter(FilterOperator.EQUALS, converted_value)
 
                     # Storing filter in dict
-                    filter_list = entity_filters.setdefault(converted, [])
+                    filter_list = entity_filters.setdefault(entity_field, [])
                     filter_list.append(entity_filter)
 
         return entity_filters
@@ -373,9 +446,13 @@ class ServiceBase:
             # TODO Refatorar para usar um construtor do EntityBase (ou algo assim, porque é preciso tratar das equivalências de nome dos campos)
             entity = dto.convert_to_entity(self._entity_class, partial_update)
 
-            # Gravando o id no Entity (se necessário)
+            # Resolvendo o id
+            if id is None:
+                id = getattr(entity, entity.get_pk_field())
+
+            # Tratando do valor do id no Entity
             entity_pk_field = self._entity_class().get_pk_field()
-            if id is not None:
+            if getattr(entity, entity_pk_field) is None and insert:
                 setattr(entity, entity_pk_field, id)
 
             # Setando na Entity os campos de relacionamento recebidos
@@ -415,6 +492,24 @@ class ServiceBase:
             else:
                 aditional_entity_filters = {}
 
+            # Resolve o campo de chave sendo utilizado
+            entity_key_field, entity_id_value = self._resolve_field_key(
+                id,
+                dto.__dict__,
+            )
+
+            # Validando as uniques declaradas
+            for unique in self._dto_class.uniques:
+                unique = self._dto_class.uniques[unique]
+                self._check_unique(
+                    dto,
+                    entity,
+                    aditional_entity_filters,
+                    unique,
+                    entity_key_field,
+                    entity_id_value,
+                )
+
             # Invocando o DAO
             if insert:
                 # Verificando se há outro registro com mesma PK
@@ -424,36 +519,25 @@ class ServiceBase:
                         f"Já existe um registro no banco com o identificador '{getattr(entity, entity_pk_field)}'"
                     )
 
-                # Validando as uniques declaradas
-                for unique in self._dto_class.uniques:
-                    unique = self._dto_class.uniques[unique]
-                    self._check_unique(
-                        dto,
-                        entity,
-                        aditional_entity_filters,
-                        unique,
-                    )
-
                 # Inserindo o registro no banco
                 entity = self._dao.insert(entity)
 
                 # Inserindo os conjuntos (se necessário)
                 if self._dto_class.conjunto_type is not None:
-                    pk_value = getattr(entity, entity.get_pk_field())
                     conjunto_field_value = getattr(dto, self._dto_class.conjunto_field)
 
                     self._dao.insert_relacionamento_conjunto(
-                        pk_value, conjunto_field_value, self._dto_class.conjunto_type
+                        id, conjunto_field_value, self._dto_class.conjunto_type
                     )
             else:
-                # Montando os filtros
-                id_condiction = Filter(FilterOperator.EQUALS, id)
-                id_filters = {entity_pk_field: [id_condiction]}
-
-                entity_filters = {**id_filters, **aditional_entity_filters}
-
                 # Executando o update pelo DAO
-                entity = self._dao.update(entity, entity_filters, partial_update)
+                entity = self._dao.update(
+                    entity_key_field,
+                    entity_id_value,
+                    entity,
+                    aditional_entity_filters,
+                    partial_update,
+                )
 
             # Convertendo a entity para o DTO de resposta (se houver um)
             if self._dto_post_response_class is not None:
@@ -631,7 +715,12 @@ class ServiceBase:
 
         # Searching entity in DB
         try:
-            self._dao.get(entity_pk_value, [entity.get_pk_field()], entity_filters)
+            self._dao.get(
+                entity_pk_field,
+                entity_pk_value,
+                [entity.get_pk_field()],
+                entity_filters,
+            )
         except NotFoundException as e:
             return False
 
@@ -643,6 +732,8 @@ class ServiceBase:
         entity: EntityBase,
         entity_filters: Dict[str, List[Filter]],
         unique: Set[str],
+        entity_key_field: str,
+        entity_key_value: Any = None,
     ):
         # Tratando dos filtros recebidos (de partição), e adicionando os filtros da unique
         unique_filter = {}
@@ -653,8 +744,21 @@ class ServiceBase:
         # Convertendo o filtro para o formato de filtro de entidades
         unique_entity_filters = self._create_entity_filters(unique_filter)
 
+        # Removendo o campo chave, se estiver no filtro
+        if entity_key_field in unique_entity_filters:
+            del unique_entity_filters[entity_key_field]
+
+        # Se não há mais campos na unique, não há o que validar
+        if len(unique_entity_filters) <= 0:
+            return
+
         # Montando o entity filter final
         entity_filters = {**entity_filters, **unique_entity_filters}
+
+        # Montando filtro de PK diferente (se necessário, isto é, se for update)
+        if entity_key_value is not None:
+            filters_pk = entity_filters.setdefault(entity_key_field, [])
+            filters_pk.append(Filter(FilterOperator.DIFFERENT, entity_key_value))
 
         # Searching entity in DB
         try:
@@ -700,6 +804,12 @@ class ServiceBase:
 
             # Excluindo a entity principal
             self._dao.delete(entity_filters)
+
+            # Excluindo os conjuntos (se necessário)
+            if self._dto_class.conjunto_type is not None:
+                self._dao.delete_relacionamento_conjunto(
+                    id, self._dto_class.conjunto_type
+                )
 
         except:
             if manage_transaction:

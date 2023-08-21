@@ -8,11 +8,9 @@ class EMPTY:
 
 
 class EntityBase(abc.ABC):
-
-    
     def initialize_fields(self):
         for annotation in self.__annotations__:
-            self.__setattr__(annotation, None)  
+            self.__setattr__(annotation, None)
 
     @abc.abstractmethod
     def get_table_name(self) -> str:
@@ -27,10 +25,10 @@ class EntityBase(abc.ABC):
         pass
 
     def get_insert_returning_fields(self) -> List[str]:
-        return None
+        return []
 
     def get_update_returning_fields(self) -> List[str]:
-        return None
-    
+        return []
+
     def get_const_fields(self) -> List[str]:
-        return ['criado_em','criado_por']
+        return ["criado_em", "criado_por"]

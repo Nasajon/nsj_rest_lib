@@ -24,16 +24,19 @@ class DTOBase(abc.ABC):
     conjunto_field: str
     escape_validator: bool
     uniques: Dict[str, Set[str]]
+    candidate_keys: List[str]
 
     def __init__(
         self,
         entity: Union[EntityBase, dict] = None,
         escape_validator: bool = False,
+        generate_default_pk_value: bool = True,
         **kwargs,
     ) -> None:
         super().__init__()
 
         self.escape_validator = escape_validator
+        self.generate_default_pk_value = generate_default_pk_value
 
         # Transformando a entity em dict (se houver uma entity)
         if entity is not None:
@@ -49,7 +52,11 @@ class DTOBase(abc.ABC):
             dto_field = self.__class__.fields_map[field]
 
             # Tratando do valor default
-            if dto_field.default_value is not None and kwargs.get(field, None) is None:
+            if (
+                dto_field.default_value is not None
+                and kwargs.get(field, None) is None
+                and (not dto_field.pk or generate_default_pk_value)
+            ):
                 default_value = dto_field.default_value
                 if callable(dto_field.default_value):
                     default_value = dto_field.default_value()

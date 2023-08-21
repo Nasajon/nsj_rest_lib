@@ -52,6 +52,9 @@ class DTO:
         # Criando a propriedade "uniques" na classe "cls", se necessário
         self._check_class_attribute(cls, "uniques", {})
 
+        # Criando a propriedade "candidate_keys" na classe "cls", se necessário
+        self._check_class_attribute(cls, "candidate_keys", [])
+
         # Iterating for the class attributes
         for key, attr in cls.__dict__.items():
             # Test if the attribute uses the DTOFiel descriptor
@@ -91,6 +94,10 @@ class DTO:
                     uniques = getattr(cls, "uniques")
                     fields_unique = uniques.setdefault(attr.unique, set())
                     fields_unique.add(key)
+
+                # Verifica se é uma chave candidata
+                if attr.candidate_key:
+                    getattr(cls, "candidate_keys").append(key)
 
             elif isinstance(attr, DTOListField):
                 # Storing field in fields_map

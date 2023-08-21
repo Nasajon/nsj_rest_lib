@@ -5,7 +5,11 @@ from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.exception import DTOConfigException, MissingParameterException, NotFoundException
+from nsj_rest_lib.exception import (
+    DTOConfigException,
+    MissingParameterException,
+    NotFoundException,
+)
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger
 
@@ -33,7 +37,7 @@ class GetRoute(RouteBase):
             dto_response_class=None,
             injector_factory=injector_factory,
             service_name=service_name,
-            handle_exception=handle_exception
+            handle_exception=handle_exception,
         )
 
     def handle_request(self, id):
@@ -47,7 +51,7 @@ class GetRoute(RouteBase):
                 args = request.args
 
                 # Tratando dos fields
-                fields = args.get('fields')
+                fields = args.get("fields")
                 fields = self._parse_fields(fields)
 
                 partition_fields = {}
@@ -56,8 +60,16 @@ class GetRoute(RouteBase):
                     value = args.get(field)
                     if value is None:
                         raise MissingParameterException(field)
-                    
+
                     partition_fields[field] = value
+
+                # Tratando do filtro de conjunto
+                if self._dto_class.conjunto_field is not None:
+                    value = args.get(self._dto_class.conjunto_field)
+                    if value is None:
+                        raise MissingParameterException(field)
+                    elif value is not None:
+                        partition_fields[self._dto_class.conjunto_field] = value
 
                 # Construindo os objetos
                 service = self._get_service(factory)
@@ -94,4 +106,8 @@ class GetRoute(RouteBase):
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {**DEFAULT_RESP_HEADERS})
+                    return (
+                        format_json_error(f"Erro desconhecido: {e}"),
+                        500,
+                        {**DEFAULT_RESP_HEADERS},
+                    )

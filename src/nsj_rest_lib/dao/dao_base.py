@@ -7,7 +7,11 @@ from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.entity.entity_base import EntityBase, EMPTY
 from nsj_rest_lib.entity.filter import Filter
-from nsj_rest_lib.exception import NotFoundException, AfterRecordNotFoundException
+from nsj_rest_lib.exception import (
+    ConflictException,
+    NotFoundException,
+    AfterRecordNotFoundException,
+)
 
 from nsj_gcf_utils.db_adapter2 import DBAdapter2
 from nsj_gcf_utils.json_util import convert_to_dumps
@@ -71,12 +75,15 @@ class DAOBase:
         resp = ", t0.".join(fields)
         return f"t0.{resp}"
 
-    def get(self,
-            id: uuid.UUID,
-            fields: List[str] = None,
-            filters=None,
-            conjunto_type: ConjuntoType = None,
-            conjunto_field: str = None,) -> EntityBase:
+    def get(
+        self,
+        key_field: str,
+        id: uuid.UUID,
+        fields: List[str] = None,
+        filters=None,
+        conjunto_type: ConjuntoType = None,
+        conjunto_field: str = None,
+    ) -> EntityBase:
         """
         Returns an entity instance by its ID.
         """
@@ -110,21 +117,27 @@ class DAOBase:
             {entity.get_table_name()} as t0
             {join_conjuntos}
         where
-            t0.{entity.get_pk_field()} = :id
+            t0.{key_field} = :id
             {filters_where}
+        limit 2
         """
         values = {"id": id}
         values.update(filter_values_map)
         values.update(conjunto_map)
 
         # Running query
-        resp = self._db.execute_query_to_model(
-            sql, self._entity_class, **values)
+        resp = self._db.execute_query_to_model(sql, self._entity_class, **values)
 
         # Checking if ID was found
         if len(resp) <= 0:
             raise NotFoundException(
                 f"{self._entity_class.__name__} com id {id} não encontrado."
+            )
+
+        # Verificando se foi encontrado mais de um registro para o ID passado
+        if len(resp) > 1:
+            raise ConflictException(
+                f"Encontrado mais de um registro do tipo {self._entity_class.__name__}, para o id {id}."
             )
 
         return resp[0]
@@ -269,7 +282,7 @@ class DAOBase:
 
         if after is not None:
             try:
-                after_obj = self.get(after)
+                after_obj = self.get(entity.get_pk_field(), after)
             except NotFoundException as e:
                 raise AfterRecordNotFoundException(
                     f"Identificador recebido no parâmetro after {id}, não encontrado para a entidade {self._entity_class.__name__}."
@@ -357,8 +370,7 @@ class DAOBase:
         kwargs = {**order_map, **filter_values_map, **conjunto_map}
 
         # Running the SQL query
-        resp = self._db.execute_query_to_model(
-            sql, self._entity_class, **kwargs)
+        resp = self._db.execute_query_to_model(sql, self._entity_class, **kwargs)
 
         return resp
 
@@ -387,13 +399,13 @@ class DAOBase:
             "grupo_empresarial_conjunto_id": tuple(valores_filtro_id),
         }
 
-        query_grupo = ''
+        query_grupo = ""
         if valores_filtro_codigo and valores_filtro_id:
-            query_grupo = 'and (gemp0.codigo in :grupo_empresarial_conjunto_codigo or gemp0.grupoempresarial in :grupo_empresarial_conjunto_id)'
+            query_grupo = "and (gemp0.codigo in :grupo_empresarial_conjunto_codigo or gemp0.grupoempresarial in :grupo_empresarial_conjunto_id)"
         elif valores_filtro_codigo:
-            query_grupo = 'and gemp0.codigo in :grupo_empresarial_conjunto_codigo'
+            query_grupo = "and gemp0.codigo in :grupo_empresarial_conjunto_codigo"
         elif valores_filtro_id:
-            query_grupo = 'and gemp0.grupoempresarial in :grupo_empresarial_conjunto_id'
+            query_grupo = "and gemp0.grupoempresarial in :grupo_empresarial_conjunto_id"
 
         with_conjunto = f"""
             with grupos_conjuntos as (
@@ -464,7 +476,7 @@ class DAOBase:
 
         if len(resp) < 1:
             raise Exception(
-                f"Não foi encontrado um conjunto correspondente ao grupo empresarial {conjunto_field_value}, para um tipo de cadastro {cadastro}."
+                f"Não foi encontrado um conjunto correspondente ao grupo empresarial {conjunto_field_value}, para o tipo de cadastro {cadastro}."
             )
 
         # Inserindo o relacionamento com o conjunto
@@ -474,6 +486,21 @@ class DAOBase:
 
         data = {"conjunto": resp[0]["conjunto"], "registro": id}
         self._db.execute(sql, **data)
+
+    def delete_relacionamento_conjunto(
+        self,
+        id: str,
+        conjunto_type: ConjuntoType = None,
+    ):
+        # Resolvendo a tabela de conjunto
+        tabela_conjunto = f"ns.conjuntos{conjunto_type.name.lower()}"
+
+        # Removendo o relacionamento com o conjunto
+        sql = f"""
+        delete from {tabela_conjunto} where registro = :registro
+        """
+
+        self._db.execute(sql, registro=id)
 
     def _sql_insert_fields(self) -> str:
         """
@@ -522,13 +549,13 @@ class DAOBase:
 
         # Montando as cláusulas returning
         returning_fields = entity.get_insert_returning_fields()
-        if returning_fields is None:
-            returning_fields = []
-
-        if entity.get_pk_field() not in returning_fields:
+        if (
+            getattr(entity, entity.get_pk_field()) is None
+            and entity.get_pk_field() not in returning_fields
+        ):
             returning_fields.append(entity.get_pk_field())
 
-        if USE_SQL_RETURNING_CLAUSE:
+        if len(returning_fields) > 0 and USE_SQL_RETURNING_CLAUSE:
             sql_returning = ", ".join(returning_fields)
 
             sql += "\n"
@@ -546,7 +573,7 @@ class DAOBase:
             )
 
         # Complementando o objeto com os dados de retorno
-        if returning_fields is not None and USE_SQL_RETURNING_CLAUSE:
+        if len(returning_fields) > 0 and USE_SQL_RETURNING_CLAUSE:
             for field in returning_fields:
                 setattr(entity, field, returning[0][field])
 
@@ -566,6 +593,7 @@ class DAOBase:
                 and not k.startswith("_")
                 and getattr(entity, k) is not None
                 and k not in entity.get_const_fields()
+                and (k != entity.get_pk_field() or getattr(entity, k) is not None)
             ]
         else:
             fields = [
@@ -574,12 +602,15 @@ class DAOBase:
                 if not callable(getattr(entity, k, None))
                 and not k.startswith("_")
                 and k not in entity.get_const_fields()
+                and (k != entity.get_pk_field() or getattr(entity, k) is not None)
             ]
 
         return ", ".join(fields)
 
     def update(
         self,
+        key_field: str,
+        key_value: Any,
         entity: EntityBase,
         filters: Dict[str, List[Filter]],
         partial_update: bool = False,
@@ -592,14 +623,13 @@ class DAOBase:
         sql_fields = self._sql_update_fields(entity, partial_update)
 
         # Organizando o where dos filtros
-        filters_where, filter_values_map = self._make_filters_sql(
-            filters, False, False)
+        filters_where, filter_values_map = self._make_filters_sql(filters, True, False)
 
-        # CUIDADO PARA NÂO ATUALIZAR O QUE NÃO DEVE
-        if filters_where is None or filters_where.strip() == "":
-            raise NotFoundException(
-                f"{self._entity_class.__name__} não encontrado. Filtros: {filters}"
-            )
+        # # CUIDADO PARA NÂO ATUALIZAR O QUE NÃO DEVE
+        # if filters_where is None or filters_where.strip() == "":
+        #     raise NotFoundException(
+        #         f"{self._entity_class.__name__} não encontrado. Filtros: {filters}"
+        #     )
 
         # Montando a query principal
         sql = f"""
@@ -608,14 +638,20 @@ class DAOBase:
             {sql_fields}
 
         where
-
+            true
+            and {key_field} = :candidate_key_value
             {filters_where}
         """
 
         # Montando as cláusulas returning
         returning_fields = entity.get_update_returning_fields()
+        if (
+            getattr(entity, entity.get_pk_field()) is None
+            and entity.get_pk_field() not in returning_fields
+        ):
+            returning_fields.append(entity.get_pk_field())
 
-        if returning_fields is not None and USE_SQL_RETURNING_CLAUSE:
+        if len(returning_fields) > 0 and USE_SQL_RETURNING_CLAUSE:
             sql_returning = ", ".join(returning_fields)
 
             sql += "\n"
@@ -631,7 +667,7 @@ class DAOBase:
                     values_map[key] = None
 
         # Montado o map de valores a passar no update
-        kwargs = {**values_map, **filter_values_map}
+        kwargs = {"candidate_key_value": key_value, **values_map, **filter_values_map}
 
         # Realizando o update no BD
         rowcount, returning = self._db.execute(sql, **kwargs)
@@ -642,7 +678,7 @@ class DAOBase:
             )
 
         # Complementando o objeto com os dados de retorno
-        if returning_fields is not None and USE_SQL_RETURNING_CLAUSE:
+        if len(returning_fields) > 0 and USE_SQL_RETURNING_CLAUSE:
             for field in returning_fields:
                 setattr(entity, field, returning[0][field])
 
@@ -695,8 +731,7 @@ class DAOBase:
         entity = self._entity_class()
 
         # Organizando o where dos filtros
-        filters_where, filter_values_map = self._make_filters_sql(
-            filters, False, False)
+        filters_where, filter_values_map = self._make_filters_sql(filters, False, False)
 
         # CUIDADO PARA NÂO EXCLUIR O QUE NÃO DEVE
         if filters_where is None or filters_where.strip() == "":

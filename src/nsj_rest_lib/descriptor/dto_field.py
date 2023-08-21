@@ -43,6 +43,7 @@ class DTOField:
         convert_to_entity: typing.Callable = None,
         convert_from_entity: typing.Callable = None,
         unique: str = None,
+        candidate_key: bool = False,
     ):
         """
         -----------
@@ -69,6 +70,7 @@ class DTOField:
           (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
           A função recebida deve suportar os parâmetros (entity_value: Any, entity_fields: Dict[str, Any]), e retornar um Dict[str, Any], como uma coleção de chaves e valores a serem atribuídos no DTO.
         unique: Permite indicar um nome de chave de unicidade. Cada chave de unicidade é considerada no momento de uma inserção no BD (impedindo duplicações indesejadas).
+        candidate_key: Permite indicar que este campo se trata de uma chave candidata (útil para operações unitárias, como GTE e DELETE, pois estas irão verificar se o tipo do dado recebido bate com a PK, ou com as chaves candidatas, para resolver como fará a query).
         """
         self.expected_type = type
         self.not_null = not_null
@@ -86,6 +88,7 @@ class DTOField:
         self.convert_to_entity = convert_to_entity
         self.convert_from_entity = convert_from_entity
         self.unique = unique
+        self.candidate_key = candidate_key
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -100,10 +103,10 @@ class DTOField:
         try:
             if self.validator is None:
                 if self.use_default_validator:
-                    value = self.validate(self, value)
+                    value = self.validate(self, value, instance)
             else:
                 if self.use_default_validator:
-                    value = self.validate(self, value)
+                    value = self.validate(self, value, instance)
                 value = self.validator(self, value)
         except ValueError as e:
             if not (
@@ -114,14 +117,22 @@ class DTOField:
 
         instance.__dict__[self.storage_name] = value
 
-    def validate(self, dto_field: "DTOField", value):
+    def validate(self, dto_field: "DTOField", value, instance):
         """
         Default validator (ckecking default constraints: not null, type, min, max and enum types).
         """
 
         # Checking not null constraint
-        if (self.not_null) and (
-            value is None or (isinstance(value, str) and len(value.strip()) <= 0)
+        if (
+            self.not_null
+            and (value is None or (isinstance(value, str) and len(value.strip()) <= 0))
+            and (
+                not dto_field.pk
+                or (
+                    "generate_default_pk_value" in instance.__dict__
+                    and instance.__dict__["generate_default_pk_value"]
+                )
+            )
         ):
             raise ValueError(
                 f"{self.storage_name} deve estar preenchido. Valor recebido: {value}."
