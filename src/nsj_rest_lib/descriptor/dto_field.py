@@ -196,6 +196,8 @@ class DTOField:
             "^(\d\d\d\d)-(\d\d)-(\d\d)[T,t](\d\d):(\d\d):(\d\d)$"
         )
         matcher_date = re.compile("^(\d\d\d\d)-(\d\d)-(\d\d)$")
+        
+        matcher_time = re.compile("^(\d\d):(\d\d):(\d\d)$")
 
         # Validação direta de tipos
         erro_tipo = False
@@ -238,6 +240,16 @@ class DTOField:
                 dia = int(match_date.group(3))
 
                 value = datetime.date(year=ano, month=mes, day=dia)
+            else:
+                erro_tipo = True
+        elif self.expected_type is datetime.time and isinstance(value, str):
+            match_time = matcher_time.search(value)
+            if match_time:
+                hor = int(match_time.group(1))
+                min = int(match_time.group(2))
+                sec = int(match_time.group(3))
+                
+                value = datetime.time(hour=hor, minute=min, second=sec)
             else:
                 erro_tipo = True
         elif isinstance(self.expected_type, enum.EnumMeta):
