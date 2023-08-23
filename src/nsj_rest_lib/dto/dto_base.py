@@ -204,7 +204,7 @@ class DTOBase(abc.ABC):
             except ValueError:
                 # Retornando o pórpio valor, caso se deseje converter um enumerado que não seja válido
                 # Isso é, aceitando enumerados inválidos (só para os filtros)
-                return str(value)
+                return value.value if isinstance(value, enum.Enum) else str(value)
 
         # Convertendo None para EMPTY (se desejado)
         if value is None:
