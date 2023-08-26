@@ -8,21 +8,47 @@ class EMPTY:
 
 
 class EntityBase(abc.ABC):
+    def __init__(self) -> None:
+        super().__init__()
+
+        if "fields_map" in self.__class__.__dict__:
+            for field in self.__class__.fields_map:
+                if field not in self.__dict__:
+                    setattr(self, field, None)
+
     def initialize_fields(self):
         for annotation in self.__annotations__:
             self.__setattr__(annotation, None)
 
-    @abc.abstractmethod
     def get_table_name(self) -> str:
-        pass
+        if hasattr(self.__class__, "table_name"):
+            return self.__class__.table_name
+        else:
+            raise NotImplementedError(
+                f"Método get_table_name não implementado na classe: {self.__class__}"
+            )
 
-    @abc.abstractmethod
     def get_default_order_fields(self) -> List[str]:
-        pass
+        if hasattr(self.__class__, "default_order_fields"):
+            return self.__class__.default_order_fields
+        else:
+            raise NotImplementedError(
+                f"Método get_default_order_fields não implementado na classe: {self.__class__}"
+            )
 
-    @abc.abstractmethod
     def get_pk_field(self) -> str:
-        pass
+        if hasattr(self.__class__, "pk_field"):
+            return self.__class__.pk_field
+        else:
+            raise NotImplementedError(
+                f"Método get_pk_field não implementado na classe: {self.__class__}"
+            )
+
+    def get_fields_map(self) -> str:
+        if hasattr(self.__class__, "fields_map"):
+            return self.__class__.fields_map
+        else:
+            raise {}
 
     def get_insert_returning_fields(self) -> List[str]:
         return []

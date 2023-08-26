@@ -154,7 +154,11 @@ class DTOBase(abc.ABC):
 
             # Verificando se é necessária alguma conversão customizada
             custom_value_conveted = DTOBase.custom_convert_value_to_entity(
-                value, dto_field, entity_field, none_as_empty, self.__dict__
+                value,
+                dto_field,
+                entity_field,
+                none_as_empty,
+                self.__dict__,
             )
             for key in custom_value_conveted:
                 setattr(entity, key, custom_value_conveted[key])
@@ -163,7 +167,12 @@ class DTOBase(abc.ABC):
                 continue
 
             # Convertendo o value para o correspondente nos fields
-            value = DTOBase.convert_value_to_entity(value, dto_field, none_as_empty)
+            value = DTOBase.convert_value_to_entity(
+                value,
+                dto_field,
+                none_as_empty,
+                entity_class,
+            )
 
             # Setando na entidade
             setattr(entity, entity_field, value)
@@ -196,6 +205,7 @@ class DTOBase(abc.ABC):
         value: Any,
         dto_field: DTOField,
         none_as_empty: bool,
+        entity_class: EntityBase,
     ) -> Any:
         # Enumerados
         if isinstance(dto_field.expected_type, enum.EnumMeta):
@@ -205,6 +215,16 @@ class DTOBase(abc.ABC):
                 # Retornando o pórpio valor, caso se deseje converter um enumerado que não seja válido
                 # Isso é, aceitando enumerados inválidos (só para os filtros)
                 return value.value if isinstance(value, enum.Enum) else str(value)
+
+        # Bool to int
+        entity_fields_map = getattr(entity_class, "fields_map", {})
+        entity_field_name = dto_field.entity_field or dto_field.name
+        if (
+            isinstance(value, bool)
+            and entity_field_name in entity_fields_map
+            and entity_fields_map[entity_field_name].expected_type == int
+        ):
+            return 1 if value else 0
 
         # Convertendo None para EMPTY (se desejado)
         if value is None:

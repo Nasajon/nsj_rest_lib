@@ -28,6 +28,7 @@ class PostRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
+        custom_after_insert: Callable = None,
     ):
         super().__init__(
             url=url,
@@ -39,6 +40,7 @@ class PostRoute(RouteBase):
             service_name=service_name,
             handle_exception=handle_exception,
         )
+        self.custom_after_insert = custom_after_insert
 
     def handle_request(self):
         """
@@ -67,7 +69,11 @@ class PostRoute(RouteBase):
                 service = self._get_service(factory)
 
                 # Chamando o service (método insert)
-                data = service.insert(data, partition_filters)
+                data = service.insert(
+                    dto=data,
+                    aditional_filters=partition_filters,
+                    custom_after_insert=self.custom_after_insert,
+                )
 
                 if data is not None:
                     # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)

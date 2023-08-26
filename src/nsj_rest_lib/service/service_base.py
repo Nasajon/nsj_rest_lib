@@ -1,7 +1,7 @@
 import uuid
 import copy
 
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Callable, Dict, List, Set, Tuple
 
 from flask import g
 
@@ -131,6 +131,7 @@ class ServiceBase:
                         id_value,
                         candidate_key_field,
                         False,
+                        self._entity_class,
                     )
                     converted_values = {entity_key_field: value}
 
@@ -251,6 +252,7 @@ class ServiceBase:
                             value,
                             dto_field,
                             False,
+                            self._entity_class,
                         )
                         converted_values = {entity_field_name: value}
                 else:
@@ -395,17 +397,30 @@ class ServiceBase:
                     # Setting dto property
                     setattr(dto, master_dto_attr, related_dto_list)
 
-    def insert(self, dto: DTOBase, aditional_filters: Dict[str, Any] = None) -> DTOBase:
+    def insert(
+        self,
+        dto: DTOBase,
+        aditional_filters: Dict[str, Any] = None,
+        custom_after_insert: Callable = None,
+        custom_after_update: Callable = None,
+    ) -> DTOBase:
         return self._save(
             insert=True,
             dto=dto,
             manage_transaction=True,
             partial_update=False,
             aditional_filters=aditional_filters,
+            custom_after_insert=custom_after_insert,
+            custom_after_update=custom_after_update,
         )
 
     def update(
-        self, dto: DTOBase, id: Any, aditional_filters: Dict[str, Any] = None
+        self,
+        dto: DTOBase,
+        id: Any,
+        aditional_filters: Dict[str, Any] = None,
+        custom_after_insert: Callable = None,
+        custom_after_update: Callable = None,
     ) -> DTOBase:
         return self._save(
             insert=False,
@@ -414,6 +429,8 @@ class ServiceBase:
             partial_update=False,
             id=id,
             aditional_filters=aditional_filters,
+            custom_after_insert=custom_after_insert,
+            custom_after_update=custom_after_update,
         )
 
     def partial_update(
@@ -428,6 +445,25 @@ class ServiceBase:
             aditional_filters=aditional_filters,
         )
 
+    def _make_fields_from_dto(self, dto: DTOBase, root_name: str = "root"):
+        # Adicionando os campos normais do DTO
+        fields = {root_name: set()}
+        for field in self._dto_class.fields_map:
+            if field in dto.__dict__ or self._dto_class.fields_map[field].pk:
+                fields[root_name].add(field)
+
+        # Adicionando os campos de lista, contidos no DTO
+        for list_field in self._dto_class.list_fields_map:
+            if field in dto.__dict__:
+                list_dto = getattr(dto, list_field)
+                if len(list_dto) < 0:
+                    continue
+
+                list_fields = self._make_fields_from_dto(list_dto[0], list_field)
+                fields = {**fields, **list_fields}
+
+        return fields
+
     def _save(
         self,
         insert: bool,
@@ -437,10 +473,16 @@ class ServiceBase:
         relation_field_map: Dict[str, Any] = None,
         id: Any = None,
         aditional_filters: Dict[str, Any] = None,
+        custom_after_insert: Callable = None,
+        custom_after_update: Callable = None,
     ) -> DTOBase:
         try:
             if manage_transaction:
                 self._dao.begin()
+
+            # Recuperando o DTO antes da gravação (apenas se for update, e houver um custom_after_update)
+            if not insert and custom_after_update is not None:
+                old_dto = self._retrieve_old_dto(dto, id, aditional_filters)
 
             # Convertendo o DTO para a Entity
             # TODO Refatorar para usar um construtor do EntityBase (ou algo assim, porque é preciso tratar das equivalências de nome dos campos)
@@ -555,6 +597,25 @@ class ServiceBase:
                     insert, dto, entity, partial_update, response_dto, aditional_filters
                 )
 
+            # Chamando os métodos customizados de after insert ou update
+            if custom_after_insert is not None or custom_after_update is not None:
+                new_dto = self._dto_class(entity, escape_validator=True)
+
+                # Adicionando campo de conjunto
+                if (
+                    self._dto_class.conjunto_field is not None
+                    and getattr(new_dto, self._dto_class.conjunto_field) is None
+                ):
+                    value_conjunto = getattr(dto, self._dto_class.conjunto_field)
+                    setattr(new_dto, self._dto_class.conjunto_field, value_conjunto)
+
+            if insert:
+                if custom_after_insert is not None:
+                    custom_after_insert(self._dao._db, new_dto)
+            else:
+                if custom_after_update is not None:
+                    custom_after_update(self._dao._db, old_dto, new_dto)
+
             # Retornando o DTO de resposta
             return response_dto
 
@@ -565,6 +626,37 @@ class ServiceBase:
         finally:
             if manage_transaction:
                 self._dao.commit()
+
+    def _retrieve_old_dto(self, dto, id, aditional_filters):
+        fields = self._make_fields_from_dto(dto)
+        get_filters = copy.deepcopy(aditional_filters)
+
+        # Adicionando filtro de conjunto
+        if (
+            self._dto_class.conjunto_field is not None
+            and self._dto_class.conjunto_field not in get_filters
+        ):
+            get_filters[self._dto_class.conjunto_field] = getattr(
+                dto, self._dto_class.conjunto_field
+            )
+
+            # Adicionando filtros de partição de dados
+        for pt_field in dto.partition_fields:
+            pt_value = getattr(dto, pt_field, None)
+            if pt_value is not None:
+                get_filters[pt_field] = pt_value
+
+                # Recuperando o DTO antigo
+        old_dto = self.get(id, get_filters, fields)
+
+        # Adicionando campo de conjunto
+        if (
+            self._dto_class.conjunto_field is not None
+            and getattr(old_dto, self._dto_class.conjunto_field) is None
+        ):
+            value_conjunto = getattr(dto, self._dto_class.conjunto_field)
+            setattr(old_dto, self._dto_class.conjunto_field, value_conjunto)
+        return old_dto
 
     def _save_related_lists(
         self,

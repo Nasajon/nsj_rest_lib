@@ -64,6 +64,7 @@ class DTO:
 
                 # Setting a better name to storage_name
                 attr.storage_name = f"{key}"
+                attr.name = f"{key}"
 
                 # Checking filters name
                 self._check_filters(cls, key, attr)
@@ -105,6 +106,7 @@ class DTO:
 
                 # Setting a better name to storage_name
                 attr.storage_name = f"{key}"
+                attr.name = f"{key}"
 
         # Setting fixed filters
         setattr(cls, "fixed_filters", self._fixed_filters)

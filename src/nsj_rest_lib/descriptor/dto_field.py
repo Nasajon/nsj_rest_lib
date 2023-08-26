@@ -72,6 +72,7 @@ class DTOField:
         unique: Permite indicar um nome de chave de unicidade. Cada chave de unicidade é considerada no momento de uma inserção no BD (impedindo duplicações indesejadas).
         candidate_key: Permite indicar que este campo se trata de uma chave candidata (útil para operações unitárias, como GTE e DELETE, pois estas irão verificar se o tipo do dado recebido bate com a PK, ou com as chaves candidatas, para resolver como fará a query).
         """
+        self.name = None
         self.expected_type = type
         self.not_null = not_null
         self.resume = resume
@@ -196,7 +197,7 @@ class DTOField:
             "^(\d\d\d\d)-(\d\d)-(\d\d)[T,t](\d\d):(\d\d):(\d\d)$"
         )
         matcher_date = re.compile("^(\d\d\d\d)-(\d\d)-(\d\d)$")
-        
+
         matcher_time = re.compile("^(\d\d):(\d\d):(\d\d)$")
 
         # Validação direta de tipos
@@ -248,7 +249,7 @@ class DTOField:
                 hor = int(match_time.group(1))
                 min = int(match_time.group(2))
                 sec = int(match_time.group(3))
-                
+
                 value = datetime.time(hour=hor, minute=min, second=sec)
             else:
                 erro_tipo = True

@@ -20,7 +20,7 @@ class DTOListField:
         min: int = None,
         max: int = None,
         validator: typing.Callable = None,
-        dto_post_response_type: DTOBase = None
+        dto_post_response_type: DTOBase = None,
     ):
         """
         -----------
@@ -35,6 +35,7 @@ class DTOListField:
           This function overrides the default behaviour and all default constraints.
         related_entity_field: Fields, from related entity, used for relation in database.
         """
+        self.name = None
         self.dto_type = dto_type
         self.entity_type = entity_type
         self.related_entity_field = related_entity_field
@@ -49,12 +50,10 @@ class DTOListField:
 
         # Checking correct usage
         if self.dto_type is None:
-            raise DTOListFieldConfigException(
-                'type parameter must be not None.')
+            raise DTOListFieldConfigException("type parameter must be not None.")
 
         if self.entity_type is None:
-            raise DTOListFieldConfigException(
-                'entity_type parameter must be not None.')
+            raise DTOListFieldConfigException("entity_type parameter must be not None.")
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -78,7 +77,7 @@ class DTOListField:
         Preenchendo os campos de particionanmento dos objetos da lista, se necessário (normalmente: tenant e grupo_empresarial).
         """
 
-        if hasattr(instance.__class__, 'partition_fields') and value is not None:
+        if hasattr(instance.__class__, "partition_fields") and value is not None:
             for item in value:
                 for partition_field in instance.__class__.partition_fields:
                     if (
@@ -89,7 +88,8 @@ class DTOListField:
                         # Talvez falte aqui a comparação de tipo de relacionamento como composição (quando não é composição
                         # a diferença pode fazer sentido)
                         # and getattr(item, partition_field) is None
-                        and getattr(instance, partition_field) != getattr(item, partition_field)
+                        and getattr(instance, partition_field)
+                        != getattr(item, partition_field)
                     ):
                         partition_value = getattr(instance, partition_field)
                         setattr(item, partition_field, partition_value)
@@ -100,29 +100,41 @@ class DTOListField:
         """
 
         # Checking not null constraint
-        if (self.not_null) and (value is None or (isinstance(value, list) and len(value) <= 0)):
+        if (self.not_null) and (
+            value is None or (isinstance(value, list) and len(value) <= 0)
+        ):
             raise ValueError(
-                f"O campo {self.storage_name} deve ser preechido. Valor recebido: {value}.")
+                f"O campo {self.storage_name} deve ser preechido. Valor recebido: {value}."
+            )
 
         # Checking if received value is a list
         if value is not None and not isinstance(value, list):
             raise ValueError(
-                f"O valor recebido para o campo {self.storage_name} deveria ser uma lista. Valor recebido: {value}.")
+                f"O valor recebido para o campo {self.storage_name} deveria ser uma lista. Valor recebido: {value}."
+            )
 
         # Checking type constraint
         # TODO Ver como suportar typing
-        if self.dto_type is not None and value is not None and len(value) > 0 and not isinstance(value[0], self.dto_type):
+        if (
+            self.dto_type is not None
+            and value is not None
+            and len(value) > 0
+            and not isinstance(value[0], self.dto_type)
+        ):
             raise ValueError(
-                f"Os items da lista {self.storage_name} deveriam se do tipo {self.dto_type.__name__}. Valor recebido: {value}.")
+                f"Os items da lista {self.storage_name} deveriam se do tipo {self.dto_type.__name__}. Valor recebido: {value}."
+            )
 
         # Checking min constraint
         if self.min is not None and len(value) < self.min:
             raise ValueError(
-                f"A lista {self.storage_name} deve ter mais do que {self.min} itens. Valor recebido: {value}.")
+                f"A lista {self.storage_name} deve ter mais do que {self.min} itens. Valor recebido: {value}."
+            )
 
         # Checking min constraint
         if self.max is not None and len(value) > self.max:
             raise ValueError(
-                f"A lista {self.storage_name} deve ter menos do que {self.max} itens. Valor recebido: {value}.")
+                f"A lista {self.storage_name} deve ter menos do que {self.max} itens. Valor recebido: {value}."
+            )
 
         return value

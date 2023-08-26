@@ -28,6 +28,7 @@ class PutRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
+        custom_after_update: Callable = None,
     ):
         super().__init__(
             url=url,
@@ -39,6 +40,7 @@ class PutRoute(RouteBase):
             service_name=service_name,
             handle_exception=handle_exception,
         )
+        self.custom_after_update = custom_after_update
 
     def handle_request(self, id):
         """
@@ -67,7 +69,12 @@ class PutRoute(RouteBase):
                 service = self._get_service(factory)
 
                 # Chamando o service (método insert)
-                data = service.update(data, id, partition_filters)
+                data = service.update(
+                    dto=data,
+                    id=id,
+                    aditional_filters=partition_filters,
+                    custom_after_update=self.custom_after_update,
+                )
 
                 if data is not None:
                     # Convertendo para o formato de dicionário
