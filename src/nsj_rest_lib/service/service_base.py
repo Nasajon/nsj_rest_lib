@@ -52,7 +52,14 @@ class ServiceBase:
         # Handling the fields to retrieve
         entity_fields = self._convert_to_entity_fields(fields["root"])
 
-        entity_filters = self._create_entity_filters(partition_fields)
+        # Tratando dos filtros
+        all_filters = {}
+        if self._dto_class.fixed_filters is not None:
+            all_filters.update(self._dto_class.fixed_filters)
+        if partition_fields is not None:
+            all_filters.update(partition_fields)
+
+        entity_filters = self._create_entity_filters(all_filters)
 
         # Resolve o campo de chave sendo utilizado
         entity_key_field, entity_id_value = self._resolve_field_key(
@@ -304,12 +311,12 @@ class ServiceBase:
         # Handling order fields
         order_fields = self._convert_to_entity_fields(order_fields)
 
-        # Handling filters
+        # Tratando dos filtros
         all_filters = {}
-        if filters is not None:
-            all_filters.update(filters)
         if self._dto_class.fixed_filters is not None:
             all_filters.update(self._dto_class.fixed_filters)
+        if filters is not None:
+            all_filters.update(filters)
 
         entity_filters = self._create_entity_filters(all_filters)
 
@@ -504,7 +511,9 @@ class ServiceBase:
                         setattr(entity, entity_field, value)
 
             # Setando campos criado_por e atualizado_por quando existirem
-            if (insert and hasattr(entity, self._created_by_property)) or (hasattr(entity, self._updated_by_property)):
+            if (insert and hasattr(entity, self._created_by_property)) or (
+                hasattr(entity, self._updated_by_property)
+            ):
                 if hasattr(g, "profile") and g.profile is not None:
                     auth_type_is_api_key = g.profile["authentication_type"] == "api_key"
                     user = g.profile["email"]
