@@ -282,7 +282,7 @@ class DAOBase:
 
         if after is not None:
             try:
-                after_obj = self.get(entity.get_pk_field(), after)
+                after_obj = self.get(entity.get_pk_field(), after, fields)
             except NotFoundException as e:
                 raise AfterRecordNotFoundException(
                     f"Identificador recebido no parâmetro after {id}, não encontrado para a entidade {self._entity_class.__name__}."
