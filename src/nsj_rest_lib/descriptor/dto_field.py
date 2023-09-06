@@ -135,7 +135,7 @@ class DTOField:
             )
         ):
             raise ValueError(
-                f"{self.storage_name} deve estar preenchido. Valor recebido: {value}."
+                f"Classe[{self.__class__.__name__}]: {self.storage_name} deve estar preenchido. Valor recebido: {value}."
             )
 
         # Checking type constraint
