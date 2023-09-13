@@ -448,13 +448,27 @@ class DAOBase:
         # Recuperando o conjunto correspondente ao grupo_empresarial
         tabela_conjunto = f"ns.conjuntos{conjunto_type.name.lower()}"
         cadastro = conjunto_type.value
+        query_grupo = ""
+
+        if self.is_valid_uuid(conjunto_field_value):
+            data = {
+                "conjunto_cadastro": cadastro,
+                "grupo_empresarial_conjunto_id": conjunto_field_value,
+            }
+            query_grupo = "and gemp0.grupoempresarial = :grupo_empresarial_conjunto_id"
+        else:
+            data = {
+                "conjunto_cadastro": cadastro,
+                "grupo_empresarial_conjunto_codigo": conjunto_field_value,
+            }
+            query_grupo = "and gemp0.codigo = :grupo_empresarial_conjunto_codigo"
 
         sql = f"""
         select
             gemp0.grupoempresarial as grupo_empresarial_pk,
             est_c0.conjunto
         from ns.gruposempresariais gemp0
-        join ns.empresas emp0 on (emp0.grupoempresarial = gemp0.grupoempresarial and gemp0.codigo = :grupo_empresarial_conjunto_codigo)
+        join ns.empresas emp0 on (emp0.grupoempresarial = gemp0.grupoempresarial {query_grupo})
         join ns.estabelecimentos est0 on (est0.empresa = emp0.empresa)
         join ns.estabelecimentosconjuntos est_c0 on (
             est_c0.estabelecimento = est0.estabelecimento
@@ -462,11 +476,6 @@ class DAOBase:
         )
         group by gemp0.grupoempresarial, est_c0.conjunto
         """
-
-        data = {
-            "conjunto_cadastro": cadastro,
-            "grupo_empresarial_conjunto_codigo": conjunto_field_value,
-        }
         resp = self._db.execute_query(sql, **data)
 
         if len(resp) > 1:
