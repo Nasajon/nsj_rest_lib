@@ -841,6 +841,9 @@ class ServiceBase:
         unique_filter = {}
         for field in unique:
             value = getattr(dto, field)
+            # Se um dos campos for nulos, então a unique é falsa. Isso é baseado no postgres aonde null é sempre diferente de null para uniques
+            if value is None:
+                return
             unique_filter[field] = value
 
         # Convertendo o filtro para o formato de filtro de entidades
