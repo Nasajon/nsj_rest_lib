@@ -7,11 +7,12 @@ class NsjInjectorFactoryBase:
     _db_connection: Connection
 
     def __enter__(self):
-        from nsj_rest_lib.db_pool_config import db_pool as internal_db_pool
+        from nsj_rest_lib.db_pool_config import default_create_pool
 
-        pool = internal_db_pool
         if db_pool is not None:
             pool = db_pool
+        else:
+            pool = default_create_pool()
 
         self._db_connection = pool.connect()
 
@@ -22,11 +23,12 @@ class NsjInjectorFactoryBase:
 
     def db_adapter(self):
         from nsj_gcf_utils.db_adapter2 import DBAdapter2
+
         return DBAdapter2(self._db_connection)
 
     def get_service_by_name(self, name: str):
         if not hasattr(self, name):
-            raise Exception(f'Service not found: {name}')
+            raise Exception(f"Service not found: {name}")
 
         service_method = getattr(self, name)
 

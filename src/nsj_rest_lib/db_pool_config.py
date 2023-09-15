@@ -30,4 +30,9 @@ else:
     else:
         database_conn_url = f"postgresql+pg8000://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
 
-db_pool = create_pool(database_conn_url)
+
+def default_create_pool():
+    return create_pool(database_conn_url)
+
+
+# db_pool = create_pool(database_conn_url)
