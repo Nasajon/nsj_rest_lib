@@ -332,7 +332,24 @@ class DTOField:
             for item in self.expected_type:
                 lista_valores = list(item.value)
                 for valor in lista_valores:
+                    # Testando se casa com o valor
                     if valor == value:
                         return item
+
+                    # Se o valor for string, testa inclusive em caixa alta e baixa
+                    if isinstance(value, str):
+                        if valor == value.lower() or valor == value.upper():
+                            return item
+
         else:
-            return self.expected_type(value)
+            # Tentando pelo valor do próprio enum (e testando os casos, se for str)
+            if isinstance(value, str):
+                try:
+                    return self.expected_type(value)
+                except ValueError:
+                    try:
+                        return self.expected_type(value.lower())
+                    except ValueError:
+                        return self.expected_type(value.upper())
+            else:
+                return self.expected_type(value)
