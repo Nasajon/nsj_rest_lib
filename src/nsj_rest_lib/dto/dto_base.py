@@ -210,6 +210,10 @@ class DTOBase(abc.ABC):
         # Enumerados
         if isinstance(dto_field.expected_type, enum.EnumMeta):
             try:
+                # TODO Rever se não é para verificar se o valor já é do tipo enumerado, e só retornar seu value
+                # (ou índice da tupla dentro do value, se houver uma tupla)
+                # Porque parece que ele tenta sempre converter para o tipo esperado, mas isso pode já ter sido
+                # feito no DTO
                 return DTOBase._convert_enum_to_entity(value, dto_field)
             except ValueError:
                 # Retornando o pórpio valor, caso se deseje converter um enumerado que não seja válido
@@ -239,6 +243,11 @@ class DTOBase(abc.ABC):
         value: Any,
         dto_field: DTOField,
     ):
+        # Ignorando valores nulos
+        if value is None:
+            return None
+
+        # Construindo uma lista com os itens do enumerado esperado
         lista_enum = list(dto_field.expected_type)
 
         # Se o enum estiver vazio
@@ -249,12 +258,25 @@ class DTOBase(abc.ABC):
         if isinstance(lista_enum[0].value, tuple):
             # Recuperando o item correspondente do enumerado
             enumerado = value
+            parou = False
             if not isinstance(value, dto_field.expected_type):
                 for item in dto_field.expected_type:
                     lista_valores = list(item.value)
                     for valor in lista_valores:
                         if valor == value:
                             enumerado = item
+                            parou = True
+                            break
+
+                        # Se o valor for string, testa inclusive em caixa alta e baixa
+                        if isinstance(value, str):
+                            if valor == value.lower() or valor == value.upper():
+                                enumerado = item
+                                parou = True
+                                break
+
+                    if parou:
+                        break
 
             # Convertendo do enumerado para o valor desejado na entidade
             if "get_entity_index" in enumerado.__dict__:
@@ -262,9 +284,22 @@ class DTOBase(abc.ABC):
             else:
                 tuple_index = 1
 
-            return enumerado.value[tuple_index]
+            if isinstance(enumerado.value, list) or isinstance(enumerado.value, tuple):
+                return enumerado.value[tuple_index]
+            else:
+                return enumerado.value
         else:
-            return dto_field.expected_type(value)
+            # Tentando pelo valor do próprio enum (e testando os casos, se for str)
+            if isinstance(value, str):
+                try:
+                    return dto_field.expected_type(value)
+                except ValueError:
+                    try:
+                        return dto_field.expected_type(value.lower())
+                    except ValueError:
+                        return dto_field.expected_type(value.upper())
+            else:
+                return dto_field.expected_type(value)
 
     def convert_to_dict(
         self, fields: Dict[str, List[str]] = None, just_resume: bool = False
