@@ -51,9 +51,10 @@ class PutRoute(RouteBase):
             try:
                 # Recuperando os dados do corpo da rquisição
                 data = request.json
+                data["generate_default_pk_value"] = False
 
                 # Convertendo os dados para o DTO
-                data = self._dto_class(**data, generate_default_pk_value=False)
+                data = self._dto_class(**data)
 
                 # Montando os filtros de particao de dados
                 partition_filters = {}
