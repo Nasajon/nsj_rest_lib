@@ -409,7 +409,6 @@ class ServiceBase:
         dto: DTOBase,
         aditional_filters: Dict[str, Any] = None,
         custom_after_insert: Callable = None,
-        custom_after_update: Callable = None,
     ) -> DTOBase:
         return self._save(
             insert=True,
@@ -418,7 +417,6 @@ class ServiceBase:
             partial_update=False,
             aditional_filters=aditional_filters,
             custom_after_insert=custom_after_insert,
-            custom_after_update=custom_after_update,
         )
 
     def update(
@@ -426,7 +424,6 @@ class ServiceBase:
         dto: DTOBase,
         id: Any,
         aditional_filters: Dict[str, Any] = None,
-        custom_after_insert: Callable = None,
         custom_after_update: Callable = None,
     ) -> DTOBase:
         return self._save(
@@ -436,12 +433,11 @@ class ServiceBase:
             partial_update=False,
             id=id,
             aditional_filters=aditional_filters,
-            custom_after_insert=custom_after_insert,
             custom_after_update=custom_after_update,
         )
 
     def partial_update(
-        self, dto: DTOBase, id: Any, aditional_filters: Dict[str, Any] = None
+        self, dto: DTOBase, id: Any, aditional_filters: Dict[str, Any] = None, custom_after_update: Callable = None,
     ) -> DTOBase:
         return self._save(
             insert=False,
@@ -450,6 +446,7 @@ class ServiceBase:
             partial_update=True,
             id=id,
             aditional_filters=aditional_filters,
+            custom_after_update=custom_after_update,
         )
 
     def _make_fields_from_dto(self, dto: DTOBase, root_name: str = "root"):
@@ -463,7 +460,7 @@ class ServiceBase:
         for list_field in self._dto_class.list_fields_map:
             if field in dto.__dict__:
                 list_dto = getattr(dto, list_field)
-                if len(list_dto) < 0:
+                if not list_dto:
                     continue
 
                 list_fields = self._make_fields_from_dto(list_dto[0], list_field)
