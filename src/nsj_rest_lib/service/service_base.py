@@ -604,12 +604,29 @@ class ServiceBase:
                     insert, dto, entity, partial_update, response_dto, aditional_filters
                 )
 
+            # Chamando os métodos customizados de after insert ou update
+            if custom_after_insert is not None or custom_after_update is not None:
+                new_dto = self._dto_class(entity, escape_validator=True)
+
+                for list_field in dto.list_fields_map:
+                    setattr(new_dto, list_field, getattr(dto, list_field))
+
+                # Adicionando campo de conjunto
+                if (
+                    self._dto_class.conjunto_field is not None
+                    and getattr(new_dto, self._dto_class.conjunto_field) is None
+                ):
+                    value_conjunto = getattr(
+                        dto, self._dto_class.conjunto_field)
+                    setattr(new_dto, self._dto_class.conjunto_field,
+                            value_conjunto)
+
             if insert:
                 if custom_after_insert is not None:
-                    custom_after_insert(self._dao._db, dto)
+                    custom_after_insert(self._dao._db, new_dto)
             else:
                 if custom_after_update is not None:
-                    custom_after_update(self._dao._db, old_dto, dto)
+                    custom_after_update(self._dao._db, old_dto, new_dto)
 
             # Retornando o DTO de resposta
             return response_dto
