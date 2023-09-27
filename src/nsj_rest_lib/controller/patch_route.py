@@ -24,6 +24,7 @@ class PatchRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
+        custom_before_update: Callable = None,
         custom_after_update: Callable = None,
     ):
         super().__init__(
@@ -36,6 +37,7 @@ class PatchRoute(RouteBase):
             service_name=service_name,
             handle_exception=handle_exception,
         )
+        self.custom_before_update = custom_before_update
         self.custom_after_update = custom_after_update
 
     def handle_request(self, id):
@@ -53,7 +55,7 @@ class PatchRoute(RouteBase):
 
                 # Montando os filtros de particao de dados
                 partition_filters = {}
-                
+
                 for field in data.partition_fields:
                     value = getattr(data, field)
                     if value is None:
@@ -66,7 +68,12 @@ class PatchRoute(RouteBase):
 
                 # Chamando o service (método insert)
                 data = service.partial_update(
-                    dto=data, id=id, aditional_filters=partition_filters, custom_after_update=self.custom_after_update,)
+                    dto=data,
+                    id=id,
+                    aditional_filters=partition_filters,
+                    custom_before_update=self.custom_before_update,
+                    custom_after_update=self.custom_after_update,
+                )
 
                 if data is not None:
                     # Convertendo para o formato de dicionário
@@ -76,7 +83,7 @@ class PatchRoute(RouteBase):
                     return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})
                 else:
                     # Retornando a resposta da requuisição
-                    return ('', 204, {**DEFAULT_RESP_HEADERS})
+                    return ("", 204, {**DEFAULT_RESP_HEADERS})
             except JsonLoadException as e:
                 get_logger().warning(e)
                 if self._handle_exception is not None:
@@ -106,4 +113,8 @@ class PatchRoute(RouteBase):
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {**DEFAULT_RESP_HEADERS})
+                    return (
+                        format_json_error(f"Erro desconhecido: {e}"),
+                        500,
+                        {**DEFAULT_RESP_HEADERS},
+                    )

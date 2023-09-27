@@ -6,14 +6,13 @@ from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import (
-    DTOConfigException,
     MissingParameterException,
     ConflictException,
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger
 
-from nsj_gcf_utils.json_util import json_dumps, json_loads, JsonLoadException
+from nsj_gcf_utils.json_util import json_dumps, JsonLoadException
 from nsj_gcf_utils.rest_error_util import format_json_error
 
 
@@ -28,6 +27,7 @@ class PostRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
+        custom_before_insert: Callable = None,
         custom_after_insert: Callable = None,
     ):
         super().__init__(
@@ -40,6 +40,7 @@ class PostRoute(RouteBase):
             service_name=service_name,
             handle_exception=handle_exception,
         )
+        self.custom_before_insert = custom_before_insert
         self.custom_after_insert = custom_after_insert
 
     def handle_request(self):
@@ -72,6 +73,7 @@ class PostRoute(RouteBase):
                 data = service.insert(
                     dto=data,
                     aditional_filters=partition_filters,
+                    custom_before_insert=self.custom_before_insert,
                     custom_after_insert=self.custom_after_insert,
                 )
 
