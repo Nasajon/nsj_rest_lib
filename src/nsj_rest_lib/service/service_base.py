@@ -462,19 +462,19 @@ class ServiceBase:
     def _make_fields_from_dto(self, dto: DTOBase, root_name: str = "root"):
         # Adicionando os campos normais do DTO
         fields = {root_name: set()}
-        for field in self._dto_class.fields_map:
-            if field in dto.__dict__ or self._dto_class.fields_map[field].pk:
+        for field in dto.fields_map:
+            if field in dto.__dict__:
                 fields[root_name].add(field)
 
         # Adicionando os campos de lista, contidos no DTO
-        for list_field in self._dto_class.list_fields_map:
-            if field in dto.__dict__:
+        for list_field in dto.list_fields_map:
+            if list_field in dto.__dict__:
                 list_dto = getattr(dto, list_field)
                 if not list_dto:
                     continue
-
-                list_fields = self._make_fields_from_dto(
-                    list_dto[0], list_field)
+                
+                fields[root_name].add(list_field)
+                list_fields = self._make_fields_from_dto(list_dto[0], list_field)
                 fields = {**fields, **list_fields}
 
         return fields
@@ -626,6 +626,9 @@ class ServiceBase:
             # Chamando os métodos customizados de after insert ou update
             if custom_after_insert is not None or custom_after_update is not None:
                 new_dto = self._dto_class(entity, escape_validator=True)
+
+                for list_field in dto.list_fields_map:
+                    setattr(new_dto, list_field, getattr(dto, list_field))
 
                 # Adicionando campo de conjunto
                 if (
