@@ -505,7 +505,7 @@ class ServiceBase:
                 dto = custom_before_insert(self._dao._db, dto)
 
             if custom_before_update:
-                dto = custom_before_update(self._dao._db, dto, old_dto)
+                dto = custom_before_update(self._dao._db, old_dto, dto)
 
             # Convertendo o DTO para a Entity
             # TODO Refatorar para usar um construtor do EntityBase (ou algo assim, porque é preciso tratar das equivalências de nome dos campos)
