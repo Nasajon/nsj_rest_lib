@@ -408,7 +408,6 @@ class ServiceBase:
         self,
         dto: DTOBase,
         aditional_filters: Dict[str, Any] = None,
-        custom_before_insert: Callable = None,
         custom_after_insert: Callable = None,
     ) -> DTOBase:
         return self._save(
@@ -417,7 +416,6 @@ class ServiceBase:
             manage_transaction=True,
             partial_update=False,
             aditional_filters=aditional_filters,
-            custom_before_insert=custom_before_insert,
             custom_after_insert=custom_after_insert,
         )
 
@@ -426,7 +424,6 @@ class ServiceBase:
         dto: DTOBase,
         id: Any,
         aditional_filters: Dict[str, Any] = None,
-        custom_before_update: Callable = None,
         custom_after_update: Callable = None,
     ) -> DTOBase:
         return self._save(
@@ -436,17 +433,11 @@ class ServiceBase:
             partial_update=False,
             id=id,
             aditional_filters=aditional_filters,
-            custom_before_update=custom_before_update,
             custom_after_update=custom_after_update,
         )
 
     def partial_update(
-        self,
-        dto: DTOBase,
-        id: Any,
-        aditional_filters: Dict[str, Any] = None,
-        custom_before_update: Callable = None,
-        custom_after_update: Callable = None,
+        self, dto: DTOBase, id: Any, aditional_filters: Dict[str, Any] = None, custom_after_update: Callable = None,
     ) -> DTOBase:
         return self._save(
             insert=False,
@@ -455,7 +446,6 @@ class ServiceBase:
             partial_update=True,
             id=id,
             aditional_filters=aditional_filters,
-            custom_before_update=custom_before_update,
             custom_after_update=custom_after_update,
         )
 
@@ -488,8 +478,6 @@ class ServiceBase:
         relation_field_map: Dict[str, Any] = None,
         id: Any = None,
         aditional_filters: Dict[str, Any] = None,
-        custom_before_insert: Callable = None,
-        custom_before_update: Callable = None,
         custom_after_insert: Callable = None,
         custom_after_update: Callable = None,
     ) -> DTOBase:
@@ -498,14 +486,8 @@ class ServiceBase:
                 self._dao.begin()
 
             # Recuperando o DTO antes da gravação (apenas se for update, e houver um custom_after_update)
-            if not insert and (custom_after_update is not None or custom_before_update is not None):
+            if not insert and custom_after_update is not None:
                 old_dto = self._retrieve_old_dto(dto, id, aditional_filters)
-
-            if custom_before_insert:
-                dto = custom_before_insert(self._dao._db, dto)
-
-            if custom_before_update:
-                dto = custom_before_update(self._dao._db, dto, old_dto)
 
             # Convertendo o DTO para a Entity
             # TODO Refatorar para usar um construtor do EntityBase (ou algo assim, porque é preciso tratar das equivalências de nome dos campos)
@@ -592,8 +574,7 @@ class ServiceBase:
 
                 # Inserindo os conjuntos (se necessário)
                 if self._dto_class.conjunto_type is not None:
-                    conjunto_field_value = getattr(
-                        dto, self._dto_class.conjunto_field)
+                    conjunto_field_value = getattr(dto, self._dto_class.conjunto_field)
 
                     self._dao.insert_relacionamento_conjunto(
                         id, conjunto_field_value, self._dto_class.conjunto_type

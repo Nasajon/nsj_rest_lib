@@ -340,7 +340,7 @@ class DTOField:
                     if isinstance(value, str):
                         if valor == value.lower() or valor == value.upper():
                             return item
-            raise ValueError
+
         else:
             # Tentando pelo valor do próprio enum (e testando os casos, se for str)
             if isinstance(value, str):
