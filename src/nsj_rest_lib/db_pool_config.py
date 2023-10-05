@@ -14,7 +14,7 @@ def create_pool(database_conn_url):
     # Creating database connection pool
     db_pool = sqlalchemy.create_engine(
         database_conn_url,
-        pool_size=5,
+        pool_size=1,
         max_overflow=2,
         pool_timeout=30,
         pool_recycle=1800,
