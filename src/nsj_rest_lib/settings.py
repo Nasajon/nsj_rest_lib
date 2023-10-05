@@ -13,6 +13,8 @@ DATABASE_NAME = os.getenv('DATABASE_NAME', '')
 DATABASE_USER = os.getenv('DATABASE_USER', '')
 DATABASE_DRIVER = os.getenv('DATABASE_DRIVER', 'POSTGRES')
 
+DB_POOL_SIZE = int(os.getenv('DB_POOL_SIZE', 1))
+
 CLOUD_SQL_CONN_NAME = os.getenv('CLOUD_SQL_CONN_NAME', '')
 ENV = os.getenv('ENV', '')
 

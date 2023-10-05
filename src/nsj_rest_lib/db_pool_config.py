@@ -6,6 +6,7 @@ from nsj_rest_lib.settings import DATABASE_USER
 from nsj_rest_lib.settings import DATABASE_DRIVER
 from nsj_rest_lib.settings import CLOUD_SQL_CONN_NAME
 from nsj_rest_lib.settings import ENV
+from nsj_rest_lib.settings import DB_POOL_SIZE
 
 import sqlalchemy
 
@@ -14,7 +15,7 @@ def create_pool(database_conn_url):
     # Creating database connection pool
     db_pool = sqlalchemy.create_engine(
         database_conn_url,
-        pool_size=1,
+        pool_size=DB_POOL_SIZE,
         max_overflow=2,
         pool_timeout=30,
         pool_recycle=1800,
