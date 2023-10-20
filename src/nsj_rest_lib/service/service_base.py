@@ -9,6 +9,7 @@ from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.descriptor.dto_field import DTOFieldFilter
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.dto.after_insert_update_data import AfterInsertUpdateData
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.entity.filter import Filter
 from nsj_rest_lib.exception import (
@@ -472,7 +473,7 @@ class ServiceBase:
                 list_dto = getattr(dto, list_field)
                 if not list_dto:
                     continue
-                
+
                 fields[root_name].add(list_field)
                 list_fields = self._make_fields_from_dto(list_dto[0], list_field)
                 fields = {**fields, **list_fields}
@@ -494,17 +495,25 @@ class ServiceBase:
         custom_after_update: Callable = None,
     ) -> DTOBase:
         try:
+            # Guardando um ponteiro para o DTO recebido
+            received_dto = dto
+
             if manage_transaction:
                 self._dao.begin()
 
             # Recuperando o DTO antes da gravação (apenas se for update, e houver um custom_after_update)
-            if not insert and (custom_after_update is not None or custom_before_update is not None):
+            if not insert and (
+                custom_after_update is not None or custom_before_update is not None
+            ):
                 old_dto = self._retrieve_old_dto(dto, id, aditional_filters)
 
             if custom_before_insert:
+                received_dto = copy.deepcopy(dto)
                 dto = custom_before_insert(self._dao._db, dto)
 
             if custom_before_update:
+                if received_dto == dto:
+                    received_dto = copy.deepcopy(dto)
                 dto = custom_before_update(self._dao._db, old_dto, dto)
 
             # Convertendo o DTO para a Entity
@@ -592,8 +601,7 @@ class ServiceBase:
 
                 # Inserindo os conjuntos (se necessário)
                 if self._dto_class.conjunto_type is not None:
-                    conjunto_field_value = getattr(
-                        dto, self._dto_class.conjunto_field)
+                    conjunto_field_value = getattr(dto, self._dto_class.conjunto_field)
 
                     self._dao.insert_relacionamento_conjunto(
                         id, conjunto_field_value, self._dto_class.conjunto_type
@@ -635,17 +643,21 @@ class ServiceBase:
                     self._dto_class.conjunto_field is not None
                     and getattr(new_dto, self._dto_class.conjunto_field) is None
                 ):
-                    value_conjunto = getattr(
-                        dto, self._dto_class.conjunto_field)
-                    setattr(new_dto, self._dto_class.conjunto_field,
-                            value_conjunto)
+                    value_conjunto = getattr(dto, self._dto_class.conjunto_field)
+                    setattr(new_dto, self._dto_class.conjunto_field, value_conjunto)
 
+            # Montando um objeto de dados a serem passados para os códigos customizados
+            # do tipo after insert ou update
+            after_data = AfterInsertUpdateData()
+            after_data.received_dto = received_dto
+
+            # Invocando os códigos customizados do tipo after insert ou update
             if insert:
                 if custom_after_insert is not None:
-                    custom_after_insert(self._dao._db, new_dto)
+                    custom_after_insert(self._dao._db, new_dto, after_data)
             else:
                 if custom_after_update is not None:
-                    custom_after_update(self._dao._db, old_dto, new_dto)
+                    custom_after_update(self._dao._db, old_dto, new_dto, after_data)
 
             # Retornando o DTO de resposta
             return response_dto
