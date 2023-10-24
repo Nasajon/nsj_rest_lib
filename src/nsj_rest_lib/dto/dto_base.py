@@ -16,6 +16,8 @@ class DTOBase(abc.ABC):
     partition_fields: Set[str] = set()
     fields_map: Dict[str, DTOField] = {}
     list_fields_map: dict = {}
+    left_join_fields_map: dict = {}
+    left_join_fields_map_to_query: dict = {}
     field_filters_map: Dict[str, DTOFieldFilter]
     # TODO Refatorar para suportar PK composto
     pk_field: str
@@ -49,28 +51,29 @@ class DTOBase(abc.ABC):
         # Setando os campos registrados como fields simples
         for field in self.__class__.fields_map:
             # Recuperando a configuração do campo
-            dto_field = self.__class__.fields_map[field]
+            left_join_dto_field = self.__class__.fields_map[field]
 
             # Tratando do valor default
             if (
-                dto_field.default_value is not None
+                left_join_dto_field.default_value is not None
                 and kwargs.get(field, None) is None
-                and (not dto_field.pk or generate_default_pk_value)
+                and (not left_join_dto_field.pk or generate_default_pk_value)
             ):
-                default_value = dto_field.default_value
-                if callable(dto_field.default_value):
-                    default_value = dto_field.default_value()
+                default_value = left_join_dto_field.default_value
+                if callable(left_join_dto_field.default_value):
+                    default_value = left_join_dto_field.default_value()
                 kwargs[field] = default_value
 
             # Verificando se é preciso converter o nome do field para o nome correspondente no Entity
+            # E, se será preciso aplicar alguma conversão customizada (para trazer o valor do entity para o DTO)
             entity_field = field
             if entity is not None:
-                if dto_field.entity_field is not None:
-                    entity_field = dto_field.entity_field
+                if left_join_dto_field.entity_field is not None:
+                    entity_field = left_join_dto_field.entity_field
 
                 # Verificando se o campo carece de conversão customizada
-                if dto_field.convert_from_entity is not None:
-                    fields_converted = dto_field.convert_from_entity(
+                if left_join_dto_field.convert_from_entity is not None:
+                    fields_converted = left_join_dto_field.convert_from_entity(
                         kwargs[entity_field], kwargs
                     )
                     if field not in fields_converted:
@@ -84,6 +87,17 @@ class DTOBase(abc.ABC):
             # Atribuindo o valor à propriedade do DTO
             if entity_field in kwargs:
                 setattr(self, field, kwargs[entity_field])
+            else:
+                setattr(self, field, None)
+
+        # Setando os campos registrados como fields left join
+        for field in self.__class__.left_join_fields_map:
+            # Recuperando a configuração do campo
+            left_join_dto_field = self.__class__.left_join_fields_map[field]
+
+            # Atribuindo o valor à propriedade do DTO
+            if field in kwargs:
+                setattr(self, field, kwargs[field])
             else:
                 setattr(self, field, None)
 
@@ -322,6 +336,13 @@ class DTOBase(abc.ABC):
 
         # Converting simple fields
         for field in self.fields_map:
+            if not field in fields["root"]:
+                continue
+
+            result[field] = getattr(self, field)
+
+        # Converting left join fields
+        for field in self.left_join_fields_map:
             if not field in fields["root"]:
                 continue
 

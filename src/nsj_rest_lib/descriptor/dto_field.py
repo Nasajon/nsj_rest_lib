@@ -1,13 +1,10 @@
-import datetime
-import enum
-import re
 import typing
-import uuid
 
 from decimal import Decimal
 from typing import Any
 
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
+from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
 
 
 class DTOFieldFilter:
@@ -146,7 +143,7 @@ class DTOField:
             and not isinstance(value, self.expected_type)
             and value is not None
         ):
-            value = self.validate_type(value)
+            value = TypeValidatorUtil.validate(self, value)
 
         # Checking min constraint
         if self.min is not None:
@@ -183,173 +180,3 @@ class DTOField:
             value = value.strip()
 
         return value
-
-    def validate_type(self, value):
-        """
-        Valida o value recebido, de acordo com o tipo esperado, e faz as conversões necessárias (se possível).
-        """
-
-        # Montando expressões regulares para as validações
-        matcher_uuid = re.compile(
-            "^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$"
-        )
-        matcher_datetime = re.compile(
-            "^(\d\d\d\d)-(\d\d)-(\d\d)[T,t](\d\d):(\d\d):(\d\d)$"
-        )
-        matcher_date = re.compile("^(\d\d\d\d)-(\d\d)-(\d\d)$")
-
-        matcher_time = re.compile("^(\d\d):(\d\d):(\d\d)$")
-
-        # Validação direta de tipos
-        erro_tipo = False
-        if self.expected_type is datetime.datetime and isinstance(value, str):
-            match_datetime = matcher_datetime.search(value)
-            match_date = matcher_date.search(value)
-
-            if match_datetime:
-                ano = int(match_datetime.group(1))
-                mes = int(match_datetime.group(2))
-                dia = int(match_datetime.group(3))
-                hora = int(match_datetime.group(4))
-                minuto = int(match_datetime.group(5))
-                segundo = int(match_datetime.group(6))
-
-                value = datetime.datetime(
-                    year=ano,
-                    month=mes,
-                    day=dia,
-                    hour=hora,
-                    minute=minuto,
-                    second=segundo,
-                )
-            elif match_date:
-                ano = int(match_date.group(1))
-                mes = int(match_date.group(2))
-                dia = int(match_date.group(3))
-
-                value = datetime.datetime(
-                    year=ano, month=mes, day=dia, hour=0, minute=0, second=0
-                )
-            else:
-                erro_tipo = True
-        elif self.expected_type is datetime.date and isinstance(value, str):
-            match_date = matcher_date.search(value)
-
-            if match_date:
-                ano = int(match_date.group(1))
-                mes = int(match_date.group(2))
-                dia = int(match_date.group(3))
-
-                value = datetime.date(year=ano, month=mes, day=dia)
-            else:
-                erro_tipo = True
-        elif self.expected_type is datetime.time and isinstance(value, str):
-            match_time = matcher_time.search(value)
-            if match_time:
-                hor = int(match_time.group(1))
-                min = int(match_time.group(2))
-                sec = int(match_time.group(3))
-
-                value = datetime.time(hour=hor, minute=min, second=sec)
-            else:
-                erro_tipo = True
-        elif isinstance(self.expected_type, enum.EnumMeta):
-            # Enumerados
-            try:
-                value = self._convert_enum_from_entity(value)
-            except ValueError:
-                raise ValueError(
-                    f"{self.storage_name} não é um {self.expected_type.__name__} válido. Valor recebido: {value}."
-                )
-        elif self.expected_type is bool and isinstance(value, int):
-            # Booleanos
-            # Converting int to bool (0 is False, otherwise is True)
-            value = bool(value)
-        elif self.expected_type is datetime.datetime and isinstance(
-            value, datetime.date
-        ):
-            # Datetime
-            # Assumindo hora 0, minuto 0 e segundo 0 (quanto é recebida uma data para campo data + hora)
-            value = datetime.datetime(value.year, value.month, value.day, 0, 0, 0)
-        elif self.expected_type is datetime.date and isinstance(
-            value, datetime.datetime
-        ):
-            # Date
-            # Desprezando hora , minuto e segundo (quanto é recebida uma data + hora, para campo de data)
-            value = datetime.date(value.year, value.month, value.day)
-        elif self.expected_type is uuid.UUID and isinstance(value, str):
-            # UUID
-            # Verificando se pode ser alterado de str para UUID
-            match_uuid = matcher_uuid.search(value)
-
-            if match_uuid:
-                value = uuid.UUID(value)
-            else:
-                erro_tipo = True
-        elif self.expected_type is int:
-            # Int
-            try:
-                value = int(value)
-            except:
-                erro_tipo = True
-        elif self.expected_type is float:
-            # Int
-            try:
-                value = float(value)
-            except:
-                erro_tipo = True
-        elif self.expected_type is Decimal:
-            # Int
-            try:
-                value = Decimal(value)
-            except:
-                erro_tipo = True
-        elif self.expected_type is str:
-            # Int
-            try:
-                value = str(value)
-            except:
-                erro_tipo = True
-        else:
-            erro_tipo = True
-
-        if erro_tipo:
-            raise ValueError(
-                f"{self.storage_name} deve ser do tipo {self.expected_type.__name__}. Valor recebido: {value}."
-            )
-
-        return value
-
-    def _convert_enum_from_entity(self, value: Any):
-        lista_enum = list(self.expected_type)
-
-        # Se o enum estiver vazio
-        if len(lista_enum) <= 0:
-            return None
-
-        # Verificando o tipo dos valores do enum
-        if isinstance(lista_enum[0].value, tuple):
-            for item in self.expected_type:
-                lista_valores = list(item.value)
-                for valor in lista_valores:
-                    # Testando se casa com o valor
-                    if valor == value:
-                        return item
-
-                    # Se o valor for string, testa inclusive em caixa alta e baixa
-                    if isinstance(value, str):
-                        if valor == value.lower() or valor == value.upper():
-                            return item
-            raise ValueError
-        else:
-            # Tentando pelo valor do próprio enum (e testando os casos, se for str)
-            if isinstance(value, str):
-                try:
-                    return self.expected_type(value)
-                except ValueError:
-                    try:
-                        return self.expected_type(value.lower())
-                    except ValueError:
-                        return self.expected_type(value.upper())
-            else:
-                return self.expected_type(value)

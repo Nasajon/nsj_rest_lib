@@ -1,8 +1,6 @@
 import enum
 import typing
 
-from decimal import Decimal
-
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import DTOListFieldConfigException

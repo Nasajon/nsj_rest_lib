@@ -7,6 +7,11 @@ from flask import g
 
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.descriptor.dto_field import DTOFieldFilter
+from nsj_rest_lib.descriptor.dto_left_join_field import (
+    DTOLeftJoinField,
+    EntityRelationOwner,
+    LeftJoinQuery,
+)
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.dto.after_insert_update_data import AfterInsertUpdateData
@@ -45,7 +50,7 @@ class ServiceBase:
         self,
         id: str,
         partition_fields: Dict[str, Any],
-        fields: Dict[str, List[str]],
+        fields: Dict[str, Set[str]],
     ) -> DTOBase:
         # Resolving fields
         fields = self._resolving_fields(fields)
@@ -84,6 +89,14 @@ class ServiceBase:
         # Tratando das propriedades de lista
         if len(self._dto_class.list_fields_map) > 0:
             self._retrieve_related_lists([dto], fields)
+
+        # Tratando das propriedades de relacionamento left join
+        if len(self._dto_class.left_join_fields_map) > 0:
+            self._retrieve_left_join_fields(
+                [dto],
+                fields,
+                partition_fields,
+            )
 
         return dto
 
@@ -340,6 +353,15 @@ class ServiceBase:
         # Retrieving related lists
         if len(self._dto_class.list_fields_map) > 0:
             self._retrieve_related_lists(dto_list, fields)
+
+        # Tratando das propriedades de relacionamento left join
+        # TODO Verificar se está certo passar os filtros como campos de partição
+        if len(self._dto_class.left_join_fields_map) > 0:
+            self._retrieve_left_join_fields(
+                dto_list,
+                fields,
+                filters,
+            )
 
         # Returning
         return dto_list
@@ -1001,3 +1023,121 @@ class ServiceBase:
                     manage_transaction=False,
                     additional_filters=additional_filters,
                 )
+
+    def _retrieve_left_join_fields(
+        self,
+        dto_list: List[DTOBase],
+        fields: Dict[str, Set[str]],
+        partition_fields: Dict[str, Any],
+    ):
+        # Tratando cada dto recebido
+        for dto in dto_list:
+            # Tratando cada tipo de entidade relacionada
+            left_join_fields_map_to_query = getattr(
+                dto.__class__, "left_join_fields_map_to_query", {}
+            )
+            for left_join_query_key in left_join_fields_map_to_query:
+                left_join_query: LeftJoinQuery = left_join_fields_map_to_query[
+                    left_join_query_key
+                ]
+
+                # Verificando os fields de interesse
+                fields_necessarios = set()
+                for field in left_join_query.fields:
+                    if field in fields["root"]:
+                        fields_necessarios.add(field)
+
+                # Se nenhum dos fields registrados for pedido, ignora esse relacioanemtno
+                if len(fields_necessarios) <= 0:
+                    continue
+
+                # Getting related service instance
+                # TODO Refatorar para suportar services customizados
+                service = ServiceBase(
+                    self._injector_factory,
+                    DAOBase(
+                        self._injector_factory.db_adapter(),
+                        left_join_query.related_entity,
+                    ),
+                    left_join_query.related_dto,
+                    left_join_query.related_entity,
+                )
+
+                # Montando a lista de campos a serem recuperados na entidade relacionada
+                related_fields = set()
+                for left_join_field in left_join_query.left_join_fields:
+
+                    # Ignorando os campos que não estejam no retorno da query
+                    if left_join_field.name not in fields_necessarios:
+                        continue
+
+                    related_fields.add(left_join_field.related_dto_field)
+
+                related_fields = {"root": related_fields}
+
+                # Verificando quem é o dono do relacionamento, e recuperando o DTO relcaionado
+                # da forma correspondente
+                related_dto = None
+                if left_join_query.entity_relation_owner == EntityRelationOwner.OTHER:
+                    # Checking if pk_field exists
+                    if self._dto_class.pk_field is None:
+                        raise DTOListFieldConfigException(
+                            f"PK field not found in class: {self._dto_class}"
+                        )
+
+                    # Montando os filtros para recuperar o objeto relacionado
+                    related_filters = {
+                        left_join_query.left_join_fields[0].relation_field: getattr(
+                            dto, self._dto_class.pk_field
+                        )
+                    }
+
+                    # Recuperando a lista de DTOs relacionados (com um único elemento; limit=1)
+                    related_dto = service.list(
+                        None,
+                        1,
+                        related_fields,
+                        None,
+                        related_filters,
+                    )
+                    if len(related_dto) > 0:
+                        related_dto = related_dto[0]
+                    else:
+                        related_dto = None
+
+                elif left_join_query.entity_relation_owner == EntityRelationOwner.SELF:
+                    # Checking if pk_field exists
+                    if (
+                        getattr(left_join_query.related_dto, "pk_field")
+                        is None
+                    ):
+                        raise DTOListFieldConfigException(
+                            f"PK field not found in class: {left_join_query.related_dto}"
+                        )
+
+                    # Recuperando a PK da entidade relacionada
+                    related_pk = getattr(
+                        dto, left_join_query.left_join_fields[0].relation_field
+                    )
+
+                    # Recuperando o DTO relacionado
+                    related_dto = service.get(
+                        related_pk, partition_fields, related_fields
+                    )
+                else:
+                    raise Exception(
+                        f"Tipo de relacionamento (left join) não identificado: {left_join_query.entity_relation_owner}."
+                    )
+
+                # Copiando os campos necessários
+                for field in fields_necessarios:
+                    # Recuperando a configuração do campo left join
+                    left_join_field: DTOLeftJoinField = dto.left_join_fields_map[field]
+
+                    # Recuperando o valor da propriedade no DTO relacionado
+                    field_value = getattr(
+                        related_dto, left_join_field.related_dto_field
+                    )
+
+                    # Gravando o valor no DTO de interesse
+                    setattr(dto, field, field_value)
