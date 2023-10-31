@@ -56,7 +56,7 @@ HealthCheckConfig(
 ).config(check_database=True, check_rabbit_mq=False)
 ```
 
-###[EntityBase](src/nsj_rest_lib/entity/entity_base.py)
+### [EntityBase](src/nsj_rest_lib/entity/entity_base.py)
 `EntityBase` é uma classe abstrata genérica para representar entidades no banco de dados. Ele fornece um modelo flexível para criar classes de entidade específicas. As subclasses devem herdar desta classe e implementar os métodos para configurar os detalhes da tabela no banco de dados.
 
 <!-- #### Atributos:
@@ -110,10 +110,10 @@ class ClienteEntity(EntityBase):
             "cliente": "cliente"
         }
 ```
-###[Filter](src/nsj_rest_lib/entity/filter.py)
+### [Filter](src/nsj_rest_lib/entity/filter.py)
 A classe `Filter` é uma representação de um filtro que pode ser aplicado a uma consulta em um banco de dados ou a uma coleção de dados. Um filtro é composto por um FilterOperator e um valor que será usado para realizar a comparação.
 
-####Enumeração FilterOperator
+#### Enumeração FilterOperator
 ```
 EQUALS = "equals"
 DIFFERENT = "diferent"
@@ -133,9 +133,9 @@ from nsj_rest_lib.entity.filter import Filter, FilterOperator
 Filter(FilterOperator.EQUALS, 'value')
 ```
 
-###[DAO](src/nsj_rest_lib/dao/dao_base.py)
+### [DAO](src/nsj_rest_lib/dao/dao_base.py)
 `DAOBase` é uma classe genérica que serve como um Data Access Object (DAO) para simplificar o processo de interação com o banco de dados.
-###Métodos:
+#### Métodos:
 - `__init__`(self, db: DBAdapter2, entity_class: EntityBase) -> None: Construtor da classe DAOBase. Inicializa um objeto DAOBase com uma instância de DBAdapter2 e uma classe de entidade (EntityBase) associada.
 
 - `begin(self)` -> None: Inicia uma nova transação no banco de dados.
@@ -164,10 +164,10 @@ Filter(FilterOperator.EQUALS, 'value')
 
 - `is_valid_uuid(self, value)` -> bool: Verifica se um valor é um UUID válido.
 
-###[DTO](src/nsj_rest_lib/dto/dto_base.py)
+### [DTO](src/nsj_rest_lib/dto/dto_base.py)
 `DTOBase` é uma classe abstrata que representa um Data Transfer Object (DTO) usado para transferir dados entre a camada de apresentação e a camada de serviço de uma aplicação. É especialmente útil em operações onde uma entidade de banco de dados precisa ser convertida em um formato adequado para interações com a interface do usuário.
 
-####Atributos:
+#### Atributos:
 - `resume_fields: Set[str]` - Conjunto de campos que devem ser incluídos na visualização resumida do DTO.
 - `partition_fields: Set[str]` - Conjunto de campos utilizados para particionamento de dados.
 - `fields_map: Dict[str, DTOField]` - Dicionário mapeando nomes de atributos do DTO para configurações de campos correspondentes.
@@ -181,15 +181,15 @@ Filter(FilterOperator.EQUALS, 'value')
 - `uniques: Dict[str, Set[str]]` - Dicionário mapeando nomes de campos únicos para um conjunto de valores únicos.
 - `candidate_keys: List[str]` - Lista de nomes de campos que juntos formam uma chave candidata única.
 
-####Métodos:
+#### Métodos:
 - `__init__(self, entity: Union[EntityBase, dict] = None, escape_validator: bool = False, generate_default_pk_value: bool = True, **kwargs)` -> None: Construtor da classe DTOBase que inicializa um objeto DTOBase com base em uma entidade ou um dicionário de dados, permitindo determinar se a validação deve ser ignorada e se o valor da PK deve ser gerado se não for fornecido.
 - `convert_to_entity(self, entity_class: EntityBase, none_as_empty: bool = False)` -> EntityBase - Converte o DTO para uma instância da entidade associada.
 - `convert_to_dict(self, fields: Dict[str, List[str]] = None, just_resume: bool = False)` -> Dict - Converte o DTO para um dicionário, permitindo especificar campos para inclusão e se deve ser uma visualização resumida.
 
-####DTOField
+#### DTOField
 A classe `DTOField` representa uma propriedade de um objeto DTO e define várias configurações para essa propriedade, como tipo esperado, validações, formatações, entre outras. As validações personalizadas são acessadas em [DTOFieldValidators](src/nsj_rest_lib/descriptor/dto_field_validators.py). A classe `DTOFieldFilter` representa um filtro que pode ser aplicado a uma propriedade DTO para consultas.
 
-#####Parâmetros:
+##### Parâmetros:
 - `type [object = None]`: Tipo esperado para a propriedade. Se for do tipo enum.Enum, o valor recebido será convertido para o enumerado.
 - `not_null [bool = False]`: Indica se o campo não pode ser None ou vazio (no caso de strings).
 - `resume [bool = False]`: Indica se o campo será usado como resumo, sempre retornado em consultas GET que listam os dados.
@@ -225,9 +225,9 @@ criado_em: datetime.datetime = DTOField(
     )
 ```
 
-###Controllers
+### Controllers
 
-####[get_route](src/nsj_rest_lib/controller/get_route.py)
+#### [get_route](src/nsj_rest_lib/controller/get_route.py)
 
 **Exemplo:**
 ```
@@ -241,7 +241,7 @@ from nsj_rest_lib.controller.get_route import GetRoute
 )
 ```
 
-####[list_route](src/nsj_rest_lib/controller/list_route.py)
+#### [list_route](src/nsj_rest_lib/controller/list_route.py)
 ***Exemplo:***
 ```
 from nsj_rest_lib.controller.list_route import ListRoute
@@ -254,7 +254,7 @@ from nsj_rest_lib.controller.list_route import ListRoute
 )
 ```
 
-####[post_route](src/nsj_rest_lib/controller/post_route.py)
+#### [post_route](src/nsj_rest_lib/controller/post_route.py)
 ***Exemplo:***
 ```
 from nsj_rest_lib.controller.post_route import PostRoute
@@ -268,7 +268,7 @@ from nsj_rest_lib.controller.post_route import PostRoute
 )
 ```
 
-####[put_route](src/nsj_rest_lib/controller/put_route.py)
+#### [put_route](src/nsj_rest_lib/controller/put_route.py)
 ***Exemplo:***
 ```
 from nsj_rest_lib.controller.put_route import PutRoute
@@ -281,7 +281,7 @@ from nsj_rest_lib.controller.put_route import PutRoute
 )
 ```
 
-####[delete_route](src/nsj_rest_lib/controller/delete_route.py)
+#### [delete_route](src/nsj_rest_lib/controller/delete_route.py)
 ***Exemplo:***
 ```
 from nsj_rest_lib.controller.delete_route import DeleteRoute
