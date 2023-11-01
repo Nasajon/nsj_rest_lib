@@ -10,6 +10,7 @@ Biblioteca para construção de APIs Rest Python, de acordo com o guidelines int
 | APP_NAME          | Sim                 | Nome da aplicação.                                                                                                                      |
 | DEFAULT_PAGE_SIZE | Não (padrão: 20)    | Quantidade máxima de items retonardos numa página de dados                                                                                                                           
 | USE_SQL_RETURNING_CLAUSE | Não (padrão: true)    | Montagem das cláusulas returning
+| TESTS_TENANT | Sim    | Código do tenant obrigatório para rodar os testes
 
 #### Variáveis de banco
 
@@ -295,3 +296,81 @@ from nsj_rest_lib.controller.delete_route import DeleteRoute
     service_name="cliente_service",
 )
 ```
+
+## Testes Automatizados
+``` 
+src/
+│...
+├── tests/
+│   ├── api/
+│   │   ├── casos_de_teste/
+│   │   │   ├── clientes/
+│   │   │   │   ├── delete/
+│   │   │   │   │   ├── entradas_json/
+│   │   │   │   │   │   ├── exemplo1_204.json
+│   │   │   │   │   ├── saidas_json/
+│   │   │   │   │   │   ├── exemplo1_204.json
+│   │   │   │   │   ├── test_clientes_delete.py
+│   │   │   │   ├── get/
+│   │   │   │   │   ├── entradas_json/
+│   │   │   │   │   │   ├── exemplo1_200.json
+│   │   │   │   │   ├── saidas_json/
+│   │   │   │   │   │   ├── exemplo1_200.json
+│   │   │   │   │   ├── test_clientes_get.py
+│   │   │   │   ├── post/
+│   │   │   │   │   ├── entradas_json/
+│   │   │   │   │   │   ├── exemplo1_201.json
+│   │   │   │   │   ├── saidas_json/
+│   │   │   │   │   │   ├── exemplo1_201.json
+│   │   │   │   │   ├── test_clientes_post.py
+│   │   │   │   ├── put/
+│   │   │   │   │   ├── entradas_json/
+│   │   │   │   │   │   ├── exemplo1_204.json
+│   │   │   │   │   ├── saidas_json/
+│   │   │   │   │   │   ├── exemplo1_204.json
+│   │   │   │   │   ├── test_clientes_put.py
+│   │   │   ├── dump_sql/
+│   │   │   │   ├── global.sql             
+``` 
+### Montando o ambiente
+* Instalar todas as dependências do projeto.
+```
+pip install -r requirements.txt
+```
+* Subir o container do banco de testes, para cada teste pode ou não rodar o script contido no `global.sql`, basta configurar no `pre_setup` conforme necessidade.
+``` 
+docker-compose up -d postgres 
+```
+* Na configuração do Debug (launch.json), configure o Flask e o Pytest. Certifique-se de que o Flask esteja em execução para o Pytest funcionar corretamente.
+```
+    {
+        "name": "Python: Flask",
+        "type": "python",
+        "request": "launch",
+        "module": "flask",
+        "env": {
+            "FLASK_APP": "src/nsj_rest_lib/wsgi.py",
+            "FLASK_DEBUG": "1"
+        },
+        "args": [
+            "run",
+            "--no-debugger",
+            "--no-reload"
+        ],
+        "jinja": true,
+        "justMyCode": true
+    },
+    {
+        "name": "Pytest",
+        "type": "python",
+        "request": "launch",
+        "module": "pytest",
+        "args": [
+            "-s",
+            "tests/api/casos_de_teste"
+        ]
+    }
+```
+### Criação dos testes
+Para a criação dos casos de testes de forma automática pode seguir o exemplo ["Criação de caso de teste"](https://github.com/Nasajon/nsj-rest-test-util#cria%C3%A7%C3%A3o-de-caso-de-teste).
+Neste contexto, foram desenvolvidos testes para entidade de clientes ([DELETE](tests/api/casos_de_teste/clientes/delete/test_clientes_delete.py), [GET](tests/api/casos_de_teste/clientes/get/test_clientes_get.py), [POST](tests/api/casos_de_teste/clientes/post/test_clientes_post.py) e [PUT](tests/api/casos_de_teste/clientes/put/test_clientes_put.py)).

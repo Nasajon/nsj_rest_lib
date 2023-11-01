@@ -1,7 +1,11 @@
 import logging
 import os
 
+from flask import Flask
+
 # Lendo variáveis de ambiente
+APP_NAME = os.getenv('APP_NAME', 'nsj_rest_lib')
+MOPE_CODE = os.environ['MOPE_CODE']
 DEFAULT_PAGE_SIZE = int(os.getenv('DEFAULT_PAGE_SIZE', 20))
 USE_SQL_RETURNING_CLAUSE = (
     os.getenv('USE_SQL_RETURNING_CLAUSE', 'true').lower() == 'true')
@@ -19,5 +23,6 @@ CLOUD_SQL_CONN_NAME = os.getenv('CLOUD_SQL_CONN_NAME', '')
 ENV = os.getenv('ENV', '')
 
 def get_logger():
-    APP_NAME = os.getenv('APP_NAME', 'nsj_rest_lib')
     return logging.getLogger(APP_NAME)
+
+application = Flask('app')
