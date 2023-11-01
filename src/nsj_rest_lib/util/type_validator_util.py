@@ -118,23 +118,24 @@ class TypeValidatorUtil:
             except:
                 erro_tipo = True
         elif obj.expected_type is float:
-            # Int
+            # Float
             try:
                 value = float(value)
             except:
                 erro_tipo = True
         elif obj.expected_type is Decimal:
-            # Int
+            # Decimal
             try:
                 value = Decimal(value)
             except:
                 erro_tipo = True
         elif obj.expected_type is str:
-            # Int
-            try:
-                value = str(value)
-            except:
-                erro_tipo = True
+            # String
+            if value is not None:
+                try:
+                    value = str(value)
+                except:
+                    erro_tipo = True
         else:
             erro_tipo = True
 

@@ -369,3 +369,18 @@ class DTOBase(abc.ABC):
             ]
 
         return result
+
+    def get_entity_field_name(self, dto_field_name: str) -> str:
+        """
+        Retorna o nome correspondente do field no entity
+        (o qual é o nome do field no DTO por padrão, ou o nome que for
+        passado no parâmetro "entity_field" no construtor).
+
+        Retorna None, se o "dto_field_name" não for achado como um dos
+        fields registrados.
+        """
+
+        if dto_field_name not in self.fields_map:
+            return None
+
+        return self.fields_map[dto_field_name].get_entity_field_name()

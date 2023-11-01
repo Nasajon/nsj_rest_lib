@@ -19,6 +19,7 @@ class DTOListField:
         max: int = None,
         validator: typing.Callable = None,
         dto_post_response_type: DTOBase = None,
+        relation_key_field: str = None,
     ):
         """
         -----------
@@ -30,8 +31,10 @@ class DTOListField:
         min: Minimum number of itens in the list.
         max: Maximum number of itens in the list.
         validator: Function that receives the value (to be setted), and returns the same value (after any adjust).
-          This function overrides the default behaviour and all default constraints.
+            This function overrides the default behaviour and all default constraints.
         related_entity_field: Fields, from related entity, used for relation in database.
+        relation_key_field: Nome do campo, no DTO corrente, utilizado como chave de apontamento no relacionamento
+            (isso é, campo para o qual a entidade, do lado N, aponta via FK).
         """
         self.name = None
         self.dto_type = dto_type
@@ -42,6 +45,7 @@ class DTOListField:
         self.max = max
         self.validator = validator
         self.dto_post_response_type = dto_post_response_type
+        self.relation_key_field = relation_key_field
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
