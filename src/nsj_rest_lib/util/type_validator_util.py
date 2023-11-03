@@ -90,6 +90,10 @@ class TypeValidatorUtil:
             # Booleanos
             # Converting int to bool (0 is False, otherwise is True)
             value = bool(value)
+        elif obj.expected_type is bool and isinstance(value, str):
+            # Booleanos
+            # Converting str to bool
+            value = value.lower() == "true"
         elif obj.expected_type is datetime.datetime and isinstance(
             value, datetime.date
         ):
