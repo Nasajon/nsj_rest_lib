@@ -81,7 +81,7 @@ class TypeValidatorUtil:
         elif isinstance(obj.expected_type, enum.EnumMeta):
             # Enumerados
             try:
-                value = TypeValidatorUtil._convert_enum_from_entity(value)
+                value = TypeValidatorUtil.convert_enum_from_entity(obj, value)
             except ValueError:
                 raise ValueError(
                     f"{obj.storage_name} não é um {obj.expected_type.__name__} válido. Valor recebido: {value}."
