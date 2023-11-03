@@ -334,6 +334,14 @@ class ServiceBase:
 
         entity_filters = self._create_entity_filters(all_filters)
 
+        # Resolve o campo de chave sendo utilizado
+        entity_key_field, entity_id_value = (None, None)
+        if after is not None:
+            entity_key_field, entity_id_value = self._resolve_field_key(
+                after,
+                filters,
+            )
+
         # Retrieving from DAO
         entity_list = self._dao.list(
             after,
@@ -343,6 +351,8 @@ class ServiceBase:
             entity_filters,
             conjunto_type=self._dto_class.conjunto_type,
             conjunto_field=self._dto_class.conjunto_field,
+            entity_key_field=entity_key_field,
+            entity_id_value=entity_id_value,
         )
 
         # Convertendo para uma lista de DTOs

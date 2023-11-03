@@ -262,6 +262,8 @@ class DAOBase:
         filters: Dict[str, List[Filter]],
         conjunto_type: ConjuntoType = None,
         conjunto_field: str = None,
+        entity_key_field: str = None,
+        entity_id_value: any = None,
     ) -> List[EntityBase]:
         """
         Returns a paginated entity list.
@@ -282,7 +284,10 @@ class DAOBase:
 
         if after is not None:
             try:
-                after_obj = self.get(entity.get_pk_field(), after, fields)
+                if entity_key_field is None:
+                    after_obj = self.get(entity.get_pk_field(), after, fields)
+                else:
+                    after_obj = self.get(entity_key_field, entity_id_value, fields)
             except NotFoundException as e:
                 raise AfterRecordNotFoundException(
                     f"Identificador recebido no parâmetro after {id}, não encontrado para a entidade {self._entity_class.__name__}."
