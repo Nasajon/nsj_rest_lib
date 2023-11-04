@@ -25,6 +25,8 @@ from nsj_rest_lib.exception import (
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.validator.validate_data import validate_uuid
 
+from nsj_gcf_utils.db_adapter2 import DBAdapter2
+
 
 class ServiceBase:
     _dao: DAOBase
@@ -45,6 +47,30 @@ class ServiceBase:
         self._dto_post_response_class = dto_post_response_class
         self._created_by_property = "criado_por"
         self._updated_by_property = "atualizado_por"
+
+    @staticmethod
+    def construtor1(
+        db_adapter: DBAdapter2,
+        dao: DAOBase,
+        dto_class: DTOBase,
+        entity_class: EntityBase,
+        dto_post_response_class: DTOBase = None,
+    ):
+        """
+        Esse construtor alternativo, evita a necessidade de passar um InjectorFactory,
+        pois esse só é usado (internamente) para recuperar um db_adapter.
+
+        Foi feito para não gerar breaking change de imediato (a ideia porém é, no futuro,
+        gerar um breaking change).
+        """
+
+        class FakeInjectorFactory:
+            def db_adapter():
+                return db_adapter
+
+        return ServiceBase(
+            FakeInjectorFactory(), dao, dto_class, entity_class, dto_post_response_class
+        )
 
     def get(
         self,
