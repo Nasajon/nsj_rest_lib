@@ -165,6 +165,8 @@ class DAOBase:
             for filter_field in filters:
                 field_filter_where_or = []
                 field_filter_where_and = []
+                field_filter_where_in = []
+                field_filter_where_not_in = []
 
                 # Iterating condictions
                 idx = -1
@@ -211,10 +213,16 @@ class DAOBase:
                         )
 
                     # Storing field filter where
-                    if operator == "=" or operator == "like" or operator == "ilike":
-                        field_filter_where_or.append(condiction_buffer)
+                    if len(filters[filter_field]) > 1 or (isinstance(condiction.value, set) and len(condiction.value) > 1):
+                        if operator == "=":
+                            field_filter_where_in.append(condiction_alias_subtituir)
+                        elif operator == "<>":
+                            field_filter_where_not_in.append(condiction_alias_subtituir)    
                     else:
-                        field_filter_where_and.append(condiction_buffer)
+                        if operator == "=" or operator == "like" or operator == "ilike":
+                            field_filter_where_or.append(condiction_buffer)
+                        else:
+                            field_filter_where_and.append(condiction_buffer)
 
                     # Storing condiction value
                     if condiction.value is not None:
@@ -228,7 +236,10 @@ class DAOBase:
                                     condiction_alias
                                 ] = condiction.value.value
                         else:
-                            filter_values_map[condiction_alias] = condiction.value
+                            if isinstance(condiction.value, set) and len(condiction.value) > 1:
+                                filter_values_map[condiction_alias] = ', '.join(str(value) for value in condiction.value)
+                            else:
+                                filter_values_map[condiction_alias] = condiction.value
 
                     if operator == "like" or operator == "ilike":
                         filter_values_map[
@@ -238,6 +249,13 @@ class DAOBase:
                 # Formating condictions (with OR)
                 field_filter_where_or = " or ".join(field_filter_where_or)
                 field_filter_where_and = " and ".join(field_filter_where_and)
+                if field_filter_where_in:
+                    field_filter_where_in = f"t0.{filter_field} in ({', '.join(field_filter_where_in)})"
+                    filters_where.append(field_filter_where_in)
+                if field_filter_where_not_in:
+                    field_filter_where_not_in = f"t0.{filter_field} not in ({', '.join(field_filter_where_not_in)})"
+                    filters_where.append(field_filter_where_not_in)                
+
                 if field_filter_where_or.strip() != "":
                     field_filter_where_or = f"({field_filter_where_or})"
                     filters_where.append(field_filter_where_or)
