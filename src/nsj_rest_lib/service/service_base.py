@@ -334,6 +334,15 @@ class ServiceBase:
 
         return result
 
+    def filter_list(self, filters: Dict[str, Any]):
+        return self.list(
+            None,
+            None,
+            {"root": set()},
+            None,
+            filters,
+        )
+
     def list(
         self,
         after: uuid.UUID,
