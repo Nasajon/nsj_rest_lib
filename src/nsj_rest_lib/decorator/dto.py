@@ -27,7 +27,7 @@ class DTO:
                 "Os parâmetros conjunto_type e conjunto_field devem ser preenchidos juntos (se um for não nulo, ambos devem ser preenchidos)."
             )
 
-    def __call__(self, cls: object):
+    def __call__(self, cls):
         """
         Iterating DTO class to handle DTOFields descriptors.
         """
