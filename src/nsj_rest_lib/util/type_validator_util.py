@@ -130,7 +130,7 @@ class TypeValidatorUtil:
         elif obj.expected_type is Decimal:
             # Decimal
             try:
-                value = Decimal(value)
+                value = Decimal(str(value))
             except:
                 erro_tipo = True
         elif obj.expected_type is str:
