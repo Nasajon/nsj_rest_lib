@@ -2,7 +2,7 @@ name: Upload da documentação para o Atendimento via ChatGPT
 
 on:
   push:
-    branches: ["master"]
+    branches: ["main"]
 
 jobs:
   deploy:
