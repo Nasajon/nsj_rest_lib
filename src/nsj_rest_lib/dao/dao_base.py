@@ -280,7 +280,7 @@ class DAOBase:
         order_fields_alias = [f"t0.{i}" for i in order_fields]
 
         # Resolving data to pagination
-        order_map = {field: None for field in order_fields}
+        order_map = {field.replace('desc','').replace('asc','').strip(): None for field in order_fields}
 
         if after is not None:
             try:
@@ -295,7 +295,7 @@ class DAOBase:
 
             if after_obj is not None:
                 for field in order_fields:
-                    order_map[field] = getattr(after_obj, field, None)
+                    order_map[field.replace('desc','').replace('asc','').strip()] = getattr(after_obj, field.replace('desc','').replace('asc','').strip(), None)
 
         # Making default order by clause
         order_by = f"""
@@ -316,11 +316,11 @@ class DAOBase:
 
                 # Making current more than condiction
                 list_page_where.append(
-                    f"({buffer_old_fields} and t0.{field} > :{field})"
+                    f"({buffer_old_fields} and t0.{field.replace('desc','').replace('asc','').strip()} > :{field.replace('desc','').replace('asc','').strip()})"
                 )
 
                 # Storing current field as old
-                old_fields.append(field)
+                old_fields.append(field.replace('desc','').replace('asc','').strip())
 
             # Making SQL page condiction
             pagination_where = f"""
