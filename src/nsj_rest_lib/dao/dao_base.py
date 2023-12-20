@@ -316,7 +316,7 @@ class DAOBase:
 
                 # Making current more than condiction
                 list_page_where.append(
-                    f"({buffer_old_fields} and t0.{field.replace('desc','').replace('asc','').strip()} > :{field.replace('desc','').replace('asc','').strip()})"
+                    f"({buffer_old_fields} and t0.{field.replace('desc','').replace('asc','').strip()} {'<' if 'desc' in field else '>'} :{field.replace('desc','').replace('asc','').strip()})"
                 )
 
                 # Storing current field as old
