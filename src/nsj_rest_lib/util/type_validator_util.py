@@ -81,7 +81,7 @@ class TypeValidatorUtil:
         elif isinstance(obj.expected_type, enum.EnumMeta):
             # Enumerados
             try:
-                value = TypeValidatorUtil._convert_enum_from_entity(value)
+                value = TypeValidatorUtil.convert_enum_from_entity(obj, value)
             except ValueError:
                 raise ValueError(
                     f"{obj.storage_name} não é um {obj.expected_type.__name__} válido. Valor recebido: {value}."
@@ -90,6 +90,10 @@ class TypeValidatorUtil:
             # Booleanos
             # Converting int to bool (0 is False, otherwise is True)
             value = bool(value)
+        elif obj.expected_type is bool and isinstance(value, str):
+            # Booleanos
+            # Converting str to bool
+            value = value.lower() == "true"
         elif obj.expected_type is datetime.datetime and isinstance(
             value, datetime.date
         ):
@@ -118,23 +122,24 @@ class TypeValidatorUtil:
             except:
                 erro_tipo = True
         elif obj.expected_type is float:
-            # Int
+            # Float
             try:
                 value = float(value)
             except:
                 erro_tipo = True
         elif obj.expected_type is Decimal:
-            # Int
+            # Decimal
             try:
-                value = Decimal(value)
+                value = Decimal(str(value))
             except:
                 erro_tipo = True
         elif obj.expected_type is str:
-            # Int
-            try:
-                value = str(value)
-            except:
-                erro_tipo = True
+            # String
+            if value is not None:
+                try:
+                    value = str(value)
+                except:
+                    erro_tipo = True
         else:
             erro_tipo = True
 

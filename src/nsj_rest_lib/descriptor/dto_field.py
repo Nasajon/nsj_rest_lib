@@ -180,3 +180,15 @@ class DTOField:
             value = value.strip()
 
         return value
+
+    def get_entity_field_name(self) -> str:
+        """
+        Retorna o nome correspondente do field no entity
+        (o qual é o nome do field no DTO por padrão, ou o nome que for
+        passado no parâmetro "entity_field" no construtor).
+        """
+
+        if self.entity_field is not None:
+            return self.entity_field
+        else:
+            return self.name

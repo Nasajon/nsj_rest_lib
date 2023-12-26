@@ -25,6 +25,8 @@ from nsj_rest_lib.exception import (
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.validator.validate_data import validate_uuid
 
+from nsj_gcf_utils.db_adapter2 import DBAdapter2
+
 
 class ServiceBase:
     _dao: DAOBase
@@ -45,6 +47,30 @@ class ServiceBase:
         self._dto_post_response_class = dto_post_response_class
         self._created_by_property = "criado_por"
         self._updated_by_property = "atualizado_por"
+
+    @staticmethod
+    def construtor1(
+        db_adapter: DBAdapter2,
+        dao: DAOBase,
+        dto_class: DTOBase,
+        entity_class: EntityBase,
+        dto_post_response_class: DTOBase = None,
+    ):
+        """
+        Esse construtor alternativo, evita a necessidade de passar um InjectorFactory,
+        pois esse só é usado (internamente) para recuperar um db_adapter.
+
+        Foi feito para não gerar breaking change de imediato (a ideia porém é, no futuro,
+        gerar um breaking change).
+        """
+
+        class FakeInjectorFactory:
+            def db_adapter():
+                return db_adapter
+
+        return ServiceBase(
+            FakeInjectorFactory(), dao, dto_class, entity_class, dto_post_response_class
+        )
 
     def get(
         self,
@@ -308,6 +334,15 @@ class ServiceBase:
 
         return result
 
+    def filter_list(self, filters: Dict[str, Any]):
+        return self.list(
+            None,
+            None,
+            {"root": set()},
+            None,
+            filters,
+        )
+
     def list(
         self,
         after: uuid.UUID,
@@ -334,6 +369,14 @@ class ServiceBase:
 
         entity_filters = self._create_entity_filters(all_filters)
 
+        # Resolve o campo de chave sendo utilizado
+        entity_key_field, entity_id_value = (None, None)
+        if after is not None:
+            entity_key_field, entity_id_value = self._resolve_field_key(
+                after,
+                filters,
+            )
+
         # Retrieving from DAO
         entity_list = self._dao.list(
             after,
@@ -343,6 +386,8 @@ class ServiceBase:
             entity_filters,
             conjunto_type=self._dto_class.conjunto_type,
             conjunto_field=self._dto_class.conjunto_field,
+            entity_key_field=entity_key_field,
+            entity_id_value=entity_id_value,
         )
 
         # Convertendo para uma lista de DTOs
@@ -398,11 +443,15 @@ class ServiceBase:
                             f"PK field not found in DTO: {self._dto_class}"
                         )
 
+                    # Resolvendo a chave do relacionamento
+                    relation_key_field = self._dto_class.pk_field
+                    if list_field.relation_key_field is not None:
+                        relation_key_field = list_field.relation_key_field
+
                     # Making filter to relation
                     filters = {
-                        # TODO Adicionar os campos de particionamento de dados
                         list_field.related_entity_field: getattr(
-                            dto, self._dto_class.pk_field
+                            dto, relation_key_field
                         )
                     }
 
@@ -760,20 +809,26 @@ class ServiceBase:
                 list_field.dto_post_response_type,
             )
 
+            # Resolvendo a chave do relacionamento
+            relation_key_field = entity.get_pk_field()
+            if list_field.relation_key_field is not None:
+                relation_key_field = dto.get_entity_field_name(
+                    list_field.relation_key_field
+                )
+
             # Recuperando o valor da PK da entidade principal
-            entity_pk_field = entity.get_pk_field()
-            pk_value = getattr(entity, entity_pk_field)
+            relation_key_value = getattr(entity, relation_key_field)
 
             # Montando um mapa com os campos de relacionamento (para gravar nas entidades relacionadas)
             relation_field_map = {
-                list_field.related_entity_field: pk_value,
+                list_field.related_entity_field: relation_key_value,
             }
 
             # Recuperando todos os IDs dos itens de lista já salvos no BD (se for um update)
             old_detail_ids = None
             if not insert:
                 # Montando o filtro para recuperar os objetos detalhe pré-existentes
-                relation_condiction = Filter(FilterOperator.EQUALS, pk_value)
+                relation_condiction = Filter(FilterOperator.EQUALS, relation_key_value)
 
                 relation_filter = {
                     list_field.related_entity_field: [relation_condiction]
@@ -1066,7 +1121,6 @@ class ServiceBase:
                 # Montando a lista de campos a serem recuperados na entidade relacionada
                 related_fields = set()
                 for left_join_field in left_join_query.left_join_fields:
-
                     # Ignorando os campos que não estejam no retorno da query
                     if left_join_field.name not in fields_necessarios:
                         continue
@@ -1107,10 +1161,7 @@ class ServiceBase:
 
                 elif left_join_query.entity_relation_owner == EntityRelationOwner.SELF:
                     # Checking if pk_field exists
-                    if (
-                        getattr(left_join_query.related_dto, "pk_field")
-                        is None
-                    ):
+                    if getattr(left_join_query.related_dto, "pk_field") is None:
                         raise DTOListFieldConfigException(
                             f"PK field not found in class: {left_join_query.related_dto}"
                         )
@@ -1119,6 +1170,9 @@ class ServiceBase:
                     related_pk = getattr(
                         dto, left_join_query.left_join_fields[0].relation_field
                     )
+
+                    if related_pk is None:
+                        continue
 
                     # Recuperando o DTO relacionado
                     related_dto = service.get(

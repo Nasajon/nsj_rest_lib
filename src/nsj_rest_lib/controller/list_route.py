@@ -52,7 +52,17 @@ class ListRoute(RouteBase):
                 # Tratando dos fields
                 fields = args.get("fields")
                 fields = self._parse_fields(fields)
-                url_args = base_url + '?' + '&'.join([f'{arg}={value}' for arg, value in args.items() if arg not in ["limit", "after", "offset", "fields"]])
+                url_args = (
+                    base_url
+                    + "?"
+                    + "&".join(
+                        [
+                            f"{arg}={value}"
+                            for arg, value in args.items()
+                            if arg not in ["limit", "after", "offset", "fields"]
+                        ]
+                    )
+                )
 
                 # Tratando dos filters
                 filters = {}
@@ -83,6 +93,9 @@ class ListRoute(RouteBase):
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
                 dict_data = [dto.convert_to_dict(fields) for dto in data]
 
+                # Recuperando o campo referente à chave primária do DTO
+                pk_field = self._dto_class.pk_field
+
                 # Construindo o corpo da página
                 page = page_body(
                     base_url=url_args,
@@ -90,7 +103,7 @@ class ListRoute(RouteBase):
                     current_after=current_after,
                     current_before=None,
                     result=dict_data,
-                    id_field="id",  # TODO Rever esse parâmetro
+                    id_field=pk_field,
                 )
 
                 # Retornando a resposta da requuisição

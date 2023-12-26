@@ -1,0 +1,23 @@
+name: Upload da documentação para o Atendimento via ChatGPT
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    name: Upload para o Atendimento via ChatGPT
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Subindo manuais para o Chat GPT
+        uses: addnab/docker-run-action@v3
+        with:
+          image: arquiteturansj/nsj-upload-chat
+          options: -v ${{ github.workspace }}:/github/workspace
+          run: |
+            cd /github/workspace
+            python /home/upload_md_chat.py -k ${{ secrets.CHAT_API_KEY }} --repo ${{ github.repository }} --internal-docs TRUE --readme TRUE
