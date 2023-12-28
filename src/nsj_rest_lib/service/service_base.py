@@ -572,10 +572,9 @@ class ServiceBase:
             if manage_transaction:
                 self._dao.begin()
 
+            old_dto = None
             # Recuperando o DTO antes da gravação (apenas se for update, e houver um custom_after_update)
-            if not insert and (
-                custom_after_update is not None or custom_before_update is not None
-            ):
+            if not insert:
                 old_dto = self._retrieve_old_dto(dto, id, aditional_filters)
 
             if custom_before_insert:
@@ -640,12 +639,6 @@ class ServiceBase:
             else:
                 aditional_entity_filters = {}
 
-            # Resolve o campo de chave sendo utilizado
-            entity_key_field, entity_id_value = self._resolve_field_key(
-                id,
-                dto.__dict__,
-            )
-
             # Validando as uniques declaradas
             for unique in self._dto_class.uniques:
                 unique = self._dto_class.uniques[unique]
@@ -654,8 +647,7 @@ class ServiceBase:
                     entity,
                     aditional_entity_filters,
                     unique,
-                    entity_key_field,
-                    entity_id_value,
+                    old_dto,
                 )
 
             # Invocando o DAO
@@ -680,8 +672,8 @@ class ServiceBase:
             else:
                 # Executando o update pelo DAO
                 entity = self._dao.update(
-                    entity_key_field,
-                    entity_id_value,
+                    dto.pk_field,
+                    getattr(old_dto, dto.pk_field),
                     entity,
                     aditional_entity_filters,
                     partial_update,
@@ -945,8 +937,7 @@ class ServiceBase:
         entity: EntityBase,
         entity_filters: Dict[str, List[Filter]],
         unique: Set[str],
-        entity_key_field: str,
-        entity_key_value: Any = None,
+        old_dto: DTOBase,
     ):
         # Tratando dos filtros recebidos (de partição), e adicionando os filtros da unique
         unique_filter = {}
@@ -961,8 +952,8 @@ class ServiceBase:
         unique_entity_filters = self._create_entity_filters(unique_filter)
 
         # Removendo o campo chave, se estiver no filtro
-        if entity_key_field in unique_entity_filters:
-            del unique_entity_filters[entity_key_field]
+        if dto.pk_field in unique_entity_filters:
+            del unique_entity_filters[dto.pk_field]
 
         # Se não há mais campos na unique, não há o que validar
         if len(unique_entity_filters) <= 0:
@@ -972,9 +963,8 @@ class ServiceBase:
         entity_filters = {**entity_filters, **unique_entity_filters}
 
         # Montando filtro de PK diferente (se necessário, isto é, se for update)
-        if entity_key_value is not None:
-            filters_pk = entity_filters.setdefault(entity_key_field, [])
-            filters_pk.append(Filter(FilterOperator.DIFFERENT, entity_key_value))
+        filters_pk = entity_filters.setdefault(dto.pk_field, [])
+        filters_pk.append(Filter(FilterOperator.DIFFERENT, getattr(old_dto, dto.pk_field) if old_dto is not None else getattr(dto, dto.pk_field)))
 
         # Searching entity in DB
         try:

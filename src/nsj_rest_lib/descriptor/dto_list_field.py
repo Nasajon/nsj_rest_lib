@@ -64,10 +64,17 @@ class DTOListField:
             return instance.__dict__[self.storage_name]
 
     def __set__(self, instance, value):
-        if self.validator is None:
-            value = self.validate(value)
-        else:
-            value = self.validator(value)
+        try:
+            if self.validator is None:
+                value = self.validate(value)
+            else:
+                value = self.validator(value)
+        except ValueError as e:
+            if not (
+                "escape_validator" in instance.__dict__
+                and instance.__dict__["escape_validator"] == True
+            ):
+                raise
 
         # Preenchendo os campos de particionanmento, se necessário (normalmente: tenant e grupo_empresarial)
         self.set_partition_fields(instance, value)
