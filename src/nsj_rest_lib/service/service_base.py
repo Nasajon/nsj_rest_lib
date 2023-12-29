@@ -890,6 +890,7 @@ class ServiceBase:
                     partial_update,
                     relation_field_map,
                     item["detail_pk"],
+                    aditional_filters=aditional_filters
                 )
 
                 # Guardando o DTO na lista de retorno
