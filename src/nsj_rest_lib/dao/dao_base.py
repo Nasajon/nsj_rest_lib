@@ -1,5 +1,9 @@
+import decimal
+import datetime
 import enum
 import uuid
+import re
+import unidecode
 
 from typing import Any, Dict, List, Tuple
 
@@ -213,11 +217,13 @@ class DAOBase:
                         )
 
                     # Storing field filter where
-                    if len(filters[filter_field]) > 1 or (isinstance(condiction.value, set) and len(condiction.value) > 1):
+                    if len(filters[filter_field]) > 1 or (
+                        isinstance(condiction.value, set) and len(condiction.value) > 1
+                    ):
                         if operator == "=":
                             field_filter_where_in.append(condiction_alias_subtituir)
                         elif operator == "<>":
-                            field_filter_where_not_in.append(condiction_alias_subtituir)    
+                            field_filter_where_not_in.append(condiction_alias_subtituir)
                     else:
                         if operator == "=" or operator == "like" or operator == "ilike":
                             field_filter_where_or.append(condiction_buffer)
@@ -228,33 +234,40 @@ class DAOBase:
                     if condiction.value is not None:
                         if isinstance(condiction.value.__class__, enum.EnumMeta):
                             if isinstance(condiction.value.value, tuple):
-                                filter_values_map[
-                                    condiction_alias
-                                ] = condiction.value.value[1]
+                                filter_values_map[condiction_alias] = (
+                                    condiction.value.value[1]
+                                )
                             else:
-                                filter_values_map[
-                                    condiction_alias
-                                ] = condiction.value.value
+                                filter_values_map[condiction_alias] = (
+                                    condiction.value.value
+                                )
                         else:
-                            if isinstance(condiction.value, set) and len(condiction.value) > 1:
-                                filter_values_map[condiction_alias] = ', '.join(str(value) for value in condiction.value)
+                            if (
+                                isinstance(condiction.value, set)
+                                and len(condiction.value) > 1
+                            ):
+                                filter_values_map[condiction_alias] = ", ".join(
+                                    str(value) for value in condiction.value
+                                )
                             else:
                                 filter_values_map[condiction_alias] = condiction.value
 
                     if operator == "like" or operator == "ilike":
-                        filter_values_map[
-                            condiction_alias
-                        ] = f"%{filter_values_map[condiction_alias]}%"
+                        filter_values_map[condiction_alias] = (
+                            f"%{filter_values_map[condiction_alias]}%"
+                        )
 
                 # Formating condictions (with OR)
                 field_filter_where_or = " or ".join(field_filter_where_or)
                 field_filter_where_and = " and ".join(field_filter_where_and)
                 if field_filter_where_in:
-                    field_filter_where_in = f"t0.{filter_field} in ({', '.join(field_filter_where_in)})"
+                    field_filter_where_in = (
+                        f"t0.{filter_field} in ({', '.join(field_filter_where_in)})"
+                    )
                     filters_where.append(field_filter_where_in)
                 if field_filter_where_not_in:
                     field_filter_where_not_in = f"t0.{filter_field} not in ({', '.join(field_filter_where_not_in)})"
-                    filters_where.append(field_filter_where_not_in)                
+                    filters_where.append(field_filter_where_not_in)
 
                 if field_filter_where_or.strip() != "":
                     field_filter_where_or = f"({field_filter_where_or})"
@@ -282,6 +295,8 @@ class DAOBase:
         conjunto_field: str = None,
         entity_key_field: str = None,
         entity_id_value: any = None,
+        search_query: str = None,
+        search_fields: List[str] = None,
     ) -> List[EntityBase]:
         """
         Returns a paginated entity list.
@@ -298,7 +313,10 @@ class DAOBase:
         order_fields_alias = [f"t0.{i}" for i in order_fields]
 
         # Resolving data to pagination
-        order_map = {field.replace('desc','').replace('asc','').strip(): None for field in order_fields}
+        order_map = {
+            field.replace("desc", "").replace("asc", "").strip(): None
+            for field in order_fields
+        }
 
         if after is not None:
             try:
@@ -313,7 +331,13 @@ class DAOBase:
 
             if after_obj is not None:
                 for field in order_fields:
-                    order_map[field.replace('desc','').replace('asc','').strip()] = getattr(after_obj, field.replace('desc','').replace('asc','').strip(), None)
+                    order_map[field.replace("desc", "").replace("asc", "").strip()] = (
+                        getattr(
+                            after_obj,
+                            field.replace("desc", "").replace("asc", "").strip(),
+                            None,
+                        )
+                    )
 
         # Making default order by clause
         order_by = f"""
@@ -338,7 +362,7 @@ class DAOBase:
                 )
 
                 # Storing current field as old
-                old_fields.append(field.replace('desc','').replace('asc','').strip())
+                old_fields.append(field.replace("desc", "").replace("asc", "").strip())
 
             # Making SQL page condiction
             pagination_where = f"""
@@ -347,6 +371,11 @@ class DAOBase:
                     or {' or '.join(list_page_where)}
                 )
             """
+
+        # Montando o filtro de search (com ilike)
+        search_map, search_where = self._make_search_sql(
+            search_query, search_fields, entity
+        )
 
         # Resolvendo o join de conjuntos (se houver)
         with_conjunto = ""
@@ -380,6 +409,7 @@ class DAOBase:
             true
             {pagination_where}
             {filters_where}
+            {search_where}
 
         order by
             {order_by}
@@ -390,12 +420,125 @@ class DAOBase:
             sql += f"        limit {limit}"
 
         # Making the values dict
-        kwargs = {**order_map, **filter_values_map, **conjunto_map}
+        kwargs = {**order_map, **filter_values_map, **conjunto_map, **search_map}
 
         # Running the SQL query
         resp = self._db.execute_query_to_model(sql, self._entity_class, **kwargs)
 
         return resp
+
+    def _make_search_sql(
+        self, search_query, search_fields, entity
+    ) -> Tuple[Dict[str, any], str]:
+        """
+        Monta a parte da cláusula where referente ao parâmetro search, bem como o mapa de
+        valores para realizar a pesquisa (passando para a execução da query).
+
+        Retorna uma tupla, onde a primeira posição é o mapa de valores, e a segunda a cláusula sql.
+        """
+
+        search_map = {}
+        search_where = ""
+
+        date_pattern = "(\d\d)/(\d\d)/((\d\d\d\d)|(\d\d))"
+        int_pattern = "(\d+)"
+        float_pattern = "(\d+((,|\.)\d+)?)"
+
+        if search_fields is not None and search_query is not None:
+            search_buffer = "false \n"
+            for search_field in search_fields:
+                search_str = search_query
+
+                entity_field = entity.fields_map.get(search_field)
+                if entity_field is None:
+                    continue
+
+                if (
+                    entity_field.expected_type is datetime.datetime
+                    or entity_field.expected_type is datetime.date
+                ):
+                    # Tratando da busca de datas
+                    received_floats = re.findall(date_pattern, search_str)
+                    cont = -1
+                    for received_float in received_floats:
+                        cont += 1
+
+                        dia = int(received_float[0])
+                        mes = int(received_float[0])
+                        ano = received_float[0]
+                        if len(ano) < 4:
+                            ano = f"20{ano}"
+                        ano = int(ano)
+
+                        data_obj = None
+                        try:
+                            data_obj = datetime.date(ano, mes, dia)
+                        except:
+                            continue
+
+                        search_buffer += (
+                            f" or t0.{search_field} = :shf_{search_field}_{cont} \n"
+                        )
+                        search_map[f"shf_{search_field}_{cont}"] = data_obj
+
+                elif entity_field.expected_type is int:
+                    # Tratando da busca de inteiros
+                    search_str = re.sub(date_pattern, "", search_str)
+
+                    received_floats = re.findall(int_pattern, search_str)
+                    cont = -1
+                    for received_float in received_floats:
+                        cont += 1
+                        valor = int(received_float[0])
+                        valor_min = int(valor * 0.9)
+                        valor_max = int(valor * 1.1)
+
+                        search_buffer += f" or (t0.{search_field} >= :shf_{search_field}_{cont}_min and t0.{search_field} <= :shf_{search_field}_{cont}_max) \n"
+                        search_map[f"shf_{search_field}_{cont}_min"] = valor_min
+                        search_map[f"shf_{search_field}_{cont}_max"] = valor_max
+
+                elif (
+                    entity_field.expected_type is int
+                    or entity_field.expected_type is decimal.Decimal
+                ):
+                    # Tratando da busca de floats e decimais
+                    search_str = re.sub(date_pattern, "", search_str)
+
+                    received_floats = re.findall(float_pattern, search_str)
+                    cont = -1
+                    for received_float in received_floats:
+                        cont += 1
+                        valor = float(received_float[0])
+                        valor_min = valor * 0.9
+                        valor_max = valor * 1.1
+
+                        search_buffer += f" or (t0.{search_field} >= :shf_{search_field}_{cont}_min and t0.{search_field} <= :shf_{search_field}_{cont}_max) \n"
+                        search_map[f"shf_{search_field}_{cont}_min"] = valor_min
+                        search_map[f"shf_{search_field}_{cont}_max"] = valor_max
+
+                elif (
+                    entity_field.expected_type is str
+                    or entity_field.expected_type is uuid
+                ):
+                    # Tratando da busca de strings e UUIDs
+                    cont = -1
+                    for palavra in search_str.split(" "):
+                        if palavra == "":
+                            continue
+
+                        cont += 1
+                        search_buffer += f" or upper(t0.{search_field}) like upper(unaccent(:shf_{search_field}_{cont})) \n"
+                        search_map[f"shf_{search_field}_{cont}"] = (
+                            f"%{unidecode.unidecode(palavra)}%"
+                        )
+
+            search_where = f"""
+            and (
+                {search_buffer}
+            )
+            """
+
+        return search_map, search_where
 
     def _make_conjunto_sql(
         self,

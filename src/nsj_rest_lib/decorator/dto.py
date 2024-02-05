@@ -63,6 +63,9 @@ class DTO:
         # Criando a propriedade "candidate_keys" na classe "cls", se necessário
         self._check_class_attribute(cls, "candidate_keys", [])
 
+        # Criando a propriedade "search_fields" na classe "cls", se necessário
+        self._check_class_attribute(cls, "search_fields", set())
+
         # Iterating for the class attributes
         for key, attr in cls.__dict__.items():
             # Test if the attribute uses the DTOFiel descriptor
@@ -107,6 +110,10 @@ class DTO:
                 # Verifica se é uma chave candidata
                 if attr.candidate_key:
                     getattr(cls, "candidate_keys").append(key)
+
+                # Verifica se é um campo passível de busca
+                if attr.search:
+                    getattr(cls, "search_fields").add(key)
 
             elif isinstance(attr, DTOListField):
                 # Storing field in fields_map

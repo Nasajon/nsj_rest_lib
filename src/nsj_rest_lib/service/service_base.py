@@ -194,7 +194,7 @@ class ServiceBase:
 
     def _convert_to_entity_fields(self, fields: Set[str]) -> List[str]:
         """
-        Convert a list of fields names to a list of entity fiedls names.
+        Convert a list of fields names to a list of entity fields names.
         """
 
         if fields is None:
@@ -350,6 +350,7 @@ class ServiceBase:
         fields: Dict[str, Set[str]],
         order_fields: List[str],
         filters: Dict[str, Any],
+        search_query: str = None,
     ) -> List[DTOBase]:
         # Resolving fields
         fields = self._resolving_fields(fields)
@@ -368,6 +369,13 @@ class ServiceBase:
             all_filters.update(filters)
 
         entity_filters = self._create_entity_filters(all_filters)
+
+        # Tratando dos campos a serem enviados ao DAO para uso do search (se necessário)
+        search_fields = None
+        if self._dto_class.search_fields is not None:
+            search_fields = self._convert_to_entity_fields(
+                self._dto_class.search_fields
+            )
 
         # Resolve o campo de chave sendo utilizado
         entity_key_field, entity_id_value = (None, None)
@@ -388,6 +396,8 @@ class ServiceBase:
             conjunto_field=self._dto_class.conjunto_field,
             entity_key_field=entity_key_field,
             entity_id_value=entity_id_value,
+            search_query=search_query,
+            search_fields=search_fields,
         )
 
         # Convertendo para uma lista de DTOs
@@ -890,7 +900,7 @@ class ServiceBase:
                     partial_update,
                     relation_field_map,
                     item["detail_pk"],
-                    aditional_filters=aditional_filters
+                    aditional_filters=aditional_filters,
                 )
 
                 # Guardando o DTO na lista de retorno
@@ -965,7 +975,16 @@ class ServiceBase:
 
         # Montando filtro de PK diferente (se necessário, isto é, se for update)
         filters_pk = entity_filters.setdefault(dto.pk_field, [])
-        filters_pk.append(Filter(FilterOperator.DIFFERENT, getattr(old_dto, dto.pk_field) if old_dto is not None else getattr(dto, dto.pk_field)))
+        filters_pk.append(
+            Filter(
+                FilterOperator.DIFFERENT,
+                (
+                    getattr(old_dto, dto.pk_field)
+                    if old_dto is not None
+                    else getattr(dto, dto.pk_field)
+                ),
+            )
+        )
 
         # Searching entity in DB
         try:

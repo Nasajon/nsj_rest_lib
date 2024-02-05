@@ -41,6 +41,7 @@ class DTOField:
         convert_from_entity: typing.Callable = None,
         unique: str = None,
         candidate_key: bool = False,
+        search: bool = True,
     ):
         """
         -----------
@@ -68,6 +69,7 @@ class DTOField:
           A função recebida deve suportar os parâmetros (entity_value: Any, entity_fields: Dict[str, Any]), e retornar um Dict[str, Any], como uma coleção de chaves e valores a serem atribuídos no DTO.
         unique: Permite indicar um nome de chave de unicidade. Cada chave de unicidade é considerada no momento de uma inserção no BD (impedindo duplicações indesejadas).
         candidate_key: Permite indicar que este campo se trata de uma chave candidata (útil para operações unitárias, como GTE e DELETE, pois estas irão verificar se o tipo do dado recebido bate com a PK, ou com as chaves candidatas, para resolver como fará a query).
+        search: Indica que esse campo é passível de busca, por meio do argumento "search" passado num GET List, como query string (por hora, apenas pesquisas simples, por meio de operador like, estão implementadas).
         """
         self.name = None
         self.expected_type = type
@@ -87,6 +89,7 @@ class DTOField:
         self.convert_from_entity = convert_from_entity
         self.unique = unique
         self.candidate_key = candidate_key
+        self.search = search
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1

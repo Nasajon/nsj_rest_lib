@@ -64,9 +64,14 @@ class ListRoute(RouteBase):
                     )
                 )
 
-                # Tratando dos filters
+                # Tratando dos filters e search_query
                 filters = {}
+                search_query = None
                 for arg in args:
+                    if arg.lower() == "search":
+                        search_query = args.get(arg)
+                        continue
+
                     if arg in ["limit", "after", "offset", "fields"]:
                         continue
 
@@ -88,7 +93,14 @@ class ListRoute(RouteBase):
 
                 # Chamando o service (método list)
                 # TODO Rever parametro order_fields abaixo
-                data = service.list(current_after, limit, fields, None, filters)
+                data = service.list(
+                    current_after,
+                    limit,
+                    fields,
+                    None,
+                    filters,
+                    search_query=search_query,
+                )
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
                 dict_data = [dto.convert_to_dict(fields) for dto in data]

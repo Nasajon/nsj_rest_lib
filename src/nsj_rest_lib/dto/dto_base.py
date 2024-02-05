@@ -27,6 +27,7 @@ class DTOBase(abc.ABC):
     escape_validator: bool
     uniques: Dict[str, Set[str]]
     candidate_keys: List[str]
+    search_fields: Set[str]
 
     def __init__(
         self,
