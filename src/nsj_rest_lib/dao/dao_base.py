@@ -216,23 +216,19 @@ class DAOBase:
                             f"{filter_field} {operator} {condiction_alias_subtituir}"
                         )
 
-                    # Storing field filter where
-                    if len(filters[filter_field]) > 1 or (
+                    multiple_values = len(filters[filter_field]) > 1 or (
                         isinstance(condiction.value, set) and len(condiction.value) > 1
-                    ):
-                        if operator == "=":
-                            field_filter_where_in.append(condiction_alias_subtituir)
-                        elif operator == "<>":
-                            field_filter_where_not_in.append(condiction_alias_subtituir)
-                        elif operator == "like" or operator == "ilike":
-                            field_filter_where_or.append(condiction_buffer)
-                        else:
-                            field_filter_where_and.append(condiction_buffer)
+                    )
+
+                    # Storing field filter where
+                    if operator == "=" and multiple_values:
+                        field_filter_where_in.append(condiction_alias_subtituir)
+                    elif operator == "<>" and multiple_values:
+                        field_filter_where_not_in.append(condiction_alias_subtituir)
+                    elif operator == "=" or operator == "like" or operator == "ilike":
+                        field_filter_where_or.append(condiction_buffer)
                     else:
-                        if operator == "=" or operator == "like" or operator == "ilike":
-                            field_filter_where_or.append(condiction_buffer)
-                        else:
-                            field_filter_where_and.append(condiction_buffer)
+                        field_filter_where_and.append(condiction_buffer)
 
                     # Storing condiction value
                     if condiction.value is not None:
