@@ -216,19 +216,19 @@ class DAOBase:
                             f"{filter_field} {operator} {condiction_alias_subtituir}"
                         )
 
-                    # Storing field filter where
-                    if len(filters[filter_field]) > 1 or (
+                    multiple_values = len(filters[filter_field]) > 1 or (
                         isinstance(condiction.value, set) and len(condiction.value) > 1
-                    ):
-                        if operator == "=":
-                            field_filter_where_in.append(condiction_alias_subtituir)
-                        elif operator == "<>":
-                            field_filter_where_not_in.append(condiction_alias_subtituir)
+                    )
+
+                    # Storing field filter where
+                    if operator == "=" and multiple_values:
+                        field_filter_where_in.append(condiction_alias_subtituir)
+                    elif operator == "<>" and multiple_values:
+                        field_filter_where_not_in.append(condiction_alias_subtituir)
+                    elif operator == "=" or operator == "like" or operator == "ilike":
+                        field_filter_where_or.append(condiction_buffer)
                     else:
-                        if operator == "=" or operator == "like" or operator == "ilike":
-                            field_filter_where_or.append(condiction_buffer)
-                        else:
-                            field_filter_where_and.append(condiction_buffer)
+                        field_filter_where_and.append(condiction_buffer)
 
                     # Storing condiction value
                     if condiction.value is not None:
@@ -314,7 +314,7 @@ class DAOBase:
 
         # Resolving data to pagination
         order_map = {
-            field.replace("desc", "").replace("asc", "").strip(): None
+            re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip(): None
             for field in order_fields
         }
 
@@ -331,12 +331,12 @@ class DAOBase:
 
             if after_obj is not None:
                 for field in order_fields:
-                    order_map[field.replace("desc", "").replace("asc", "").strip()] = (
-                        getattr(
-                            after_obj,
-                            field.replace("desc", "").replace("asc", "").strip(),
-                            None,
-                        )
+                    order_map[
+                        re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip()
+                    ] = getattr(
+                        after_obj,
+                        re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip(),
+                        None,
                     )
 
         # Making default order by clause
@@ -356,13 +356,17 @@ class DAOBase:
                 for of in old_fields:
                     buffer_old_fields += f" and t0.{of} = :{of}"
 
+                field_adjusted = re.sub(
+                    r"\basc\b", "", re.sub(r"\bdesc\b", "", field)
+                ).strip()
+
                 # Making current more than condiction
                 list_page_where.append(
-                    f"({buffer_old_fields} and t0.{field.replace('desc','').replace('asc','').strip()} {'<' if 'desc' in field else '>'} :{field.replace('desc','').replace('asc','').strip()})"
+                    f"({buffer_old_fields} and t0.{field_adjusted} {'<' if 'desc' in field else '>'} :{field_adjusted})"
                 )
 
                 # Storing current field as old
-                old_fields.append(field.replace("desc", "").replace("asc", "").strip())
+                old_fields.append(field_adjusted)
 
             # Making SQL page condiction
             pagination_where = f"""
