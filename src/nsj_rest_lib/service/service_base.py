@@ -682,7 +682,7 @@ class ServiceBase:
             else:
                 # Executando o update pelo DAO
                 entity = self._dao.update(
-                    dto.pk_field,
+                    entity.get_pk_field(),
                     getattr(old_dto, dto.pk_field),
                     entity,
                     aditional_entity_filters,
@@ -963,8 +963,8 @@ class ServiceBase:
         unique_entity_filters = self._create_entity_filters(unique_filter)
 
         # Removendo o campo chave, se estiver no filtro
-        if dto.pk_field in unique_entity_filters:
-            del unique_entity_filters[dto.pk_field]
+        if entity.get_pk_field() in unique_entity_filters:
+            del unique_entity_filters[entity.get_pk_field()]
 
         # Se não há mais campos na unique, não há o que validar
         if len(unique_entity_filters) <= 0:
@@ -974,7 +974,7 @@ class ServiceBase:
         entity_filters = {**entity_filters, **unique_entity_filters}
 
         # Montando filtro de PK diferente (se necessário, isto é, se for update)
-        filters_pk = entity_filters.setdefault(dto.pk_field, [])
+        filters_pk = entity_filters.setdefault(entity.get_pk_field(), [])
         filters_pk.append(
             Filter(
                 FilterOperator.DIFFERENT,
