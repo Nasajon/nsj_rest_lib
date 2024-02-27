@@ -1,5 +1,5 @@
-import uuid
 import copy
+import uuid
 
 from typing import Any, Callable, Dict, List, Set, Tuple
 
@@ -24,6 +24,7 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.validator.validate_data import validate_uuid
+from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
 
 from nsj_gcf_utils.db_adapter2 import DBAdapter2
 
@@ -241,82 +242,163 @@ class ServiceBase:
         if filters is None:
             return None
 
+        # Construindo um novo dict de filtros para controle
+        aux_filters = copy.deepcopy(filters)
+        fist_run = True
+
+        # Dicionário para guardar os filtros convertidos
         entity_filters = {}
-        for filter in filters:
-            is_entity_filter = False
-            is_conjunto_filter = False
-            dto_field = None
 
-            if filter in self._dto_class.field_filters_map:
-                # Retrieving filter config
-                field_filter = self._dto_class.field_filters_map[filter]
-                aux = self._dto_class.field_filters_map[filter].field_name
-                dto_field = self._dto_class.fields_map[aux]
-            elif filter == self._dto_class.conjunto_field:
-                is_conjunto_filter = True
-                dto_field = self._dto_class.fields_map[self._dto_class.conjunto_field]
-            elif filter in self._dto_class.fields_map:
-                # Creating filter config to a DTOField (equals operator)
-                field_filter = DTOFieldFilter(filter)
-                field_filter.set_field_name(filter)
-                dto_field = self._dto_class.fields_map[filter]
-            # TODO Refatorar para usar um mapa de fields do entity
-            elif filter in self._entity_class().__dict__:
-                is_entity_filter = True
-            else:
-                # Ignoring not declared filters (or filter for not existent DTOField)
-                continue
+        # Iterando enquanto houver filtros recebidos, ou derivalos a partir dos filter_aliases
+        while len(aux_filters) > 0:
+            new_filters = {}
 
-            # Resolving entity field name (to filter)
-            if not is_entity_filter and not is_conjunto_filter:
-                entity_field_name = self._convert_to_entity_field(
-                    field_filter.field_name
-                )
-            else:
-                entity_field_name = filter
+            for filter in aux_filters:
+                is_entity_filter = False
+                is_conjunto_filter = False
+                dto_field = None
 
-            # Creating entity filters (one for each value - separated by comma)
-            if isinstance(filters[filter], str):
-                values = filters[filter].split(",")
-            else:
-                values = [filters[filter]]
-
-            for value in values:
-                if isinstance(value, str):
-                    value = value.strip()
-
-                # Convertendo os valores para o formato esperado no entity
-                if not is_entity_filter:
-                    converted_values = self._dto_class.custom_convert_value_to_entity(
-                        value,
-                        dto_field,
-                        entity_field_name,
-                        False,
-                        filters,
-                    )
-                    if len(converted_values) <= 0:
-                        value = self._dto_class.convert_value_to_entity(
-                            value,
-                            dto_field,
-                            False,
-                            self._entity_class,
-                        )
-                        converted_values = {entity_field_name: value}
+                # Recuperando os valores passados nos filtros
+                if isinstance(aux_filters[filter], str):
+                    values = aux_filters[filter].split(",")
                 else:
-                    converted_values = {entity_field_name: value}
+                    values = [aux_filters[filter]]
 
-                # Tratando cada valor convertido
-                for entity_field in converted_values:
-                    converted_value = converted_values[entity_field]
+                if len(values) <= 0:
+                    # Se não houver valor a filtrar, o filtro é apenas ignorado
+                    continue
 
-                    if not is_entity_filter and not is_conjunto_filter:
-                        entity_filter = Filter(field_filter.operator, converted_value)
+                # Identificando o tipo de filtro passado
+                if (
+                    self._dto_class.filter_aliases is not None
+                    and filter in self._dto_class.filter_aliases
+                    and fist_run
+                ):
+                    # Verificando se é um alias para outros filtros (o alias aponta para outros filtros,
+                    # de acordo com o tipo do dado recebido)
+                    filter_aliases = self._dto_class.filter_aliases[filter]
+
+                    # Iterando os tipos definidos para o alias, e verificando se casam com o tipo recebido
+                    for type_alias in filter_aliases:
+                        relative_field = filter_aliases[type_alias]
+
+                        # Esse obj abaixo é construído artificialmente, com os campos esperados no método validate
+                        # Se o validate mudar, tem que refatorar aqui:
+                        class OBJ:
+                            def __init__(self) -> None:
+                                self.expected_type = None
+                                self.storage_name = None
+
+                        obj = OBJ()
+                        obj.expected_type = type_alias
+                        obj.storage_name = filter
+
+                        # Verificando se é possível converter o valor recebido para o tipo definido no alias do filtro
+                        try:
+                            TypeValidatorUtil.validate(obj, values[0])
+                            convertido = True
+                        except:
+                            convertido = False
+
+                        if convertido:
+                            # Se conseguiu converter para o tipo correspondente, se comportará exatamente como um novo
+                            # filtro, porém como se tivesse sido passado para o campo correspondente ao tipo:
+                            if relative_field not in new_filters:
+                                new_filters[relative_field] = aux_filters[filter]
+                            else:
+                                new_filters[relative_field] = (
+                                    f"{new_filters[relative_field]},{aux_filters[filter]}"
+                                )
+                            break
+
+                        else:
+                            # Se não encontrar conseguir converter (até o final, será apenas ignorado)
+                            pass
+
+                    continue
+
+                elif filter in self._dto_class.field_filters_map:
+                    # Retrieving filter config
+                    field_filter = self._dto_class.field_filters_map[filter]
+                    aux = self._dto_class.field_filters_map[filter].field_name
+                    dto_field = self._dto_class.fields_map[aux]
+
+                elif filter == self._dto_class.conjunto_field:
+                    is_conjunto_filter = True
+                    dto_field = self._dto_class.fields_map[
+                        self._dto_class.conjunto_field
+                    ]
+
+                elif filter in self._dto_class.fields_map:
+                    # Creating filter config to a DTOField (equals operator)
+                    field_filter = DTOFieldFilter(filter)
+                    field_filter.set_field_name(filter)
+                    dto_field = self._dto_class.fields_map[filter]
+
+                # TODO Refatorar para usar um mapa de fields do entity
+                elif filter in self._entity_class().__dict__:
+                    is_entity_filter = True
+
+                else:
+                    # Ignoring not declared filters (or filter for not existent DTOField)
+                    continue
+
+                # Resolving entity field name (to filter)
+                if not is_entity_filter and not is_conjunto_filter:
+                    entity_field_name = self._convert_to_entity_field(
+                        field_filter.field_name
+                    )
+                else:
+                    entity_field_name = filter
+
+                # Creating entity filters (one for each value - separated by comma)
+                for value in values:
+                    if isinstance(value, str):
+                        value = value.strip()
+
+                    # Convertendo os valores para o formato esperado no entity
+                    if not is_entity_filter:
+                        converted_values = (
+                            self._dto_class.custom_convert_value_to_entity(
+                                value,
+                                dto_field,
+                                entity_field_name,
+                                False,
+                                aux_filters,
+                            )
+                        )
+                        if len(converted_values) <= 0:
+                            value = self._dto_class.convert_value_to_entity(
+                                value,
+                                dto_field,
+                                False,
+                                self._entity_class,
+                            )
+                            converted_values = {entity_field_name: value}
                     else:
-                        entity_filter = Filter(FilterOperator.EQUALS, converted_value)
+                        converted_values = {entity_field_name: value}
 
-                    # Storing filter in dict
-                    filter_list = entity_filters.setdefault(entity_field, [])
-                    filter_list.append(entity_filter)
+                    # Tratando cada valor convertido
+                    for entity_field in converted_values:
+                        converted_value = converted_values[entity_field]
+
+                        if not is_entity_filter and not is_conjunto_filter:
+                            entity_filter = Filter(
+                                field_filter.operator, converted_value
+                            )
+                        else:
+                            entity_filter = Filter(
+                                FilterOperator.EQUALS, converted_value
+                            )
+
+                        # Storing filter in dict
+                        filter_list = entity_filters.setdefault(entity_field, [])
+                        filter_list.append(entity_filter)
+
+            # Ajustando as variáveis de controle
+            fist_run = False
+            aux_filters = {}
+            aux_filters.update(new_filters)
 
         return entity_filters
 

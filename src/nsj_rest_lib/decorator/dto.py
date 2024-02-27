@@ -13,12 +13,14 @@ class DTO:
         fixed_filters: Dict[str, Any] = None,
         conjunto_type: ConjuntoType = None,
         conjunto_field: str = None,
+        filter_aliases: Dict[str, Any] = None,
     ) -> None:
         super().__init__()
 
         self._fixed_filters = fixed_filters
         self._conjunto_type = conjunto_type
         self._conjunto_field = conjunto_field
+        self._filter_aliases = filter_aliases
 
         if (self._conjunto_type is None and self._conjunto_field is not None) or (
             self._conjunto_type is not None and self._conjunto_field is None
@@ -150,6 +152,9 @@ class DTO:
         # Setting tipo de Conjunto
         setattr(cls, "conjunto_type", self._conjunto_type)
         setattr(cls, "conjunto_field", self._conjunto_field)
+
+        # Setting filter aliases
+        setattr(cls, "filter_aliases", self._filter_aliases)
 
         return cls
 
