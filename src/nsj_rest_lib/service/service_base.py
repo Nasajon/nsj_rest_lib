@@ -365,6 +365,9 @@ class ServiceBase:
                     field_filter = DTOFieldFilter(filter)
                     field_filter.set_field_name(filter)
                     dto_sql_join_field = self._dto_class.sql_join_fields_map[filter]
+                    dto_field = dto_sql_join_field.dto_type.fields_map[
+                        dto_sql_join_field.related_dto_field
+                    ]
 
                     # Procurando o table alias
                     for join_query_key in self._dto_class.sql_join_fields_map_to_query:
@@ -404,26 +407,32 @@ class ServiceBase:
                     if isinstance(value, str):
                         value = value.strip()
 
+                    # Resolvendo as classes de DTO e Entity
+                    aux_dto_class = self._dto_class
+                    aux_entity_class = self._entity_class
+
+                    if is_sql_join_filter:
+                        aux_dto_class = dto_sql_join_field.dto_type
+                        aux_entity_class = dto_sql_join_field.entity_type
+
                     # Convertendo os valores para o formato esperado no entity
-                    # TODO Alterar abaixo, para dar suporte à conversão, mesmo quando for is_sql_join_filter
                     if not is_entity_filter and not is_sql_join_filter:
-                        converted_values = (
-                            self._dto_class.custom_convert_value_to_entity(
-                                value,
-                                dto_field,
-                                entity_field_name,
-                                False,
-                                aux_filters,
-                            )
+                        converted_values = aux_dto_class.custom_convert_value_to_entity(
+                            value,
+                            dto_field,
+                            entity_field_name,
+                            False,
+                            aux_filters,
                         )
                         if len(converted_values) <= 0:
-                            value = self._dto_class.convert_value_to_entity(
+                            value = aux_dto_class.convert_value_to_entity(
                                 value,
                                 dto_field,
                                 False,
-                                self._entity_class,
+                                aux_entity_class,
                             )
                             converted_values = {entity_field_name: value}
+
                     else:
                         converted_values = {entity_field_name: value}
 
@@ -482,7 +491,11 @@ class ServiceBase:
             filters,
         )
 
-    def _resolve_sql_join_fields(self, fields: Set[str]) -> List[JoinAux]:
+    def _resolve_sql_join_fields(
+        self,
+        fields: Set[str],
+        entity_filters: Dict[str, List[Filter]],
+    ) -> List[JoinAux]:
         """
         Analisa os campos de jooin solicitados, e monta uma lista de objetos
         para auxiliar o DAO na construção da query
@@ -501,7 +514,12 @@ class ServiceBase:
 
             # Verificando se um dos campos desse join será usado
             for join_field in join_field_map_to_query.fields:
-                if join_field in fields:
+                # Recuperando o nome do campo, na entity
+                entity_join_field = join_field_map_to_query.related_dto.fields_map[
+                    self._dto_class.sql_join_fields_map[join_field].related_dto_field
+                ].get_entity_field_name()
+
+                if join_field in fields or entity_join_field in entity_filters:
                     relate_join_field = self._dto_class.sql_join_fields_map[
                         join_field
                     ].related_dto_field
@@ -591,7 +609,7 @@ class ServiceBase:
             )
 
         # Resolvendo os joins
-        joins_aux = self._resolve_sql_join_fields(fields["root"])
+        joins_aux = self._resolve_sql_join_fields(fields["root"], entity_filters)
 
         # Retrieving from DAO
         entity_list = self._dao.list(

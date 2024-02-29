@@ -16,7 +16,6 @@ class DTOJoinFieldType:
 # TODO Adicionar suporte a esse tipo de field no GET (GET ONE e não GET LIST)
 # TODO Adicionar suporte ao search
 # TODO Implementar o filters abaixo
-# TODO Implementar o convert_from_entity e convert_to_entity (para permitir filtrar por valores no BD, diferentes dos recebidos na query string; além de exibir diferente do que vem no banco)
 # TODO Pensar em como ordenar os joins (quando tiver um left no meio, pode ser útil)
 # TODO Pensar em como passar mais condições dentro do ON
 # TODO Pensar em como usar um só entity (e não precisar de um com os campos que vem da outra entidade)
