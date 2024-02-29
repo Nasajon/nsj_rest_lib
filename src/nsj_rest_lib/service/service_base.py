@@ -24,6 +24,7 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.validator.validate_data import validate_uuid
+from nsj_rest_lib.util.join_aux import JoinAux
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
 
 from nsj_gcf_utils.db_adapter2 import DBAdapter2
@@ -193,7 +194,12 @@ class ServiceBase:
             f"Não foi possível identificar o ID recebido com qualquer das chaves candidatas reconhecidas. Valor recebido: {id_value}."
         )
 
-    def _convert_to_entity_fields(self, fields: Set[str]) -> List[str]:
+    def _convert_to_entity_fields(
+        self,
+        fields: Set[str],
+        dto_class=None,
+        entity_class=None,
+    ) -> List[str]:
         """
         Convert a list of fields names to a list of entity fields names.
         """
@@ -203,15 +209,22 @@ class ServiceBase:
 
         # TODO Refatorar para não precisar deste objeto só por conta das propriedades da classe
         # (um decorator na classe, poderia armazenar os fields na mesma, como é feito no DTO)
-        entity = self._entity_class()
+        if entity_class is None:
+            entity = self._entity_class()
+        else:
+            entity = entity_class()
+
+        # Resolvendo a classe padrão de DTO
+        if dto_class is None:
+            dto_class = self._dto_class
 
         entity_fields = []
         for field in fields:
             # Skipping not DTO fields
-            if not (field in self._dto_class.fields_map):
+            if not (field in dto_class.fields_map):
                 continue
 
-            entity_field_name = self._convert_to_entity_field(field)
+            entity_field_name = self._convert_to_entity_field(field, dto_class)
             # Skipping not Entity fields
             if not (entity_field_name in entity.__dict__):
                 continue
@@ -220,14 +233,22 @@ class ServiceBase:
 
         return entity_fields
 
-    def _convert_to_entity_field(self, field: str) -> str:
+    def _convert_to_entity_field(
+        self,
+        field: str,
+        dto_class=None,
+    ) -> str:
         """
         Convert a field name to a entity field name.
         """
 
+        # Resolvendo a classe padrão de DTO
+        if dto_class is None:
+            dto_class = self._dto_class
+
         entity_field_name = field
-        if self._dto_class.fields_map[field].entity_field is not None:
-            entity_field_name = self._dto_class.fields_map[field].entity_field
+        if dto_class.fields_map[field].entity_field is not None:
+            entity_field_name = dto_class.fields_map[field].entity_field
 
         return entity_field_name
 
@@ -404,7 +425,7 @@ class ServiceBase:
 
     def _resolving_fields(self, fields: Dict[str, Set[str]]) -> Dict[str, Set[str]]:
         """
-        Varifica os fields recebidos, garantindo que os campos de resumo serão considerados.
+        Verifica os fields recebidos, garantindo que os campos de resumo serão considerados.
         """
 
         # Resolving fields
@@ -424,6 +445,71 @@ class ServiceBase:
             None,
             filters,
         )
+
+    def _resolve_sql_join_fields(self, fields: Set[str]) -> List[JoinAux]:
+        """
+        Analisa os campos de jooin solicitados, e monta uma lista de objetos
+        para auxiliar o DAO na construção da query
+        """
+
+        # Criando o objeto de retorno
+        joins_aux: List[JoinAux] = []
+
+        # Iterando os campos de join configurados, mas só considerando os solicitados (ou de resumo)
+        for join_field_map_to_query_key in self._dto_class.sql_join_fields_map_to_query:
+            join_field_map_to_query = self._dto_class.sql_join_fields_map_to_query[
+                join_field_map_to_query_key
+            ]
+
+            used_join_fields = set()
+
+            # Verificando se um dos campos desse join será usado
+            for join_field in join_field_map_to_query.fields:
+                if join_field in fields:
+                    relate_join_field = self._dto_class.sql_join_fields_map[
+                        join_field
+                    ].related_dto_field
+                    used_join_fields.add(relate_join_field)
+
+            # Pulando esse join (se não for usado)
+            if len(used_join_fields) <= 0:
+                continue
+
+            # Construindo o objeto auxiliar do join
+            join_aux = JoinAux()
+
+            # Resolvendo os nomes dos fields da entidade relacionada
+            join_entity_fields = self._convert_to_entity_fields(
+                fields=used_join_fields,
+                dto_class=join_field_map_to_query.related_dto,
+                entity_class=join_field_map_to_query.related_entity,
+            )
+
+            join_aux.fields = join_entity_fields
+
+            # Resolvendo tabela e tipo de join
+            other_entity = join_field_map_to_query.related_entity()
+            join_aux.table = other_entity.get_table_name()
+            join_aux.type = join_field_map_to_query.join_type
+
+            # Resovendo os campos usados no join
+            if (
+                join_field_map_to_query.entity_relation_owner
+                == EntityRelationOwner.SELF
+            ):
+                join_aux.self_field = self._dto_class.fields_map[
+                    join_field_map_to_query.relation_field
+                ].get_entity_field_name()
+                join_aux.other_field = other_entity.get_pk_field()
+            else:
+                join_aux.self_field = self._entity_class().get_pk_field()
+                join_aux.other_field = join_field_map_to_query.related_dto.fields_map[
+                    join_field_map_to_query.relation_field
+                ].get_entity_field_name()
+
+            joins_aux.append(join_aux)
+
+        return joins_aux
 
     def list(
         self,
@@ -467,6 +553,9 @@ class ServiceBase:
                 filters,
             )
 
+        # Resolvendo os joins
+        joins_aux = self._resolve_sql_join_fields(fields["root"])
+
         # Retrieving from DAO
         entity_list = self._dao.list(
             after,
@@ -480,6 +569,7 @@ class ServiceBase:
             entity_id_value=entity_id_value,
             search_query=search_query,
             search_fields=search_fields,
+            joins_aux=joins_aux,
         )
 
         # Convertendo para uma lista de DTOs

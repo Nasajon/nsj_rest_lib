@@ -3,8 +3,8 @@ from typing import Any, Dict
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
-from nsj_rest_lib.descriptor.dto_left_join_field import DTOLeftJoinField
-from nsj_rest_lib.descriptor.dto_left_join_field import LeftJoinQuery
+from nsj_rest_lib.descriptor.dto_left_join_field import DTOLeftJoinField, LeftJoinQuery
+from nsj_rest_lib.descriptor.dto_sql_join_field import DTOSQLJoinField, SQLJoinQuery
 
 
 class DTO:
@@ -48,6 +48,12 @@ class DTO:
 
         # Creating left_join_fields_map_to_query in cls, if needed
         self._check_class_attribute(cls, "left_join_fields_map_to_query", {})
+
+        # Creating sql_join_fields_map in cls, if needed
+        self._check_class_attribute(cls, "sql_join_fields_map", {})
+
+        # Creating sql_join_fields_map_to_query in cls, if needed
+        self._check_class_attribute(cls, "sql_join_fields_map_to_query", {})
 
         # Creating field_filters_map in cls, if needed
         self._check_class_attribute(cls, "field_filters_map", {})
@@ -146,6 +152,27 @@ class DTO:
                 # Montando o mapa de controle das queries (para o service_base)
                 self.set_left_join_fields_map_to_query(key, attr, cls)
 
+            elif isinstance(attr, DTOSQLJoinField):
+                # Storing field in fields_map
+                getattr(cls, "sql_join_fields_map")[key] = attr
+
+                # Setting a better name to storage_name
+                attr.storage_name = f"{key}"
+                attr.name = f"{key}"
+
+                # Copying type from annotation (if exists)
+                if key in cls.__annotations__:
+                    attr.expected_type = cls.__annotations__[key]
+
+                # Checking if it is a resume field (to store)
+                if attr.resume:
+                    resume_fields = getattr(cls, "resume_fields")
+                    if not (key in resume_fields):
+                        resume_fields.add(key)
+
+                # Montando o mapa de controle das queries (para o service_base)
+                self.set_sql_join_fields_map_to_query(key, attr, cls)
+
         # Setting fixed filters
         setattr(cls, "fixed_filters", self._fixed_filters)
 
@@ -200,7 +227,7 @@ class DTO:
         )
 
         # Verificando se o objeto de query, relativo a esse campo,
-        # já estava no mapa (e colocando, caso positivo)
+        # já estava no mapa (e colocando, caso negativo)
         map_key = (
             f"{attr.dto_type}____{attr.entity_type}____{attr.entity_relation_owner}"
         )
@@ -214,3 +241,31 @@ class DTO:
         left_join_query.fields.append(field)
         left_join_query.left_join_fields.append(attr)
         left_join_query.entity_relation_owner = attr.entity_relation_owner
+
+    def set_sql_join_fields_map_to_query(
+        self,
+        field: str,
+        attr: DTOSQLJoinField,
+        cls: object,
+    ):
+        # Recuperando o map de facilitação das queries
+        sql_join_fields_map_to_query: dict[str, SQLJoinQuery] = getattr(
+            cls, "sql_join_fields_map_to_query"
+        )
+
+        # Verificando se o objeto de query, relativo a esse campo,
+        # já estava no mapa (e colocando, caso negativo)
+        map_key = f"{attr.dto_type}____{attr.entity_type}____{attr.entity_relation_owner}____{attr.join_type}"
+        sql_join_query = sql_join_fields_map_to_query.setdefault(
+            map_key, SQLJoinQuery()
+        )
+
+        # Preenchendo as propriedades que serão úteis para as queries
+        sql_join_query.related_dto = attr.dto_type
+        sql_join_query.related_entity = attr.entity_type
+        sql_join_query.fields.append(field)
+        sql_join_query.related_fields.append(attr.related_dto_field)
+        sql_join_query.join_fields.append(attr)
+        sql_join_query.entity_relation_owner = attr.entity_relation_owner
+        sql_join_query.join_type = attr.join_type
+        sql_join_query.relation_field = attr.relation_field

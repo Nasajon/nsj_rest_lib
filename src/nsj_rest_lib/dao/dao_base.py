@@ -16,6 +16,7 @@ from nsj_rest_lib.exception import (
     NotFoundException,
     AfterRecordNotFoundException,
 )
+from nsj_rest_lib.util.join_aux import JoinAux
 
 from nsj_gcf_utils.db_adapter2 import DBAdapter2
 from nsj_gcf_utils.json_util import convert_to_dumps
@@ -60,7 +61,7 @@ class DAOBase:
         """
         return self._db.in_transaction()
 
-    def _sql_fields(self, fields: List[str] = None) -> str:
+    def _sql_fields(self, fields: List[str] = None, table_alias: str = "t0") -> str:
         """
         Returns a list of fields to build select queries (in string, with comma separator)
         """
@@ -76,8 +77,8 @@ class DAOBase:
                 if not callable(getattr(entity, k, None)) and not k.startswith("_")
             ]
 
-        resp = ", t0.".join(fields)
-        return f"t0.{resp}"
+        resp = f", {table_alias}.".join(fields)
+        return f"{table_alias}.{resp}"
 
     def get(
         self,
@@ -297,6 +298,7 @@ class DAOBase:
         entity_id_value: any = None,
         search_query: str = None,
         search_fields: List[str] = None,
+        joins_aux: List[JoinAux] = None,
     ) -> List[EntityBase]:
         """
         Returns a paginated entity list.
@@ -397,6 +399,9 @@ class DAOBase:
         # Organizando o where dos filtros
         filters_where, filter_values_map = self._make_filters_sql(filters)
 
+        # Montando a clausula dos fields vindos dos joins
+        sql_join_fields, sql_join = self._make_joins_sql(joins_aux)
+
         # Montando a query em si
         sql = f"""
         {with_conjunto}
@@ -404,10 +409,12 @@ class DAOBase:
 
             {fields_conjunto}
             {self._sql_fields(fields)}
+            {sql_join_fields}
 
         from
             {entity.get_table_name()} as t0
             {join_conjuntos}
+            {sql_join}
 
         where
             true
@@ -430,6 +437,35 @@ class DAOBase:
         resp = self._db.execute_query_to_model(sql, self._entity_class, **kwargs)
 
         return resp
+
+    def _make_joins_sql(self, joins_aux: List[JoinAux] = []):
+        """
+        Método auxiliar, para montar a parte dos campos, e do join propriamente dito,
+        para depois compôr a query principal.
+        """
+
+        sql_join_fields = ""
+        sql_join = ""
+        for i in range(len(joins_aux)):
+
+            # Ajustando o alias da tabela para o join
+            join_aux = joins_aux[i]
+            join_aux.alias = f"t{i+1}"
+
+            # Ajustando os fields
+            fields_sql = self._sql_fields(
+                fields=join_aux.fields, table_alias=join_aux.alias
+            )
+
+            # Adicionando os fields no SQL geral
+            sql_join_fields = f"{sql_join_fields},\n{fields_sql}"
+
+            # Montando a clausula do join em si
+            join_operator = f"{join_aux.type} join"
+
+            sql_join = f"{sql_join}\n{join_operator} {join_aux.table} as {join_aux.alias} on (t0.{join_aux.self_field} = {join_aux.alias}.{join_aux.other_field})"
+
+        return (sql_join_fields, sql_join)
 
     def _make_search_sql(
         self, search_query, search_fields, entity

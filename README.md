@@ -5,12 +5,12 @@ Biblioteca para construção de APIs Rest Python, de acordo com o guidelines int
 
 #### Variáveis gerais
 
-| Variável                 | Obrigatória         | Descrição                                                                                                                                                                            |
-| -------------------------| ------------------- | ---------------------------------------------------------------- |
-| APP_NAME                 | Sim                 | Nome da aplicação.                                               |
-| DEFAULT_PAGE_SIZE        | Não (padrão: 20)    | Quantidade máxima de items retonardos numa página de dados       |                                                                                                                    
-| USE_SQL_RETURNING_CLAUSE | Não (padrão: true)  | Montagem das cláusulas returning                                 |
-| TESTS_TENANT             | Sim                 | Código do tenant obrigatório para rodar os testes                |
+| Variável                 | Obrigatória        | Descrição                                                  |
+| ------------------------ | ------------------ | ---------------------------------------------------------- |
+| APP_NAME                 | Sim                | Nome da aplicação.                                         |
+| DEFAULT_PAGE_SIZE        | Não (padrão: 20)   | Quantidade máxima de items retonardos numa página de dados |
+| USE_SQL_RETURNING_CLAUSE | Não (padrão: true) | Montagem das cláusulas returning                           |
+| TESTS_TENANT             | Sim                | Código do tenant obrigatório para rodar os testes          |
 
 #### Variáveis de banco
 
@@ -295,9 +295,10 @@ from nsj_rest_lib.controller.delete_route import DeleteRoute
     injector_factory=InjectorFactoryMultibanco,
     service_name="cliente_service",
 )
+```
 
 ## Testes Automatizados
-``` 
+```
 src/
 │...
 ├── tests/
@@ -330,7 +331,8 @@ src/
 │   │   │   │   │   ├── test_clientes_put.py
 │   │   │   ├── dump_sql/
 │   │   │   │   ├── global.sql             
-``` 
+```
+
 ### Montando o ambiente
 * Instalar todas as dependências do projeto.
 ```
