@@ -277,7 +277,10 @@ class ServiceBase:
             for filter in aux_filters:
                 is_entity_filter = False
                 is_conjunto_filter = False
+                is_sql_join_filter = False
                 dto_field = None
+                dto_sql_join_field = None
+                table_alias = None
 
                 # Recuperando os valores passados nos filtros
                 if isinstance(aux_filters[filter], str):
@@ -356,6 +359,21 @@ class ServiceBase:
                     field_filter.set_field_name(filter)
                     dto_field = self._dto_class.fields_map[filter]
 
+                elif filter in self._dto_class.sql_join_fields_map:
+                    # Creating filter config to a DTOSQLJoinField (equals operator)
+                    is_sql_join_filter = True
+                    field_filter = DTOFieldFilter(filter)
+                    field_filter.set_field_name(filter)
+                    dto_sql_join_field = self._dto_class.sql_join_fields_map[filter]
+
+                    # Procurando o table alias
+                    for join_query_key in self._dto_class.sql_join_fields_map_to_query:
+                        join_query = self._dto_class.sql_join_fields_map_to_query[
+                            join_query_key
+                        ]
+                        if filter in join_query.fields:
+                            table_alias = join_query.sql_alias
+
                 # TODO Refatorar para usar um mapa de fields do entity
                 elif filter in self._entity_class().__dict__:
                     is_entity_filter = True
@@ -365,10 +383,19 @@ class ServiceBase:
                     continue
 
                 # Resolving entity field name (to filter)
-                if not is_entity_filter and not is_conjunto_filter:
+                if (
+                    not is_entity_filter
+                    and not is_conjunto_filter
+                    and not is_sql_join_filter
+                ):
                     entity_field_name = self._convert_to_entity_field(
                         field_filter.field_name
                     )
+                elif is_sql_join_filter:
+                    # TODO Verificar se precisa de um if dto_sql_join_field.related_dto_field in dto_sql_join_field.dto_type.fields_map
+                    entity_field_name = dto_sql_join_field.dto_type.fields_map[
+                        dto_sql_join_field.related_dto_field
+                    ].get_entity_field_name()
                 else:
                     entity_field_name = filter
 
@@ -378,7 +405,8 @@ class ServiceBase:
                         value = value.strip()
 
                     # Convertendo os valores para o formato esperado no entity
-                    if not is_entity_filter:
+                    # TODO Alterar abaixo, para dar suporte à conversão, mesmo quando for is_sql_join_filter
+                    if not is_entity_filter and not is_sql_join_filter:
                         converted_values = (
                             self._dto_class.custom_convert_value_to_entity(
                                 value,
@@ -403,9 +431,17 @@ class ServiceBase:
                     for entity_field in converted_values:
                         converted_value = converted_values[entity_field]
 
-                        if not is_entity_filter and not is_conjunto_filter:
+                        if (
+                            not is_entity_filter
+                            and not is_conjunto_filter
+                            and not is_sql_join_filter
+                        ):
                             entity_filter = Filter(
                                 field_filter.operator, converted_value
+                            )
+                        elif is_sql_join_filter:
+                            entity_filter = Filter(
+                                field_filter.operator, converted_value, table_alias
                             )
                         else:
                             entity_filter = Filter(
@@ -487,10 +523,11 @@ class ServiceBase:
 
             join_aux.fields = join_entity_fields
 
-            # Resolvendo tabela e tipo de join
+            # Resolvendo tabela, tipo de join e alias
             other_entity = join_field_map_to_query.related_entity()
             join_aux.table = other_entity.get_table_name()
             join_aux.type = join_field_map_to_query.join_type
+            join_aux.alias = join_field_map_to_query.sql_alias
 
             # Resovendo os campos usados no join
             if (

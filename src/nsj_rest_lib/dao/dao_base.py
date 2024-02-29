@@ -163,125 +163,126 @@ class DAOBase:
 
         filters_where = ""
         filter_values_map = {}
-        if filters is not None:
-            filters_where = []
 
-            # Iterating fields with filters
-            for filter_field in filters:
-                field_filter_where_or = []
-                field_filter_where_and = []
-                field_filter_where_in = []
-                field_filter_where_not_in = []
+        if filters is None:
+            return (filters_where, filter_values_map)
 
-                # Iterating condictions
-                idx = -1
-                for condiction in filters[filter_field]:
-                    idx += 1
+        filters_where = []
 
-                    # Resolving condiction
-                    operator = "="
-                    if condiction.operator == FilterOperator.DIFFERENT:
-                        operator = "<>"
-                    elif condiction.operator == FilterOperator.GREATER_THAN:
-                        operator = ">"
-                    elif condiction.operator == FilterOperator.LESS_THAN:
-                        operator = "<"
-                    elif condiction.operator == FilterOperator.GREATER_OR_EQUAL_THAN:
-                        operator = ">="
-                    elif condiction.operator == FilterOperator.LESS_OR_EQUAL_THAN:
-                        operator = "<="
-                    elif condiction.operator == FilterOperator.LIKE:
-                        operator = "like"
-                    elif condiction.operator == FilterOperator.ILIKE:
-                        operator = "ilike"
-                    elif condiction.operator == FilterOperator.NOT_NULL:
-                        operator = "is not null"
+        # Iterating fields with filters
+        for filter_field in filters:
+            field_filter_where_or = []
+            field_filter_where_and = []
+            field_filter_where_in = []
+            field_filter_where_not_in = []
+            table_alias = "t0"
 
-                    # Making condiction alias
-                    if not (condiction.operator == FilterOperator.NOT_NULL):
-                        condiction_alias = (
-                            f"ft_{condiction.operator.value}_{filter_field}_{idx}"
-                        )
-                        condiction_alias_subtituir = f":{condiction_alias}"
-                    else:
-                        condiction_alias = ""
-                        condiction_alias_subtituir = ""
+            # Iterating condictions
+            idx = -1
+            for condiction in filters[filter_field]:
+                idx += 1
 
-                    # Making condiction buffer
-                    if use_table_alias:
-                        condiction_buffer = (
-                            f"t0.{filter_field} {operator} {condiction_alias_subtituir}"
-                        )
-                    else:
-                        condiction_buffer = (
-                            f"{filter_field} {operator} {condiction_alias_subtituir}"
-                        )
+                if condiction.table_alias is not None:
+                    table_alias = condiction.table_alias
 
-                    multiple_values = len(filters[filter_field]) > 1 or (
-                        isinstance(condiction.value, set) and len(condiction.value) > 1
+                # Resolving condiction
+                operator = "="
+                if condiction.operator == FilterOperator.DIFFERENT:
+                    operator = "<>"
+                elif condiction.operator == FilterOperator.GREATER_THAN:
+                    operator = ">"
+                elif condiction.operator == FilterOperator.LESS_THAN:
+                    operator = "<"
+                elif condiction.operator == FilterOperator.GREATER_OR_EQUAL_THAN:
+                    operator = ">="
+                elif condiction.operator == FilterOperator.LESS_OR_EQUAL_THAN:
+                    operator = "<="
+                elif condiction.operator == FilterOperator.LIKE:
+                    operator = "like"
+                elif condiction.operator == FilterOperator.ILIKE:
+                    operator = "ilike"
+                elif condiction.operator == FilterOperator.NOT_NULL:
+                    operator = "is not null"
+
+                # Making condiction alias
+                if not (condiction.operator == FilterOperator.NOT_NULL):
+                    condiction_alias = (
+                        f"ft_{condiction.operator.value}_{filter_field}_{idx}"
+                    )
+                    condiction_alias_subtituir = f":{condiction_alias}"
+                else:
+                    condiction_alias = ""
+                    condiction_alias_subtituir = ""
+
+                # Making condiction buffer
+                if use_table_alias:
+                    condiction_buffer = f"{table_alias}.{filter_field} {operator} {condiction_alias_subtituir}"
+                else:
+                    condiction_buffer = (
+                        f"{filter_field} {operator} {condiction_alias_subtituir}"
                     )
 
-                    # Storing field filter where
-                    if operator == "=" and multiple_values:
-                        field_filter_where_in.append(condiction_alias_subtituir)
-                    elif operator == "<>" and multiple_values:
-                        field_filter_where_not_in.append(condiction_alias_subtituir)
-                    elif operator == "=" or operator == "like" or operator == "ilike":
-                        field_filter_where_or.append(condiction_buffer)
-                    else:
-                        field_filter_where_and.append(condiction_buffer)
+                multiple_values = len(filters[filter_field]) > 1 or (
+                    isinstance(condiction.value, set) and len(condiction.value) > 1
+                )
 
-                    # Storing condiction value
-                    if condiction.value is not None:
-                        if isinstance(condiction.value.__class__, enum.EnumMeta):
-                            if isinstance(condiction.value.value, tuple):
-                                filter_values_map[condiction_alias] = (
-                                    condiction.value.value[1]
-                                )
-                            else:
-                                filter_values_map[condiction_alias] = (
-                                    condiction.value.value
-                                )
+                # Storing field filter where
+                if operator == "=" and multiple_values:
+                    field_filter_where_in.append(condiction_alias_subtituir)
+                elif operator == "<>" and multiple_values:
+                    field_filter_where_not_in.append(condiction_alias_subtituir)
+                elif operator == "=" or operator == "like" or operator == "ilike":
+                    field_filter_where_or.append(condiction_buffer)
+                else:
+                    field_filter_where_and.append(condiction_buffer)
+
+                # Storing condiction value
+                if condiction.value is not None:
+                    if isinstance(condiction.value.__class__, enum.EnumMeta):
+                        if isinstance(condiction.value.value, tuple):
+                            filter_values_map[condiction_alias] = (
+                                condiction.value.value[1]
+                            )
                         else:
-                            if (
-                                isinstance(condiction.value, set)
-                                and len(condiction.value) > 1
-                            ):
-                                filter_values_map[condiction_alias] = ", ".join(
-                                    str(value) for value in condiction.value
-                                )
-                            else:
-                                filter_values_map[condiction_alias] = condiction.value
+                            filter_values_map[condiction_alias] = condiction.value.value
+                    else:
+                        if (
+                            isinstance(condiction.value, set)
+                            and len(condiction.value) > 1
+                        ):
+                            filter_values_map[condiction_alias] = ", ".join(
+                                str(value) for value in condiction.value
+                            )
+                        else:
+                            filter_values_map[condiction_alias] = condiction.value
 
-                    if operator == "like" or operator == "ilike":
-                        filter_values_map[condiction_alias] = (
-                            f"%{filter_values_map[condiction_alias]}%"
-                        )
-
-                # Formating condictions (with OR)
-                field_filter_where_or = " or ".join(field_filter_where_or)
-                field_filter_where_and = " and ".join(field_filter_where_and)
-                if field_filter_where_in:
-                    field_filter_where_in = (
-                        f"t0.{filter_field} in ({', '.join(field_filter_where_in)})"
+                if operator == "like" or operator == "ilike":
+                    filter_values_map[condiction_alias] = (
+                        f"%{filter_values_map[condiction_alias]}%"
                     )
-                    filters_where.append(field_filter_where_in)
-                if field_filter_where_not_in:
-                    field_filter_where_not_in = f"t0.{filter_field} not in ({', '.join(field_filter_where_not_in)})"
-                    filters_where.append(field_filter_where_not_in)
 
-                if field_filter_where_or.strip() != "":
-                    field_filter_where_or = f"({field_filter_where_or})"
-                    filters_where.append(field_filter_where_or)
+            # Formating condictions (with OR)
+            field_filter_where_or = " or ".join(field_filter_where_or)
+            field_filter_where_and = " and ".join(field_filter_where_and)
+            if field_filter_where_in:
+                field_filter_where_in = f"{table_alias}.{filter_field} in ({', '.join(field_filter_where_in)})"
+                filters_where.append(field_filter_where_in)
+            if field_filter_where_not_in:
+                field_filter_where_not_in = f"{table_alias}.{filter_field} not in ({', '.join(field_filter_where_not_in)})"
+                filters_where.append(field_filter_where_not_in)
 
-                if field_filter_where_and.strip() != "":
-                    field_filter_where_and = f"({field_filter_where_and})"
-                    filters_where.append(field_filter_where_and)
+            if field_filter_where_or.strip() != "":
+                field_filter_where_or = f"({field_filter_where_or})"
+                filters_where.append(field_filter_where_or)
 
-            # Formating all filters (with AND)
-            filters_where = "\n and ".join(filters_where)
-            if filters_where.strip() != "" and with_and:
-                filters_where = f"and {filters_where}"
+            if field_filter_where_and.strip() != "":
+                field_filter_where_and = f"({field_filter_where_and})"
+                filters_where.append(field_filter_where_and)
+
+        # Formating all filters (with AND)
+        filters_where = "\n and ".join(filters_where)
+        if filters_where.strip() != "" and with_and:
+            filters_where = f"and {filters_where}"
 
         return (filters_where, filter_values_map)
 
@@ -446,12 +447,7 @@ class DAOBase:
 
         sql_join_fields = ""
         sql_join = ""
-        for i in range(len(joins_aux)):
-
-            # Ajustando o alias da tabela para o join
-            join_aux = joins_aux[i]
-            join_aux.alias = f"t{i+1}"
-
+        for join_aux in joins_aux:
             # Ajustando os fields
             fields_sql = self._sql_fields(
                 fields=join_aux.fields, table_alias=join_aux.alias

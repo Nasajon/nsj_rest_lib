@@ -8,10 +8,12 @@ class Filter:
     def __init__(
         self,
         operator: FilterOperator,
-        value: Any
+        value: Any,
+        table_alias: str = None,
     ):
         self.operator = operator
         self.value = value
+        self.table_alias = table_alias
 
     def __repr__(self) -> str:
-        return f'{self.value}'
+        return f"{self.value}"

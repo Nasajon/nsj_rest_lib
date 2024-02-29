@@ -13,6 +13,16 @@ class DTOJoinFieldType:
     FULL = "full outer"
 
 
+# TODO Adicionar suporte a esse tipo de field no GET (GET ONE e não GET LIST)
+# TODO Adicionar suporte ao search
+# TODO Implementar o filters abaixo
+# TODO Implementar o convert_from_entity e convert_to_entity (para permitir filtrar por valores no BD, diferentes dos recebidos na query string; além de exibir diferente do que vem no banco)
+# TODO Pensar em como ordenar os joins (quando tiver um left no meio, pode ser útil)
+# TODO Pensar em como passar mais condições dentro do ON
+# TODO Pensar em como usar um só entity (e não precisar de um com os campos que vem da outra entidade)
+# TODO Verificar se ficou a abstração pelo DTO (porque o join ficou bem distante do natural em SQL)
+
+
 class DTOSQLJoinField:
     _ref_counter = 0
 
@@ -27,11 +37,11 @@ class DTOSQLJoinField:
         type: object = None,
         not_null: bool = False,
         resume: bool = False,
-        filters: typing.List[DTOFieldFilter] = None,
+        # filters: typing.List[DTOFieldFilter] = None,
         convert_from_entity: typing.Callable = None,
         validator: typing.Callable = None,
         use_default_validator: bool = True,
-        search: bool = True,
+        # search: bool = True,
     ):
         """
         -----------
@@ -50,8 +60,8 @@ class DTOSQLJoinField:
         type: Tipo esperado para a propriedade. Se for do tipo enum.Enum, o valor recebido, para atribuição à propriedade, será convertido para o enumerado.
         not_null: O campo não poderá ser None, ou vazio, no caso de strings.
         resume: O campo será usado como resumo, isto é, será sempre rotornado num HTTP GET que liste os dados (mesmo que não seja solicitado por meio da query string "fields").
-        filters: Lista de filtros adicionais suportados para esta propriedade (adicionais, porque todos as propriedades, por padrão, suportam filtros de igualdade, que podem ser passados por meio de uma query string, com mesmo nome da proriedade, e um valor qualquer a ser comparado).
-          Essa lista de filtros consiste em objetos do DTOFieldFilter (veja a documentação da classe para enteder a estrutura de declaração dos filtros).
+        # filters: Lista de filtros adicionais suportados para esta propriedade (adicionais, porque todos as propriedades, por padrão, suportam filtros de igualdade, que podem ser passados por meio de uma query string, com mesmo nome da proriedade, e um valor qualquer a ser comparado).
+        #   Essa lista de filtros consiste em objetos do DTOFieldFilter (veja a documentação da classe para enteder a estrutura de declaração dos filtros).
         convert_from_entity: Função para converter o valor contido na Entity, para o(s) valor(es) a serem gravados no objeto DTO (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
           (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
           A função recebida deve suportar os parâmetros (entity_value: Any, entity_fields: Dict[str, Any]), e retornar um Dict[str, Any], como uma coleção de chaves e valores a serem atribuídos no DTO.
@@ -60,7 +70,7 @@ class DTOSQLJoinField:
         use_default_validator: Flag indicando se o validator padrão deve ser aplicado à propriedade
             (esse validator padrão verifica o tipo de dados passado, e as demais verificações
             recebidas no filed, como, por exemplo, valor máximo, mínio, not_null, etc).
-        search: Indica que esse campo é passível de busca, por meio do argumento "search" passado num GET List, como query string (por hora, apenas pesquisas simples, por meio de operador like, estão implementadas).
+        # search: Indica que esse campo é passível de busca, por meio do argumento "search" passado num GET List, como query string (por hora, apenas pesquisas simples, por meio de operador like, estão implementadas).
         """
         self.name = None
         self.dto_type = dto_type
@@ -72,11 +82,11 @@ class DTOSQLJoinField:
         self.expected_type = type
         self.not_null = not_null
         self.resume = resume
-        self.filters = filters
+        # self.filters = filters
         self.convert_from_entity = convert_from_entity
         self.validator = validator
         self.use_default_validator = use_default_validator
-        self.search = search
+        # self.search = search
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -114,6 +124,7 @@ class SQLJoinQuery:
     entity_relation_owner: EntityRelationOwner
     join_type: DTOJoinFieldType
     relation_field: str
+    sql_alias: str
 
     def __init__(self) -> None:
         self.related_dto: DTOBase = None
@@ -124,3 +135,4 @@ class SQLJoinQuery:
         self.entity_relation_owner: EntityRelationOwner = None
         self.join_type: DTOJoinFieldType = None
         self.relation_field = None
+        self.sql_alias = None

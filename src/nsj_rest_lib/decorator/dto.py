@@ -269,3 +269,6 @@ class DTO:
         sql_join_query.entity_relation_owner = attr.entity_relation_owner
         sql_join_query.join_type = attr.join_type
         sql_join_query.relation_field = attr.relation_field
+
+        if sql_join_query.sql_alias is None:
+            sql_join_query.sql_alias = f"join_table_{len(sql_join_fields_map_to_query)}"
