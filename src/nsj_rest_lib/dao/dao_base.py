@@ -445,6 +445,9 @@ class DAOBase:
         para depois compôr a query principal.
         """
 
+        if joins_aux is None:
+            return ("", "")
+
         sql_join_fields = ""
         sql_join = ""
         for join_aux in joins_aux:
