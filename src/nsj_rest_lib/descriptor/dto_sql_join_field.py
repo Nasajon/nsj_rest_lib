@@ -98,11 +98,19 @@ class DTOSQLJoinField:
 
     def __set__(self, instance, value):
         try:
-            if self.validator is None:
+            # Checking not null constraint
+            if self.not_null and (
+                value is None or (isinstance(value, str) and len(value.strip()) <= 0)
+            ):
+                raise ValueError(
+                    f"{self.storage_name} deve estar preenchido. Valor recebido: {value}."
+                )
+
+            if self.validator is None and value is not None:
                 if self.use_default_validator:
                     value = TypeValidatorUtil.validate(self, value)
             else:
-                if self.use_default_validator:
+                if self.use_default_validator and value is not None:
                     value = TypeValidatorUtil.validate(self, value)
                 value = self.validator(self, value)
         except ValueError as e:

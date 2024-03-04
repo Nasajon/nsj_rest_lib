@@ -80,10 +80,10 @@ class DTOLeftJoinField:
     def __set__(self, instance, value):
         try:
             if self.validator is None:
-                if self.use_default_validator:
+                if self.use_default_validator and value is not None:
                     value = TypeValidatorUtil.validate(self, value)
             else:
-                if self.use_default_validator:
+                if self.use_default_validator and value is not None:
                     value = TypeValidatorUtil.validate(self, value)
                 value = self.validator(self, value)
         except ValueError as e:
