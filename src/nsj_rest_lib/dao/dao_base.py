@@ -88,6 +88,7 @@ class DAOBase:
         filters=None,
         conjunto_type: ConjuntoType = None,
         conjunto_field: str = None,
+        joins_aux: List[JoinAux] = None,
     ) -> EntityBase:
         """
         Returns an entity instance by its ID.
@@ -112,15 +113,20 @@ class DAOBase:
         # Organizando o where dos filtros
         filters_where, filter_values_map = self._make_filters_sql(filters)
 
+        # Montando a clausula dos fields vindos dos joins
+        sql_join_fields, sql_join = self._make_joins_sql(joins_aux)
+
         # Building query
         sql = f"""
         {with_conjunto}
         select
             {fields_conjunto}
             {self._sql_fields(fields)}
+            {sql_join_fields}
         from
             {entity.get_table_name()} as t0
             {join_conjuntos}
+            {sql_join}
         where
             t0.{key_field} = :id
             {filters_where}

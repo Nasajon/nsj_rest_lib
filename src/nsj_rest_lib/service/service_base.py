@@ -101,6 +101,9 @@ class ServiceBase:
             partition_fields,
         )
 
+        # Resolvendo os joins
+        joins_aux = self._resolve_sql_join_fields(fields["root"], entity_filters)
+
         # Recuperando a entity
         entity = self._dao.get(
             entity_key_field,
@@ -109,6 +112,7 @@ class ServiceBase:
             entity_filters,
             conjunto_type=self._dto_class.conjunto_type,
             conjunto_field=self._dto_class.conjunto_field,
+            joins_aux=joins_aux,
         )
 
         # Convertendo para DTO
