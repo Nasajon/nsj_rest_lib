@@ -2,6 +2,8 @@
 
 Essa propriedade do decorator "DTO" permite criar um mapeamento entre nomes de filtros, de acordo com o tipo do dado recebido na URL de GET (GET List, e não GET por ID).
 
+Na prática, o filtro declarado como alias, é trocado pelo seu correspondente, de acordo com o tipo do dado recebido na URL (como conteúdo do filtro).
+
 Para entender melhor, considere um exemplo onde se deseja suportar que o filtro "grupo_empresarial" (passado na URL) receba um UUID ou uma string (código do Grupo Empresarial). No entanto, a propriedade com o código do grupo pode se chamar "grupo_empresarial", e a propriedade com o UUID "grupo_empresarial_id". E, é o "filter_aliases" que permitirá fazer essa seleção de filtro a ser aplicado, de acordo com o tipo do dado recebido.
 
 No exemplo acima, a URL da chamada seria algo como:
