@@ -13,13 +13,12 @@ class DTOJoinFieldType:
     FULL = "full outer"
 
 
-# TODO Adicionar suporte a esse tipo de field no GET (GET ONE e não GET LIST)
 # TODO Adicionar suporte ao search
-# TODO Implementar o filters abaixo
+# TODO Implementar o filters comentado no construtor
 # TODO Pensar em como ordenar os joins (quando tiver um left no meio, pode ser útil)
 # TODO Pensar em como passar mais condições dentro do ON
 # TODO Pensar em como usar um só entity (e não precisar de um com os campos que vem da outra entidade)
-# TODO Verificar se ficou a abstração pelo DTO (porque o join ficou bem distante do natural em SQL)
+# TODO Verificar se ficou boa a abstração pelo DTO (porque o join ficou bem distante do natural em SQL)
 
 
 class DTOSQLJoinField:

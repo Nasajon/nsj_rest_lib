@@ -7,3 +7,6 @@ build_pkg:
 
 upload_pkg:
 	python3 -m twine upload --skip-existing dist/*
+
+tests:
+	pytest -s tests/api/casos_de_teste
