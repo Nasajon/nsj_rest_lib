@@ -24,6 +24,8 @@
 
 
 **Exemplo:**
+TODO: Adicionar uso do decorator
+
 ```
 from nsj_rest_lib.entity.entity_base import EntityBase
 

@@ -48,7 +48,7 @@ A grande diferença, na filosofia de desenvolvimento, é que se prioriza um esfo
       * DTOListField (TODO)
       * [DTOSQLJoinField](internal_docs/recursos/dto_sql_join_field.md)
       * DTOLeftJoinField (TODO)
-      * [Filters](internal_docs/recursos/filters.md)
+      * [Filters (filtros nos campos)](internal_docs/recursos/filters.md)
     * Filtros no DTO
       * fixed_filters (TODO)
       * [filter_aliases](internal_docs/recursos/filter_aliases.md)
@@ -59,3 +59,8 @@ A grande diferença, na filosofia de desenvolvimento, é que se prioriza um esfo
     * [DAO](internal_docs/recursos/dao.md)
 * Outros Recursos
   * [Utilitário para Healthcheck](internal_docs/outros_recursos/healthcheck.md)
+  * Integeração com o MultiDatabaseLib (TODO)
+  * Validação de DTOs isolados (campos, tipos de dadose, etc) (TODO)
+  * Uso manual do DAO (para queries manuais) (TODO)
+  * Uso manual do Service (para consultas ou inserts manuais) (TODO)
+  * Customizando comportamentos (TODO)
