@@ -53,7 +53,7 @@ A grande diferença, na filosofia de desenvolvimento, é que se prioriza um esfo
       * fixed_filters (TODO)
       * [filter_aliases](internal_docs/recursos/filter_aliases.md)
     * Suporte a conjuntos (do ERP SQL) (TODO)
-  * [Entity](internal_docs/recursos/entity.md)
+  * [Entity](internal_docs/recursos/entity.md) (TODO Atualizar)
   * [Controller](internal_docs/recursos/controller.md)
   * Menos usados
     * [DAO](internal_docs/recursos/dao.md)
