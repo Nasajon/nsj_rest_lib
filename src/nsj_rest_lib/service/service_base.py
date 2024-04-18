@@ -1429,10 +1429,11 @@ class ServiceBase:
                     # Recuperando a configuração do campo left join
                     left_join_field: DTOLeftJoinField = dto.left_join_fields_map[field]
 
-                    # Recuperando o valor da propriedade no DTO relacionado
-                    field_value = getattr(
-                        related_dto, left_join_field.related_dto_field
-                    )
+                    if related_dto is not None:
+                        # Recuperando o valor da propriedade no DTO relacionado
+                        field_value = getattr(
+                            related_dto, left_join_field.related_dto_field
+                        )
 
-                    # Gravando o valor no DTO de interesse
-                    setattr(dto, field, field_value)
+                        # Gravando o valor no DTO de interesse
+                        setattr(dto, field, field_value)
