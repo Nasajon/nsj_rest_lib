@@ -4,6 +4,7 @@ from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_left_join_field import DTOLeftJoinField, LeftJoinQuery
+from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
 from nsj_rest_lib.descriptor.dto_sql_join_field import DTOSQLJoinField, SQLJoinQuery
 
 
@@ -55,6 +56,9 @@ class DTO:
         # Creating sql_join_fields_map_to_query in cls, if needed
         self._check_class_attribute(cls, "sql_join_fields_map_to_query", {})
 
+        # Creating object_fields_map in cls, if needed
+        self._check_class_attribute(cls, "object_fields_map", {})
+
         # Creating field_filters_map in cls, if needed
         self._check_class_attribute(cls, "field_filters_map", {})
 
@@ -95,7 +99,7 @@ class DTO:
                 # Checking if it is a resume field (to store)
                 if attr.resume:
                     resume_fields = getattr(cls, "resume_fields")
-                    if not (key in resume_fields):
+                    if key not in resume_fields:
                         resume_fields.add(key)
 
                 # TODO Refatorar para suportar PKs compostas
@@ -106,7 +110,7 @@ class DTO:
                 # Verifica se é um campo de particionamento, e o guarda em caso positivo
                 if attr.partition_data:
                     partition_fields = getattr(cls, "partition_fields")
-                    if not (key in partition_fields):
+                    if key not in partition_fields:
                         partition_fields.add(key)
 
                 # Verifica se é um campo pertencente a uma unique, a populando o dicionário de uniques
@@ -146,7 +150,7 @@ class DTO:
                 # Checking if it is a resume field (to store)
                 if attr.resume:
                     resume_fields = getattr(cls, "resume_fields")
-                    if not (key in resume_fields):
+                    if key not in resume_fields:
                         resume_fields.add(key)
 
                 # Montando o mapa de controle das queries (para o service_base)
@@ -167,11 +171,29 @@ class DTO:
                 # Checking if it is a resume field (to store)
                 if attr.resume:
                     resume_fields = getattr(cls, "resume_fields")
-                    if not (key in resume_fields):
+                    if key not in resume_fields:
                         resume_fields.add(key)
 
                 # Montando o mapa de controle das queries (para o service_base)
                 self.set_sql_join_fields_map_to_query(key, attr, cls)
+
+            elif isinstance(attr, DTOObjectField):
+                # Storing field in fields_map
+                getattr(cls, "object_fields_map")[key] = attr
+
+                # Setting a better name to storage_name
+                attr.storage_name = f"{key}"
+                attr.name = f"{key}"
+
+                # Copying type from annotation (if exists)
+                if key in cls.__annotations__:
+                    attr.expected_type = cls.__annotations__[key]
+
+                # Checking if it is a resume field (to store)
+                if attr.resume:
+                    resume_fields = getattr(cls, "resume_fields")
+                    if key not in resume_fields:
+                        resume_fields.add(key)
 
         # Setting fixed filters
         setattr(cls, "fixed_filters", self._fixed_filters)
