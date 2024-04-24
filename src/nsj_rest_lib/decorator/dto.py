@@ -1,274 +1,310 @@
+import functools
 from typing import Any, Dict
 
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_left_join_field import DTOLeftJoinField, LeftJoinQuery
+from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
 from nsj_rest_lib.descriptor.dto_sql_join_field import DTOSQLJoinField, SQLJoinQuery
 
 
-class DTO:
-    def __init__(
-        self,
-        fixed_filters: Dict[str, Any] = None,
-        conjunto_type: ConjuntoType = None,
-        conjunto_field: str = None,
-        filter_aliases: Dict[str, Any] = None,
-    ) -> None:
-        super().__init__()
+def DTO(
+    fixed_filters: Dict[str, Any] = None,
+    conjunto_type: ConjuntoType = None,
+    conjunto_field: str = None,
+    filter_aliases: Dict[str, Any] = None,
+):
 
-        self._fixed_filters = fixed_filters
-        self._conjunto_type = conjunto_type
-        self._conjunto_field = conjunto_field
-        self._filter_aliases = filter_aliases
+    def DTOWrapper(classe):
 
-        if (self._conjunto_type is None and self._conjunto_field is not None) or (
-            self._conjunto_type is not None and self._conjunto_field is None
-        ):
-            raise Exception(
-                "Os parâmetros conjunto_type e conjunto_field devem ser preenchidos juntos (se um for não nulo, ambos devem ser preenchidos)."
-            )
+        class DTOClass:
 
-    def __call__(self, cls: object):
-        """
-        Iterating DTO class to handle DTOFields descriptors.
-        """
+            def __init__(
+                self,
+            ) -> None:
+                super().__init__()
 
-        # Creating resume_fields in cls, if needed
-        self._check_class_attribute(cls, "resume_fields", set())
+                self._fixed_filters = fixed_filters
+                self._conjunto_type = conjunto_type
+                self._conjunto_field = conjunto_field
+                self._filter_aliases = filter_aliases
 
-        # Creating fields_map in cls, if needed
-        self._check_class_attribute(cls, "fields_map", {})
+                if (
+                    self._conjunto_type is None and self._conjunto_field is not None
+                ) or (self._conjunto_type is not None and self._conjunto_field is None):
+                    raise Exception(
+                        "Os parâmetros conjunto_type e conjunto_field devem ser preenchidos juntos (se um for não nulo, ambos devem ser preenchidos)."
+                    )
 
-        # Creating list_fields_map in cls, if needed
-        self._check_class_attribute(cls, "list_fields_map", {})
+            @functools.wraps(classe)
+            def __call__(self, cls: object):
+                """
+                Iterating DTO class to handle DTOFields descriptors.
+                """
 
-        # Creating left_join_fields_map in cls, if needed
-        self._check_class_attribute(cls, "left_join_fields_map", {})
+                # Creating resume_fields in cls, if needed
+                self._check_class_attribute(cls, "resume_fields", set())
 
-        # Creating left_join_fields_map_to_query in cls, if needed
-        self._check_class_attribute(cls, "left_join_fields_map_to_query", {})
+                # Creating fields_map in cls, if needed
+                self._check_class_attribute(cls, "fields_map", {})
 
-        # Creating sql_join_fields_map in cls, if needed
-        self._check_class_attribute(cls, "sql_join_fields_map", {})
+                # Creating list_fields_map in cls, if needed
+                self._check_class_attribute(cls, "list_fields_map", {})
 
-        # Creating sql_join_fields_map_to_query in cls, if needed
-        self._check_class_attribute(cls, "sql_join_fields_map_to_query", {})
+                # Creating left_join_fields_map in cls, if needed
+                self._check_class_attribute(cls, "left_join_fields_map", {})
 
-        # Creating field_filters_map in cls, if needed
-        self._check_class_attribute(cls, "field_filters_map", {})
+                # Creating left_join_fields_map_to_query in cls, if needed
+                self._check_class_attribute(cls, "left_join_fields_map_to_query", {})
 
-        # Creating pk_field in cls, if needed
-        # TODO Refatorar para suportar PKs compostas
-        self._check_class_attribute(cls, "pk_field", None)
+                # Creating sql_join_fields_map in cls, if needed
+                self._check_class_attribute(cls, "sql_join_fields_map", {})
 
-        # Criando a propriedade "partition_fields" na classe "cls", se necessário
-        self._check_class_attribute(cls, "partition_fields", set())
+                # Creating sql_join_fields_map_to_query in cls, if needed
+                self._check_class_attribute(cls, "sql_join_fields_map_to_query", {})
 
-        # Criando a propriedade "uniques" na classe "cls", se necessário
-        self._check_class_attribute(cls, "uniques", {})
+                # Creating object_fields_map in cls, if needed
+                self._check_class_attribute(cls, "object_fields_map", {})
 
-        # Criando a propriedade "candidate_keys" na classe "cls", se necessário
-        self._check_class_attribute(cls, "candidate_keys", [])
+                # Creating field_filters_map in cls, if needed
+                self._check_class_attribute(cls, "field_filters_map", {})
 
-        # Criando a propriedade "search_fields" na classe "cls", se necessário
-        self._check_class_attribute(cls, "search_fields", set())
-
-        # Iterating for the class attributes
-        for key, attr in cls.__dict__.items():
-            # Test if the attribute uses the DTOFiel descriptor
-            if isinstance(attr, DTOField):
-                # Storing field in fields_map
-                getattr(cls, "fields_map")[key] = attr
-
-                # Setting a better name to storage_name
-                attr.storage_name = f"{key}"
-                attr.name = f"{key}"
-
-                # Checking filters name
-                self._check_filters(cls, key, attr)
-
-                # Copying type from annotation (if exists)
-                if key in cls.__annotations__:
-                    attr.expected_type = cls.__annotations__[key]
-
-                # Checking if it is a resume field (to store)
-                if attr.resume:
-                    resume_fields = getattr(cls, "resume_fields")
-                    if not (key in resume_fields):
-                        resume_fields.add(key)
-
+                # Creating pk_field in cls, if needed
                 # TODO Refatorar para suportar PKs compostas
-                # Setting PK info
-                if attr.pk:
-                    setattr(cls, "pk_field", f"{key}")
+                self._check_class_attribute(cls, "pk_field", None)
 
-                # Verifica se é um campo de particionamento, e o guarda em caso positivo
-                if attr.partition_data:
-                    partition_fields = getattr(cls, "partition_fields")
-                    if not (key in partition_fields):
-                        partition_fields.add(key)
+                # Criando a propriedade "partition_fields" na classe "cls", se necessário
+                self._check_class_attribute(cls, "partition_fields", set())
 
-                # Verifica se é um campo pertencente a uma unique, a populando o dicionário de uniques
-                if attr.unique:
-                    uniques = getattr(cls, "uniques")
-                    fields_unique = uniques.setdefault(attr.unique, set())
-                    fields_unique.add(key)
+                # Criando a propriedade "uniques" na classe "cls", se necessário
+                self._check_class_attribute(cls, "uniques", {})
 
-                # Verifica se é uma chave candidata
-                if attr.candidate_key:
-                    getattr(cls, "candidate_keys").append(key)
+                # Criando a propriedade "candidate_keys" na classe "cls", se necessário
+                self._check_class_attribute(cls, "candidate_keys", [])
 
-                # Verifica se é um campo passível de busca
-                if attr.search:
-                    getattr(cls, "search_fields").add(key)
+                # Criando a propriedade "search_fields" na classe "cls", se necessário
+                self._check_class_attribute(cls, "search_fields", set())
 
-            elif isinstance(attr, DTOListField):
-                # Storing field in fields_map
-                getattr(cls, "list_fields_map")[key] = attr
+                # Iterating for the class attributes
+                for key, attr in cls.__dict__.items():
+                    # Test if the attribute uses the DTOFiel descriptor
+                    if isinstance(attr, DTOField):
+                        # Storing field in fields_map
+                        getattr(cls, "fields_map")[key] = attr
 
-                # Setting a better name to storage_name
-                attr.storage_name = f"{key}"
-                attr.name = f"{key}"
+                        # Setting a better name to storage_name
+                        attr.storage_name = f"{key}"
+                        attr.name = f"{key}"
 
-            elif isinstance(attr, DTOLeftJoinField):
-                # Storing field in fields_map
-                getattr(cls, "left_join_fields_map")[key] = attr
+                        # Checking filters name
+                        self._check_filters(cls, key, attr)
 
-                # Setting a better name to storage_name
-                attr.storage_name = f"{key}"
-                attr.name = f"{key}"
+                        # Copying type from annotation (if exists)
+                        if key in cls.__annotations__:
+                            attr.expected_type = cls.__annotations__[key]
 
-                # Copying type from annotation (if exists)
-                if key in cls.__annotations__:
-                    attr.expected_type = cls.__annotations__[key]
+                        # Checking if it is a resume field (to store)
+                        if attr.resume:
+                            resume_fields = getattr(cls, "resume_fields")
+                            if key not in resume_fields:
+                                resume_fields.add(key)
 
-                # Checking if it is a resume field (to store)
-                if attr.resume:
-                    resume_fields = getattr(cls, "resume_fields")
-                    if not (key in resume_fields):
-                        resume_fields.add(key)
+                        # TODO Refatorar para suportar PKs compostas
+                        # Setting PK info
+                        if attr.pk:
+                            setattr(cls, "pk_field", f"{key}")
 
-                # Montando o mapa de controle das queries (para o service_base)
-                self.set_left_join_fields_map_to_query(key, attr, cls)
+                        # Verifica se é um campo de particionamento, e o guarda em caso positivo
+                        if attr.partition_data:
+                            partition_fields = getattr(cls, "partition_fields")
+                            if key not in partition_fields:
+                                partition_fields.add(key)
 
-            elif isinstance(attr, DTOSQLJoinField):
-                # Storing field in fields_map
-                getattr(cls, "sql_join_fields_map")[key] = attr
+                        # Verifica se é um campo pertencente a uma unique, a populando o dicionário de uniques
+                        if attr.unique:
+                            uniques = getattr(cls, "uniques")
+                            fields_unique = uniques.setdefault(attr.unique, set())
+                            fields_unique.add(key)
 
-                # Setting a better name to storage_name
-                attr.storage_name = f"{key}"
-                attr.name = f"{key}"
+                        # Verifica se é uma chave candidata
+                        if attr.candidate_key:
+                            getattr(cls, "candidate_keys").append(key)
 
-                # Copying type from annotation (if exists)
-                if key in cls.__annotations__:
-                    attr.expected_type = cls.__annotations__[key]
+                        # Verifica se é um campo passível de busca
+                        if attr.search:
+                            getattr(cls, "search_fields").add(key)
 
-                # Checking if it is a resume field (to store)
-                if attr.resume:
-                    resume_fields = getattr(cls, "resume_fields")
-                    if not (key in resume_fields):
-                        resume_fields.add(key)
+                    elif isinstance(attr, DTOListField):
+                        # Storing field in fields_map
+                        getattr(cls, "list_fields_map")[key] = attr
 
-                # Montando o mapa de controle das queries (para o service_base)
-                self.set_sql_join_fields_map_to_query(key, attr, cls)
+                        # Setting a better name to storage_name
+                        attr.storage_name = f"{key}"
+                        attr.name = f"{key}"
 
-        # Setting fixed filters
-        setattr(cls, "fixed_filters", self._fixed_filters)
+                    elif isinstance(attr, DTOLeftJoinField):
+                        # Storing field in fields_map
+                        getattr(cls, "left_join_fields_map")[key] = attr
 
-        # Setting tipo de Conjunto
-        setattr(cls, "conjunto_type", self._conjunto_type)
-        setattr(cls, "conjunto_field", self._conjunto_field)
+                        # Setting a better name to storage_name
+                        attr.storage_name = f"{key}"
+                        attr.name = f"{key}"
 
-        # Setting filter aliases
-        setattr(cls, "filter_aliases", self._filter_aliases)
+                        # Copying type from annotation (if exists)
+                        if key in cls.__annotations__:
+                            attr.expected_type = cls.__annotations__[key]
 
-        return cls
+                        # Checking if it is a resume field (to store)
+                        if attr.resume:
+                            resume_fields = getattr(cls, "resume_fields")
+                            if key not in resume_fields:
+                                resume_fields.add(key)
 
-    def _check_filters(self, cls: object, field_name: str, dto_field: DTOField):
-        """
-        Check filters (if exists), and setting default filter name.
-        """
+                        # Montando o mapa de controle das queries (para o service_base)
+                        self.set_left_join_fields_map_to_query(key, attr, cls)
 
-        if dto_field.filters is None:
-            return
+                    elif isinstance(attr, DTOSQLJoinField):
+                        # Storing field in fields_map
+                        getattr(cls, "sql_join_fields_map")[key] = attr
 
-        # Handling each filter
-        for filter in dto_field.filters:
-            # Resolving filter name
-            filter_name = field_name
-            if filter.name is not None:
-                filter_name = filter.name
+                        # Setting a better name to storage_name
+                        attr.storage_name = f"{key}"
+                        attr.name = f"{key}"
 
-            # Storing field filter name
-            filter.field_name = field_name
+                        # Copying type from annotation (if exists)
+                        if key in cls.__annotations__:
+                            attr.expected_type = cls.__annotations__[key]
 
-            # Adding into field filters map
-            field_filters_map = getattr(cls, "field_filters_map")
-            field_filters_map[filter_name] = filter
+                        # Checking if it is a resume field (to store)
+                        if attr.resume:
+                            resume_fields = getattr(cls, "resume_fields")
+                            if key not in resume_fields:
+                                resume_fields.add(key)
 
-    def _check_class_attribute(self, cls: object, attr_name: str, default_value: Any):
-        """
-        Add attribute "attr_name" in class "cls", if not exists.
-        """
+                        # Montando o mapa de controle das queries (para o service_base)
+                        self.set_sql_join_fields_map_to_query(key, attr, cls)
 
-        if attr_name not in cls.__dict__:
-            setattr(cls, attr_name, default_value)
+                    elif isinstance(attr, DTOObjectField):
+                        # Storing field in fields_map
+                        getattr(cls, "object_fields_map")[key] = attr
 
-    def set_left_join_fields_map_to_query(
-        self,
-        field: str,
-        attr: DTOLeftJoinField,
-        cls: object,
-    ):
-        # Recuperando o map de facilitação das queries
-        left_join_fields_map_to_query: dict[str, LeftJoinQuery] = getattr(
-            cls, "left_join_fields_map_to_query"
-        )
+                        # Setting a better name to storage_name
+                        attr.storage_name = f"{key}"
+                        attr.name = f"{key}"
 
-        # Verificando se o objeto de query, relativo a esse campo,
-        # já estava no mapa (e colocando, caso negativo)
-        map_key = (
-            f"{attr.dto_type}____{attr.entity_type}____{attr.entity_relation_owner}"
-        )
-        left_join_query = left_join_fields_map_to_query.setdefault(
-            map_key, LeftJoinQuery()
-        )
+                        # Copying type from annotation (if exists)
+                        if key in cls.__annotations__:
+                            attr.expected_type = cls.__annotations__[key]
 
-        # Preenchendo as propriedades que serão úteis para as queries
-        left_join_query.related_dto = attr.dto_type
-        left_join_query.related_entity = attr.entity_type
-        left_join_query.fields.append(field)
-        left_join_query.left_join_fields.append(attr)
-        left_join_query.entity_relation_owner = attr.entity_relation_owner
+                        # Checking if it is a resume field (to store)
+                        if attr.resume:
+                            resume_fields = getattr(cls, "resume_fields")
+                            if key not in resume_fields:
+                                resume_fields.add(key)
 
-    def set_sql_join_fields_map_to_query(
-        self,
-        field: str,
-        attr: DTOSQLJoinField,
-        cls: object,
-    ):
-        # Recuperando o map de facilitação das queries
-        sql_join_fields_map_to_query: dict[str, SQLJoinQuery] = getattr(
-            cls, "sql_join_fields_map_to_query"
-        )
+                # Setting fixed filters
+                setattr(cls, "fixed_filters", self._fixed_filters)
 
-        # Verificando se o objeto de query, relativo a esse campo,
-        # já estava no mapa (e colocando, caso negativo)
-        map_key = f"{attr.dto_type}____{attr.entity_type}____{attr.entity_relation_owner}____{attr.join_type}"
-        sql_join_query = sql_join_fields_map_to_query.setdefault(
-            map_key, SQLJoinQuery()
-        )
+                # Setting tipo de Conjunto
+                setattr(cls, "conjunto_type", self._conjunto_type)
+                setattr(cls, "conjunto_field", self._conjunto_field)
 
-        # Preenchendo as propriedades que serão úteis para as queries
-        sql_join_query.related_dto = attr.dto_type
-        sql_join_query.related_entity = attr.entity_type
-        sql_join_query.fields.append(field)
-        sql_join_query.related_fields.append(attr.related_dto_field)
-        sql_join_query.join_fields.append(attr)
-        sql_join_query.entity_relation_owner = attr.entity_relation_owner
-        sql_join_query.join_type = attr.join_type
-        sql_join_query.relation_field = attr.relation_field
+                # Setting filter aliases
+                setattr(cls, "filter_aliases", self._filter_aliases)
 
-        if sql_join_query.sql_alias is None:
-            sql_join_query.sql_alias = f"join_table_{len(sql_join_fields_map_to_query)}"
+                return cls
+
+            def _check_filters(self, cls: object, field_name: str, dto_field: DTOField):
+                """
+                Check filters (if exists), and setting default filter name.
+                """
+
+                if dto_field.filters is None:
+                    return
+
+                # Handling each filter
+                for filter in dto_field.filters:
+                    # Resolving filter name
+                    filter_name = field_name
+                    if filter.name is not None:
+                        filter_name = filter.name
+
+                    # Storing field filter name
+                    filter.field_name = field_name
+
+                    # Adding into field filters map
+                    field_filters_map = getattr(cls, "field_filters_map")
+                    field_filters_map[filter_name] = filter
+
+            def _check_class_attribute(
+                self, cls: object, attr_name: str, default_value: Any
+            ):
+                """
+                Add attribute "attr_name" in class "cls", if not exists.
+                """
+
+                if attr_name not in cls.__dict__:
+                    setattr(cls, attr_name, default_value)
+
+            def set_left_join_fields_map_to_query(
+                self,
+                field: str,
+                attr: DTOLeftJoinField,
+                cls: object,
+            ):
+                # Recuperando o map de facilitação das queries
+                left_join_fields_map_to_query: dict[str, LeftJoinQuery] = getattr(
+                    cls, "left_join_fields_map_to_query"
+                )
+
+                # Verificando se o objeto de query, relativo a esse campo,
+                # já estava no mapa (e colocando, caso negativo)
+                map_key = f"{attr.dto_type}____{attr.entity_type}____{attr.entity_relation_owner}"
+                left_join_query = left_join_fields_map_to_query.setdefault(
+                    map_key, LeftJoinQuery()
+                )
+
+                # Preenchendo as propriedades que serão úteis para as queries
+                left_join_query.related_dto = attr.dto_type
+                left_join_query.related_entity = attr.entity_type
+                left_join_query.fields.append(field)
+                left_join_query.left_join_fields.append(attr)
+                left_join_query.entity_relation_owner = attr.entity_relation_owner
+
+            def set_sql_join_fields_map_to_query(
+                self,
+                field: str,
+                attr: DTOSQLJoinField,
+                cls: object,
+            ):
+                # Recuperando o map de facilitação das queries
+                sql_join_fields_map_to_query: dict[str, SQLJoinQuery] = getattr(
+                    cls, "sql_join_fields_map_to_query"
+                )
+
+                # Verificando se o objeto de query, relativo a esse campo,
+                # já estava no mapa (e colocando, caso negativo)
+                map_key = f"{attr.dto_type}____{attr.entity_type}____{attr.entity_relation_owner}____{attr.join_type}"
+                sql_join_query = sql_join_fields_map_to_query.setdefault(
+                    map_key, SQLJoinQuery()
+                )
+
+                # Preenchendo as propriedades que serão úteis para as queries
+                sql_join_query.related_dto = attr.dto_type
+                sql_join_query.related_entity = attr.entity_type
+                sql_join_query.fields.append(field)
+                sql_join_query.related_fields.append(attr.related_dto_field)
+                sql_join_query.join_fields.append(attr)
+                sql_join_query.entity_relation_owner = attr.entity_relation_owner
+                sql_join_query.join_type = attr.join_type
+                sql_join_query.relation_field = attr.relation_field
+
+                if sql_join_query.sql_alias is None:
+                    sql_join_query.sql_alias = (
+                        f"join_table_{len(sql_join_fields_map_to_query)}"
+                    )
+
+        return DTOClass().__call__(classe)
+
+    return DTOWrapper

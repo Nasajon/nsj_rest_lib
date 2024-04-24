@@ -20,6 +20,7 @@ class DTOBase(abc.ABC):
     left_join_fields_map_to_query: dict = {}
     sql_join_fields_map: dict = {}
     sql_join_fields_map_to_query: dict = {}
+    object_fields_map: dict = {}
     field_filters_map: Dict[str, DTOFieldFilter]
     # TODO Refatorar para suportar PK composto
     pk_field: str
@@ -139,6 +140,17 @@ class DTOBase(abc.ABC):
             # Atribuindo o valor à propriedade do DTO
             if field in kwargs:
                 setattr(self, field, kwargs[field])
+            else:
+                setattr(self, field, None)
+
+        # Setando os campos registrados como fields object
+        for field in self.__class__.object_fields_map:
+            # Recuperando a configuração do campo
+            aux_dto_field = self.__class__.object_fields_map[field]
+
+            # Atribuindo o valor à propriedade do DTO
+            if field in kwargs:
+                setattr(self, field, aux_dto_field.expected_type(**kwargs[field]))
             else:
                 setattr(self, field, None)
 
