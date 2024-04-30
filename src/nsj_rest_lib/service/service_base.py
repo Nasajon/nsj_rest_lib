@@ -1259,15 +1259,14 @@ class ServiceBase:
             if len(self._dto_class.list_fields_map) > 0:
                 self._delete_related_lists(id, additional_filters)
 
-            # Excluindo a entity principal
-            self._dao.delete(entity_filters)
-
             # Excluindo os conjuntos (se necessário)
             if self._dto_class.conjunto_type is not None:
                 self._dao.delete_relacionamento_conjunto(
                     id, self._dto_class.conjunto_type
                 )
 
+            # Excluindo a entity principal
+            self._dao.delete(entity_filters)
         except:
             if manage_transaction:
                 self._dao.rollback()

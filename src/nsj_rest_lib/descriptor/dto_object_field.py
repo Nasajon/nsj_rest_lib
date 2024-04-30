@@ -14,7 +14,6 @@ class DTOObjectField:
         entity_relation_owner: EntityRelationOwner = EntityRelationOwner.SELF,
         not_null: bool = False,
         resume: bool = False,
-        convert_from_entity: typing.Callable = None,
         validator: typing.Callable = None,
     ):
         """
@@ -60,12 +59,13 @@ class DTOObjectField:
                     f"{self.storage_name} deve estar preenchido. Valor recebido: {value}."
                 )
 
-            if self.validator is None and value is not None:
+            if value is not None:
                 if not isinstance(value, self.expected_type):
                     raise ValueError(
                         f"O Objeto não é do tipo informado. Valor recebido: {value}."
                     )
-            else:
+
+            if self.validator is not None:
                 value = self.validator(self, value)
         except ValueError:
             if not (
