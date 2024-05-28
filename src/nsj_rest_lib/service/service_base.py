@@ -689,12 +689,15 @@ class ServiceBase:
                     if list_field.relation_key_field is not None:
                         relation_key_field = list_field.relation_key_field
 
+                    # Getting value to filter related list
+                    relation_filter_value = getattr(dto, relation_key_field)
+                    if relation_filter_value is None:
+                        # If None, there is no related objects. So, set empty list and return.
+                        setattr(dto, master_dto_attr, [])
+                        return
+
                     # Making filter to relation
-                    filters = {
-                        list_field.related_entity_field: getattr(
-                            dto, relation_key_field
-                        )
-                    }
+                    filters = {list_field.related_entity_field: relation_filter_value}
 
                     # Tratando campos de particionamento
                     for field in self._dto_class.partition_fields:

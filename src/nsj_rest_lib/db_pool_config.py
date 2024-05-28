@@ -11,6 +11,26 @@ from nsj_rest_lib.settings import DB_POOL_SIZE
 import sqlalchemy
 
 
+def create_url(
+    username: str,
+    password: str,
+    host: str,
+    port: str,
+    database: str,
+    db_dialect: str = "postgresql+pg8000",
+):
+    return str(
+        sqlalchemy.engine.URL.create(
+            db_dialect,
+            username=username,
+            password=password,
+            host=host,
+            port=port,
+            database=database,
+        )
+    )
+
+
 def create_pool(database_conn_url):
     # Creating database connection pool
     db_pool = sqlalchemy.create_engine(
@@ -25,12 +45,27 @@ def create_pool(database_conn_url):
 
 
 if DATABASE_DRIVER.upper() in ["SINGLE_STORE", "MYSQL"]:
-    database_conn_url = f"mysql+pymysql://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
+    database_conn_url = create_url(
+        DATABASE_USER,
+        DATABASE_PASS,
+        DATABASE_HOST,
+        DATABASE_PORT,
+        DATABASE_NAME,
+        "mysql+pymysql",
+    )
+    # database_conn_url = f"mysql+pymysql://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
 else:
     if ENV.upper() == "GCP":
         database_conn_url = f"postgresql+pg8000://{DATABASE_USER}:{DATABASE_PASS}@/{DATABASE_NAME}?unix_sock=/cloudsql/{CLOUD_SQL_CONN_NAME}/.s.PGSQL.{DATABASE_PORT}"
     else:
-        database_conn_url = f"postgresql+pg8000://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
+        database_conn_url = create_url(
+            DATABASE_USER,
+            DATABASE_PASS,
+            DATABASE_HOST,
+            DATABASE_PORT,
+            DATABASE_NAME,
+        )
+        # database_conn_url = f"postgresql+pg8000://{DATABASE_USER}:{DATABASE_PASS}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
 
 
 def default_create_pool():
