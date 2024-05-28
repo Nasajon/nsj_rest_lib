@@ -41,7 +41,7 @@ class DTOSQLJoinField:
         use_default_validator: bool = True,
         # search: bool = True,
     ):
-        """
+        """fields=enderecos,nome_fantasia
         -----------
         Parameters:
         -----------
@@ -111,7 +111,9 @@ class DTOSQLJoinField:
             else:
                 if self.use_default_validator and value is not None:
                     value = TypeValidatorUtil.validate(self, value)
-                value = self.validator(self, value)
+
+                if self.validator is not None:
+                    value = self.validator(self, value)
         except ValueError as e:
             if not (
                 "escape_validator" in instance.__dict__
