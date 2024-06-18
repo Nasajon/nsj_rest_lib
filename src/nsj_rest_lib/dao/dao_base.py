@@ -799,7 +799,12 @@ class DAOBase:
 
         return entity
 
-    def _sql_update_fields(self, entity: EntityBase, ignore_nones: bool = False) -> str:
+    def _sql_update_fields(
+        self,
+        entity: EntityBase,
+        ignore_nones: bool = False,
+        sql_read_only_fields: List[str] = [],
+    ) -> str:
         """
         Retorna lista com os campos para update, no padrão "field = :field"
         """
@@ -814,6 +819,7 @@ class DAOBase:
                 and getattr(entity, k) is not None
                 and k not in entity.get_const_fields()
                 and (k != entity.get_pk_field() or getattr(entity, k) is not None)
+                and k not in sql_read_only_fields
             ]
         else:
             fields = [
@@ -823,6 +829,7 @@ class DAOBase:
                 and not k.startswith("_")
                 and k not in entity.get_const_fields()
                 and (k != entity.get_pk_field() or getattr(entity, k) is not None)
+                and k not in sql_read_only_fields
             ]
 
         return ", ".join(fields)
@@ -834,13 +841,16 @@ class DAOBase:
         entity: EntityBase,
         filters: Dict[str, List[Filter]],
         partial_update: bool = False,
+        sql_read_only_fields: List[str] = [],
     ):
         """
         Atualiza o objeto de entidade "entity" no banco de dados
         """
 
         # Montando a cláusula dos campos
-        sql_fields = self._sql_update_fields(entity, partial_update)
+        sql_fields = self._sql_update_fields(
+            entity, partial_update, sql_read_only_fields
+        )
 
         # Organizando o where dos filtros
         filters_where, filter_values_map = self._make_filters_sql(filters, True, False)

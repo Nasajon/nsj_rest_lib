@@ -51,7 +51,7 @@ class PatchRoute(RouteBase):
                 data = request.json
 
                 # Convertendo os dados para o DTO
-                data = self._dto_class(**data)
+                data = self._dto_class(validate_read_only=True, **data)
 
                 # Montando os filtros de particao de dados
                 partition_filters = {}
