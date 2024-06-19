@@ -48,7 +48,19 @@ class RouteBase:
         self._dto_response_class = dto_response_class
 
     def __call__(self, func):
+        from nsj_rest_lib.controller.command_router import CommandRouter
+
+        # Criando o wrapper da função
         self.function_wrapper = FunctionRouteWrapper(self, func)
+
+        # Registrando a função para ser chamada via linha de comando
+        CommandRouter.get_instance().register(
+            func.__name__,
+            self.function_wrapper,
+            self,
+        )
+
+        # Retornando o wrapper para substituir a função original
         return self.function_wrapper
 
     def _get_service(self, factory: NsjInjectorFactoryBase) -> ServiceBase:
@@ -64,7 +76,7 @@ class RouteBase:
                 DAOBase(factory.db_adapter(), self._entity_class),
                 self._dto_class,
                 self._entity_class,
-                self._dto_response_class
+                self._dto_response_class,
             )
 
     def _parse_fields(self, fields: str) -> Dict[str, Set[str]]:
@@ -79,13 +91,13 @@ class RouteBase:
 
         if fields is None:
             fields_map = {}
-            fields_map.setdefault('root', self._dto_class.resume_fields)
+            fields_map.setdefault("root", self._dto_class.resume_fields)
             return fields_map
 
-        fields = fields.split(',')
+        fields = fields.split(",")
 
-        matcher_dot = re.compile('(.+)\.(.+)')
-        matcher_par = re.compile('(.+)\((.+)\)')
+        matcher_dot = re.compile("(.+)\.(.+)")
+        matcher_par = re.compile("(.+)\((.+)\)")
 
         # Construindo o mapa de retorno
         fields_map = {}
@@ -103,7 +115,7 @@ class RouteBase:
                 value = match_dot.group(2)
 
                 # Adicionando a propriedade do objeto interno as campos root
-                root_field_list = fields_map.setdefault('root', set())
+                root_field_list = fields_map.setdefault("root", set())
                 if not key in root_field_list:
                     root_field_list.add(key)
 
@@ -117,18 +129,18 @@ class RouteBase:
                 field_list = fields_map.setdefault(key, set())
 
                 # Adicionando a propriedade do objeto interno as campos root
-                root_field_list = fields_map.setdefault('root', set())
+                root_field_list = fields_map.setdefault("root", set())
                 if not key in root_field_list:
                     root_field_list.add(key)
 
                 # Tratando cada campo dentro do parêntese
-                for val in value.split(','):
+                for val in value.split(","):
                     val = val.strip()
 
                     field_list.add(val)
             else:
                 # Tratando propriedade simples (sem entidade aninhada)
-                root_field_list = fields_map.setdefault('root', set())
+                root_field_list = fields_map.setdefault("root", set())
                 root_field_list.add(field)
 
         return fields_map
