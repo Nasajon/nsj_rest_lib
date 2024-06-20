@@ -20,7 +20,7 @@ class DTOBase(abc.ABC):
     left_join_fields_map_to_query: dict = {}
     sql_join_fields_map: dict = {}
     sql_join_fields_map_to_query: dict = {}
-    sql_read_only_fields: dict = {}
+    sql_read_only_fields: list = []
     object_fields_map: list = []
     field_filters_map: Dict[str, DTOFieldFilter]
     # TODO Refatorar para suportar PK composto
