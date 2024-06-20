@@ -1,5 +1,7 @@
 # RestLib (nsj_rest_lib)
 
+Ver [Histórico de Versões](historico_versoes.md) da biblioteca.
+
 # QuickStart
 
 Biblioteca para construção de APIs Rest Python, de acordo com o guidelines interno, e com paradigma declarativo.
