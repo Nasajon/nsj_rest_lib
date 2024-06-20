@@ -20,7 +20,8 @@ class DTOBase(abc.ABC):
     left_join_fields_map_to_query: dict = {}
     sql_join_fields_map: dict = {}
     sql_join_fields_map_to_query: dict = {}
-    object_fields_map: dict = {}
+    sql_read_only_fields: list = []
+    object_fields_map: list = []
     field_filters_map: Dict[str, DTOFieldFilter]
     # TODO Refatorar para suportar PK composto
     pk_field: str
@@ -37,6 +38,7 @@ class DTOBase(abc.ABC):
         entity: Union[EntityBase, dict] = None,
         escape_validator: bool = False,
         generate_default_pk_value: bool = True,
+        validate_read_only: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -56,6 +58,13 @@ class DTOBase(abc.ABC):
         for field in self.__class__.fields_map:
             # Recuperando a configuração do campo
             aux_dto_field = self.__class__.fields_map[field]
+
+            if (
+                validate_read_only
+                and aux_dto_field.read_only
+                and kwargs.get(field, None) is not None
+            ):
+                raise ValueError(f"O campo {field} não pode ser preenchido.")
 
             # Tratando do valor default
             if (

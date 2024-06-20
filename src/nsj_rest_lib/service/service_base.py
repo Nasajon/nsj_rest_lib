@@ -820,6 +820,7 @@ class ServiceBase:
             # Recuperando o DTO antes da gravação (apenas se for update, e houver um custom_after_update)
             if not insert:
                 old_dto = self._retrieve_old_dto(dto, id, aditional_filters)
+                setattr(dto, dto.pk_field, id)
 
             if custom_before_insert:
                 received_dto = copy.deepcopy(dto)
@@ -914,6 +915,9 @@ class ServiceBase:
                         id, conjunto_field_value, self._dto_class.conjunto_type
                     )
             else:
+                # Suporte para evitar que o usuário possa alterar esse campo e que seja atualizado pelo sistema
+                if "atualizado_em" in dto.sql_read_only_fields:
+                    dto.sql_read_only_fields.remove("atualizado_em")
                 # Executando o update pelo DAO
                 entity = self._dao.update(
                     entity.get_pk_field(),
@@ -921,6 +925,7 @@ class ServiceBase:
                     entity,
                     aditional_entity_filters,
                     partial_update,
+                    dto.sql_read_only_fields,
                 )
 
             # Convertendo a entity para o DTO de resposta (se houver um)

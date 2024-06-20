@@ -64,6 +64,9 @@ def DTO(
                 # Creating sql_join_fields_map_to_query in cls, if needed
                 self._check_class_attribute(cls, "sql_join_fields_map_to_query", {})
 
+                # Creating sql_read_only_fields in cls, if needed
+                self._check_class_attribute(cls, "sql_read_only_fields", [])
+
                 # Creating object_fields_map in cls, if needed
                 self._check_class_attribute(cls, "object_fields_map", {})
 
@@ -134,6 +137,12 @@ def DTO(
                         # Verifica se é um campo passível de busca
                         if attr.search:
                             getattr(cls, "search_fields").add(key)
+
+                        # Verifica se um campo é somente para leitura
+                        if attr.read_only:
+                            getattr(cls, "sql_read_only_fields").append(
+                                attr.entity_field or key
+                            )
 
                     elif isinstance(attr, DTOListField):
                         # Storing field in fields_map

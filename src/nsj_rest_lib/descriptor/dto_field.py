@@ -42,6 +42,7 @@ class DTOField:
         unique: str = None,
         candidate_key: bool = False,
         search: bool = True,
+        read_only: bool = False,
     ):
         """
         -----------
@@ -90,6 +91,7 @@ class DTOField:
         self.unique = unique
         self.candidate_key = candidate_key
         self.search = search
+        self.read_only = read_only
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -135,9 +137,7 @@ class DTOField:
                 )
             )
         ):
-            raise ValueError(
-                f"{self.storage_name} deve estar preenchido. Valor recebido: {value}."
-            )
+            raise ValueError(f"O campo {self.storage_name} deve estar preenchido.")
 
         # Checking type constraint
         # TODO Ver como suportar typing
@@ -152,7 +152,7 @@ class DTOField:
         if self.min is not None:
             if isinstance(value, str) and (len(value) < self.min):
                 raise ValueError(
-                    f"{self.storage_name} deve conter no mínimo {self.min} caracteres. Valor recebido: {value}."
+                    f"O campo {self.storage_name} deve conter no mínimo {self.min} caracteres. Valor recebido: {value}."
                 )
             elif (
                 isinstance(value, int)
@@ -160,14 +160,14 @@ class DTOField:
                 or isinstance(value, Decimal)
             ) and (value < self.min):
                 raise ValueError(
-                    f"{self.storage_name} deve ser maior ou igual a {self.min}. Valor recebido: {value}."
+                    f"O campo {self.storage_name} deve ser maior ou igual a {self.min}. Valor recebido: {value}."
                 )
 
         # Checking min constraint
         if self.max is not None:
             if isinstance(value, str) and (len(value) > self.max):
                 raise ValueError(
-                    f"{self.storage_name} deve conter no máximo {self.max} caracteres. Valor recebido: {value}."
+                    f"O campo {self.storage_name} deve conter no máximo {self.max} caracteres. Valor recebido: {value}."
                 )
             elif (
                 isinstance(value, int)
@@ -175,7 +175,7 @@ class DTOField:
                 or isinstance(value, Decimal)
             ) and (value > self.max):
                 raise ValueError(
-                    f"{self.storage_name} deve ser menor ou igual a {self.max}. Valor recebido: {value}."
+                    f"O campo {self.storage_name} deve ser menor ou igual a {self.max}. Valor recebido: {value}."
                 )
 
         # Striping strings (if desired)
