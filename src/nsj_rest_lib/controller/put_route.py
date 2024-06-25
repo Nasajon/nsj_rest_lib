@@ -1,3 +1,5 @@
+import os
+
 from flask import request
 from typing import Callable
 
@@ -43,7 +45,12 @@ class PutRoute(RouteBase):
         self.custom_before_update = custom_before_update
         self.custom_after_update = custom_after_update
 
-    def handle_request(self, id):
+    def handle_request(
+        self,
+        id: str,
+        query_args: dict[str, any] = None,
+        body: dict[str, any] = None,
+    ):
         """
         Tratando requisições HTTP Put para inserir uma instância de uma entidade.
         """
@@ -51,7 +58,11 @@ class PutRoute(RouteBase):
         with self._injector_factory() as factory:
             try:
                 # Recuperando os dados do corpo da rquisição
-                data = request.json
+                if os.getenv("ENV", "").lower() != "erp_sql":
+                    data = request.json
+                else:
+                    data = body
+
                 data["generate_default_pk_value"] = False
 
                 # Convertendo os dados para o DTO

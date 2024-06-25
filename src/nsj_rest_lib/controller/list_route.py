@@ -40,7 +40,6 @@ class ListRoute(RouteBase):
 
     def handle_request(
         self,
-        url_pars: dict[str, any] = None,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
     ):
