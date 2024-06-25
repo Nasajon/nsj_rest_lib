@@ -905,7 +905,7 @@ class ServiceBase:
                     )
 
                 # Inserindo o registro no banco
-                entity = self._dao.insert(entity)
+                entity = self._dao.insert(entity, dto.sql_read_only_fields)
 
                 # Inserindo os conjuntos (se necessário)
                 if self._dto_class.conjunto_type is not None:
