@@ -722,37 +722,42 @@ class DAOBase:
 
         self._db.execute(sql, registro=id)
 
-    def _sql_insert_fields(self) -> str:
+    def _sql_insert_fields(
+        self, entity: EntityBase, sql_read_only_fields: List[str] = []
+    ) -> str:
         """
         Retorna uma tupla com duas partes: (sql_fields, sql_ref_values), onde:
         - sql_fields: Lista de campos a inserir no insert
         - sql_ref_values: Lista das referências aos campos, a inserir no insert (parte values)
         """
 
-        # Creating entity instance
-        entity = self._entity_class()
-
         # Building SQL fields
         fields = [
             f"{k}"
             for k in entity.__dict__
-            if not callable(getattr(entity, k, None)) and not k.startswith("_")
+            if not callable(getattr(entity, k, None))
+            and not k.startswith("_")
+            and (k not in sql_read_only_fields or getattr(entity, k, None) is not None)
         ]
         ref_values = [
             f":{k}"
             for k in entity.__dict__
-            if not callable(getattr(entity, k, None)) and not k.startswith("_")
+            if not callable(getattr(entity, k, None))
+            and not k.startswith("_")
+            and (k not in sql_read_only_fields or getattr(entity, k, None) is not None)
         ]
 
         return (", ".join(fields), ", ".join(ref_values))
 
-    def insert(self, entity: EntityBase):
+    def insert(self, entity: EntityBase, sql_read_only_fields: List[str] = []):
         """
         Insere o objeto de entidade "entity" no banco de dados
         """
 
         # Montando as cláusulas dos campos
-        sql_fields, sql_ref_values = self._sql_insert_fields()
+        sql_fields, sql_ref_values = self._sql_insert_fields(
+            entity, sql_read_only_fields
+        )
 
         # Montando a query principal
         sql = f"""
