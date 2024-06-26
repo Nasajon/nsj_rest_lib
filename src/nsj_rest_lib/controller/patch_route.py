@@ -1,3 +1,5 @@
+import os
+
 from flask import request
 from typing import Callable
 
@@ -40,15 +42,23 @@ class PatchRoute(RouteBase):
         self.custom_before_update = custom_before_update
         self.custom_after_update = custom_after_update
 
-    def handle_request(self, id):
+    def handle_request(
+        self,
+        id: str,
+        query_args: dict[str, any] = None,
+        body: dict[str, any] = None,
+    ):
         """
         Tratando requisições HTTP Put para inserir uma instância de uma entidade.
         """
 
         with self._injector_factory() as factory:
             try:
-                # Recuperando os dados do corpo da rquisição
-                data = request.json
+                # Recuperando os dados do corpo da requisição
+                if os.getenv("ENV", "").lower() != "erp_sql":
+                    data = request.json
+                else:
+                    data = body
 
                 # Convertendo os dados para o DTO
                 data = self._dto_class(validate_read_only=True, **data)
