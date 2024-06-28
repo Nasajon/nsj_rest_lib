@@ -1,3 +1,5 @@
+import os
+
 from flask import request
 from typing import Callable
 
@@ -43,7 +45,11 @@ class PostRoute(RouteBase):
         self.custom_before_insert = custom_before_insert
         self.custom_after_insert = custom_after_insert
 
-    def handle_request(self):
+    def handle_request(
+        self,
+        query_args: dict[str, any] = None,
+        body: dict[str, any] = None,
+    ):
         """
         Tratando requisições HTTP Post para inserir uma instância de uma entidade.
         """
@@ -51,7 +57,10 @@ class PostRoute(RouteBase):
         with self._injector_factory() as factory:
             try:
                 # Recuperando os dados do corpo da rquisição
-                data = request.json
+                if os.getenv("ENV", "").lower() != "erp_sql":
+                    data = request.json
+                else:
+                    data = body
 
                 # Convertendo os dados para o DTO
                 data = self._dto_class(validate_read_only=True, **data)

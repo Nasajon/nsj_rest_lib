@@ -1,3 +1,5 @@
+import os
+
 from flask import request
 from typing import Callable
 
@@ -40,7 +42,12 @@ class GetRoute(RouteBase):
             handle_exception=handle_exception,
         )
 
-    def handle_request(self, id):
+    def handle_request(
+        self,
+        id: str,
+        query_args: dict[str, any] = None,
+        body: dict[str, any] = None,
+    ):
         """
         Tratando requisições HTTP Get para recuperar uma instância de uma entidade.
         """
@@ -48,7 +55,10 @@ class GetRoute(RouteBase):
         with self._injector_factory() as factory:
             try:
                 # Recuperando os parâmetros básicos
-                args = request.args
+                if os.getenv("ENV", "").lower() != "erp_sql":
+                    args = request.args
+                else:
+                    args = query_args
 
                 # Tratando dos fields
                 fields = args.get("fields")

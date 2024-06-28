@@ -1,3 +1,5 @@
+import os
+
 from flask import request
 from typing import Callable
 
@@ -36,7 +38,11 @@ class ListRoute(RouteBase):
             handle_exception=handle_exception,
         )
 
-    def handle_request(self):
+    def handle_request(
+        self,
+        query_args: dict[str, any] = None,
+        body: dict[str, any] = None,
+    ):
         """
         Tratando requisições HTTP Get (para listar entidades, e não para recuperar pelo ID).
         """
@@ -44,8 +50,13 @@ class ListRoute(RouteBase):
         with self._injector_factory() as factory:
             try:
                 # Recuperando os parâmetros básicos
-                base_url = request.base_url
-                args = request.args
+                if os.getenv("ENV", "").lower() != "erp_sql":
+                    base_url = request.base_url
+                    args = request.args
+                else:
+                    base_url = ""
+                    args = query_args
+
                 limit = int(args.get("limit", DEFAULT_PAGE_SIZE))
                 current_after = args.get("after") or args.get("offset")
 
