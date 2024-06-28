@@ -37,7 +37,7 @@ Um exemplo de linha de comando completa seria:
 
 > dados-mestre.exe --command list_fornecedores_erp3 --host localhost --password mysecretpassword --name nasajon --port 5490 --user projeto --json eyJ1cmxfcGFycyI6e30sICJxdWVyeV9hcmdzIjp7ImZpZWxkcyI6ImVuZGVyZWNvcyIsICJncnVwb19lbXByZXNhcmlhbCI6Ik5BU0FKT04ifSwgImJvZHkiOnt9fQ==
 
-### Parâmetro _command_
+### Parâmetro command
 
 Tradicionalmente, para criação de uma rota com o RestLib, é necessário decorar um método python com um dos decorators de rotas genéricas: _ListRoute, GetRoute, PostRoute, PutRoute ou PatchRoute_.
 
@@ -58,7 +58,7 @@ def get_empresa_erp3(_, response):
     return response
 ```
 
-### Parâmetro _json_
+### Parâmetro json
 
 Embora já tenhamos exmplicado esse parâmetro na seção de "Ideia Básica", vale dar um exemplo compatível com o exemplo de recuperação de uma empresa, da seção imediatamente acima:
 

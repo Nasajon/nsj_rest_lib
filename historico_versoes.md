@@ -1,5 +1,14 @@
 # Histórico de Versões
 
+## 2.8.1
+
+Novas features:
+
+* APIs Desktop
+  * Implementação de um Command Line Interface genérico.
+  * A ideia é permitir a execução de qualquer uma das rotas, declaradas no padrão RestLib, como um commando invocável por meio de uma linha de comando (CLI).
+  * Ver a [documentação completa](internal_docs/apis_desktop.md) da feature.
+
 ## 2.8.0
 
 Novas features:
