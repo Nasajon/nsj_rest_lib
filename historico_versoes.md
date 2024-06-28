@@ -1,6 +1,6 @@
 # Histórico de Versões
 
-## 2.8.1
+## 2.9.0
 
 Novas features:
 
