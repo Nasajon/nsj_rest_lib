@@ -96,13 +96,15 @@ Note que o import do `wsgi` (ponto de entrada de sua aplicação Flask), deve se
 4. Crie um arquivo `build-cli.bat` na raiz do seu repositório, com conteúdo como segue (ajuste nome e path conforme sua aplicação):
 
 ```bat
-pip install pyinstaller==4.10
-pyinstaller --onefile --windowed --name "dados-mestre" ./nasajon/cli.py
+pip install pyinstaller==6.3.0
+pyinstaller --hidden-import=pg8000 --onefile --name "dados-mestre" --paths=./.venv/Lib/site-packages ./nasajon/cli.py
 ```
 
 5. Execute o arquivo `build-cli.bat` (cuidado para rodar dentro de um venv, para não instalar o pyinstaller no ambiente python global de sua máquina):
 
 > .\build-cli.bat
+
+**Obs.: Se você utilizar venv, é necessário estar com o venv ativo, e todas os requirements instalados nomesmo, para rodar o comando acima.**
 
 ## Funcionamento interno
 
