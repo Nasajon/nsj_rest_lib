@@ -1,6 +1,11 @@
+# Forçando a variável de ambiente ENV
+import os
+
+os.environ["ENV"] = "erp_sql"
+os.environ["CRYPT_KEY"] = ""
+
 import argparse
 import base64
-import os
 import sys
 
 from nsj_rest_lib.controller.command_router import CommandRouter
@@ -23,9 +28,6 @@ def internal_main(
     json: str,
     print_plain: bool = False,
 ):
-    # Forçando a variável de ambiente ENV
-    os.environ["ENV"] = "erp_sql"
-
     # Ajustando as variáveis de conexão com o banco de dados
     os.environ["DATABASE_HOST"] = host
     os.environ["DATABASE_PASS"] = password
