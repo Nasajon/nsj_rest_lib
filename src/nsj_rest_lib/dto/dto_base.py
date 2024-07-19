@@ -39,6 +39,7 @@ class DTOBase(abc.ABC):
         escape_validator: bool = False,
         generate_default_pk_value: bool = True,
         validate_read_only: bool = False,
+        kwargs_as_entity: bool = False,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -80,7 +81,7 @@ class DTOBase(abc.ABC):
             # Verificando se é preciso converter o nome do field para o nome correspondente no Entity
             # E, se será preciso aplicar alguma conversão customizada (para trazer o valor do entity para o DTO)
             entity_field = field
-            if entity is not None:
+            if entity is not None or kwargs_as_entity:
                 if aux_dto_field.entity_field is not None:
                     entity_field = aux_dto_field.entity_field
 
@@ -111,7 +112,7 @@ class DTOBase(abc.ABC):
             # Verificando a conversão do nome do field para o nome correspondente no Entity (no DTO Relacionado)
             # E, se será preciso aplicar alguma conversão customizada (para trazer o valor do entity para o DTO)
             entity_field = field
-            if entity is not None:
+            if entity is not None or kwargs_as_entity:
                 if (
                     not aux_dto_field.related_dto_field
                     in aux_dto_field.dto_type.fields_map

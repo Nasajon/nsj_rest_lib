@@ -1,5 +1,13 @@
 # Histórico de Versões
 
+## 2.10.0
+
+Novas features:
+
+* APIs Desktop
+  * Possibildiade de instanciar um DTO a partir de um dict, cujas entradas obedeçam a nomenclatura dos campos da entity (mesmo sem passar uma entity, de fato, no construtor)
+    * Ver flag `kwargs_as_entity` no construtor da classe DTOBase
+
 ## 2.9.0
 
 Novas features:
