@@ -273,11 +273,10 @@ class ServiceBase:
 
         # Dicionário para guardar os filtros convertidos
         entity_filters = {}
-
+        alternative_values = {}
         # Iterando enquanto houver filtros recebidos, ou derivalos a partir dos filter_aliases
         while len(aux_filters) > 0:
             new_filters = {}
-
             for filter in aux_filters:
                 is_entity_filter = False
                 is_conjunto_filter = False
@@ -436,7 +435,6 @@ class ServiceBase:
                                 aux_entity_class,
                             )
                             converted_values = {entity_field_name: value}
-
                     else:
                         converted_values = {entity_field_name: value}
 
@@ -464,6 +462,57 @@ class ServiceBase:
                         # Storing filter in dict
                         filter_list = entity_filters.setdefault(entity_field, [])
                         filter_list.append(entity_filter)
+
+                if field_filter.alternative_value is not None:
+                    # Resolvendo as classes de DTO e Entity
+                    aux_dto_class = self._dto_class
+                    aux_entity_class = self._entity_class
+
+                    if is_sql_join_filter:
+                        aux_dto_class = dto_sql_join_field.dto_type
+                        aux_entity_class = dto_sql_join_field.entity_type
+
+                    # Convertendo os valores para o formato esperado no entity
+                    if not is_entity_filter and not is_sql_join_filter:
+                        converted_values = aux_dto_class.custom_convert_value_to_entity(
+                            field_filter.alternative_value,
+                            dto_field,
+                            entity_field_name,
+                            False,
+                            aux_filters,
+                        )
+                        if len(converted_values) <= 0:
+                            value = aux_dto_class.convert_value_to_entity(
+                                field_filter.alternative_value,
+                                dto_field,
+                                False,
+                                aux_entity_class,
+                            )
+                            converted_values = {entity_field_name: value}
+                    else:
+                        converted_values = {
+                            entity_field_name: field_filter.alternative_value
+                        }
+
+                    for entity_field in converted_values:
+                        converted_value = converted_values[entity_field]
+                        if (
+                            not is_entity_filter
+                            and not is_conjunto_filter
+                            and not is_sql_join_filter
+                        ):
+                            entity_filter = Filter(
+                                field_filter.operator, converted_value
+                            )
+                        elif is_sql_join_filter:
+                            entity_filter = Filter(
+                                field_filter.operator, converted_value, table_alias
+                            )
+                        else:
+                            entity_filter = Filter(
+                                FilterOperator.EQUALS, converted_value
+                            )
+                        entity_filters[entity_field].append(entity_filter)
 
             # Ajustando as variáveis de controle
             fist_run = False

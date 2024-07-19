@@ -1,19 +1,23 @@
 import typing
 
 from decimal import Decimal
-from typing import Any
 
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
 
 
 class DTOFieldFilter:
+
     def __init__(
-        self, name: str = None, operator: FilterOperator = FilterOperator.EQUALS
+        self,
+        name: str = None,
+        operator: FilterOperator = FilterOperator.EQUALS,
+        alternative_value: str = None,
     ):
         self.name = name
         self.operator = operator
         self.field_name = None
+        self.alternative_value = alternative_value
 
     def set_field_name(self, field_name: str):
         self.field_name = field_name
