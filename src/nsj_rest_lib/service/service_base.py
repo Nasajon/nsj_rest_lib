@@ -463,7 +463,7 @@ class ServiceBase:
                         filter_list = entity_filters.setdefault(entity_field, [])
                         filter_list.append(entity_filter)
 
-                if field_filter.alternative_value is not None:
+                if not is_entity_filter and not is_conjunto_filter and field_filter.alternative_value is not None:
                     # Resolvendo as classes de DTO e Entity
                     aux_dto_class = self._dto_class
                     aux_entity_class = self._entity_class
@@ -496,21 +496,13 @@ class ServiceBase:
 
                     for entity_field in converted_values:
                         converted_value = converted_values[entity_field]
-                        if (
-                            not is_entity_filter
-                            and not is_conjunto_filter
-                            and not is_sql_join_filter
-                        ):
+                        if not is_sql_join_filter:
                             entity_filter = Filter(
                                 field_filter.operator, converted_value
                             )
                         elif is_sql_join_filter:
                             entity_filter = Filter(
                                 field_filter.operator, converted_value, table_alias
-                            )
-                        else:
-                            entity_filter = Filter(
-                                FilterOperator.EQUALS, converted_value
                             )
                         entity_filters[entity_field].append(entity_filter)
 
