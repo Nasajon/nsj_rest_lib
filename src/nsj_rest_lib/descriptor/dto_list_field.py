@@ -12,14 +12,15 @@ class DTOListField:
     def __init__(
         self,
         dto_type: DTOBase,
-        entity_type: EntityBase,
-        related_entity_field: str,
+        entity_type: EntityBase = None,
+        related_entity_field: str = None,
         not_null: bool = False,
         min: int = None,
         max: int = None,
         validator: typing.Callable = None,
         dto_post_response_type: DTOBase = None,
         relation_key_field: str = None,
+        service_name: str = None,
     ):
         """
         -----------
@@ -35,6 +36,8 @@ class DTOListField:
         related_entity_field: Fields, from related entity, used for relation in database.
         relation_key_field: Nome do campo, no DTO corrente, utilizado como chave de apontamento no relacionamento
             (isso é, campo para o qual a entidade, do lado N, aponta via FK).
+        service_name: Nome do serviço customizado, caso se deseje que as operações sobre esse tipo de lista se façam
+            de um modo customizado (e não usando o service_base do próprio RestLib).
         """
         self.name = None
         self.dto_type = dto_type
@@ -46,6 +49,7 @@ class DTOListField:
         self.validator = validator
         self.dto_post_response_type = dto_post_response_type
         self.relation_key_field = relation_key_field
+        self.service_name = service_name
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -54,8 +58,11 @@ class DTOListField:
         if self.dto_type is None:
             raise DTOListFieldConfigException("type parameter must be not None.")
 
-        if self.entity_type is None:
-            raise DTOListFieldConfigException("entity_type parameter must be not None.")
+        if service_name is None:
+            if self.entity_type is None:
+                raise DTOListFieldConfigException(
+                    "entity_type parameter must be not None."
+                )
 
     def __get__(self, instance, owner):
         if instance is None:

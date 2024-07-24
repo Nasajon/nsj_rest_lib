@@ -663,15 +663,20 @@ class ServiceBase:
             for master_dto_attr, list_field in self._dto_class.list_fields_map.items():
                 if master_dto_attr in fields["root"]:
                     # Getting service instance
-                    # TODO Refatorar para suportar services customizados
-                    service = ServiceBase(
-                        self._injector_factory,
-                        DAOBase(
-                            self._injector_factory.db_adapter(), list_field.entity_type
-                        ),
-                        list_field.dto_type,
-                        list_field.entity_type,
-                    )
+                    if list_field.service_name is not None:
+                        service = self._injector_factory.get_service_by_name(
+                            list_field.service_name
+                        )
+                    else:
+                        service = ServiceBase(
+                            self._injector_factory,
+                            DAOBase(
+                                self._injector_factory.db_adapter(),
+                                list_field.entity_type,
+                            ),
+                            list_field.dto_type,
+                            list_field.entity_type,
+                        )
 
                     # Checking if pk_field exists
                     if self._dto_class.pk_field is None:
@@ -1041,14 +1046,18 @@ class ServiceBase:
             )
 
             # Getting service instance
-            # TODO Refatorar para suportar services customizados
-            detail_service = ServiceBase(
-                self._injector_factory,
-                detail_dao,
-                list_field.dto_type,
-                list_field.entity_type,
-                list_field.dto_post_response_type,
-            )
+            if list_field.service_name is not None:
+                detail_service = self._injector_factory.get_service_by_name(
+                    list_field.service_name
+                )
+            else:
+                detail_service = ServiceBase(
+                    self._injector_factory,
+                    detail_dao,
+                    list_field.dto_type,
+                    list_field.entity_type,
+                    list_field.dto_post_response_type,
+                )
 
             # Resolvendo a chave do relacionamento
             relation_key_field = entity.get_pk_field()
@@ -1287,13 +1296,19 @@ class ServiceBase:
         # Handling each related list
         for _, list_field in self._dto_class.list_fields_map.items():
             # Getting service instance
-            # TODO Refatorar para suportar services customizados
-            service = ServiceBase(
-                self._injector_factory,
-                DAOBase(self._injector_factory.db_adapter(), list_field.entity_type),
-                list_field.dto_type,
-                list_field.entity_type,
-            )
+            if list_field.service_name is not None:
+                service = self._injector_factory.get_service_by_name(
+                    list_field.service_name
+                )
+            else:
+                service = ServiceBase(
+                    self._injector_factory,
+                    DAOBase(
+                        self._injector_factory.db_adapter(), list_field.entity_type
+                    ),
+                    list_field.dto_type,
+                    list_field.entity_type,
+                )
 
             # Making filter to relation
             filters = {
