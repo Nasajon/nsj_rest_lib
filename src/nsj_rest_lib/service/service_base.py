@@ -697,9 +697,9 @@ class ServiceBase:
                     # Getting value to filter related list
                     relation_filter_value = getattr(dto, relation_key_field)
                     if relation_filter_value is None:
-                        # If None, there is no related objects. So, set empty list and return.
+                        # If None, there is no related objects. So, set empty list and continue.
                         setattr(dto, master_dto_attr, [])
-                        return
+                        continue
 
                     # Making filter to relation
                     filters = {list_field.related_entity_field: relation_filter_value}

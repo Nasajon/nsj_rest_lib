@@ -423,13 +423,13 @@ class DTOBase(abc.ABC):
             if not field in fields["root"]:
                 continue
 
-            # Criando o mapa de fileds para a entidade aninhada
+            # Criando o mapa de fields para a entidade aninhada
             internal_fields = None
             if field in fields:
                 internal_fields = {"root": fields[field]}
 
             # Recuperando o valor do atributo
-            value = getattr(self, field)
+            value = getattr(self, field, None)
             if value is None:
                 value = []
 
