@@ -45,6 +45,19 @@ class PostRoute(RouteBase):
         self.custom_before_insert = custom_before_insert
         self.custom_after_insert = custom_after_insert
 
+    def _partition_filters(self, data):
+        # Montando os filtros de particao de dados
+        partition_filters = {}
+
+        for field in data.partition_fields:
+            value = getattr(data, field)
+            if value is None:
+                raise MissingParameterException(field)
+            elif value is not None:
+                partition_filters[field] = value
+
+        return partition_filters
+
     def handle_request(
         self,
         query_args: dict[str, any] = None,
@@ -58,43 +71,66 @@ class PostRoute(RouteBase):
             try:
                 # Recuperando os dados do corpo da rquisição
                 if os.getenv("ENV", "").lower() != "erp_sql":
-                    data = request.json
+                    request_data = request.json
                 else:
-                    data = body
+                    request_data = body
 
-                # Convertendo os dados para o DTO
-                data = self._dto_class(validate_read_only=True, **data)
+                if not isinstance(request_data, list):
+                    request_data = [request_data]
 
-                # Montando os filtros de particao de dados
-                partition_filters = {}
 
-                for field in data.partition_fields:
-                    value = getattr(data, field)
-                    if value is None:
-                        raise MissingParameterException(field)
-                    elif value is not None:
-                        partition_filters[field] = value
+                data_pack = []
+                lst_data = []
+                partition_filters = None
+                for item in request_data:
+
+                    # Convertendo os dados para o DTO
+                    data = self._dto_class(validate_read_only=True, **item)
+
+                    # Montando os filtros de particao de dados
+                    if partition_filters is None:
+                        partition_filters = self._partition_filters(data)
+
+                    data_pack.append(data)
+
 
                 # Construindo os objetos
                 service = self._get_service(factory)
 
-                # Chamando o service (método insert)
-                data = service.insert(
-                    dto=data,
-                    aditional_filters=partition_filters,
-                    custom_before_insert=self.custom_before_insert,
-                    custom_after_insert=self.custom_after_insert,
-                )
+                if len(data_pack)==1:
+                    # Chamando o service (método insert)
+                    data = service.insert(
+                        dto=data,
+                        aditional_filters=partition_filters,
+                        custom_before_insert=self.custom_before_insert,
+                        custom_after_insert=self.custom_after_insert,
+                    )
 
-                if data is not None:
-                    # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                    dict_data = data.convert_to_dict()
-
-                    # Retornando a resposta da requuisição
-                    return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})
+                    if data is not None:
+                        # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
+                        lst_data.append(data.convert_to_dict())
                 else:
+                    data = service.insert_list(
+                        dtos=data_pack,
+                        aditional_filters=partition_filters,
+                        custom_before_insert=self.custom_before_insert,
+                        custom_after_insert=self.custom_after_insert,
+                    )
+
+                    if data is not None or not len(data)>0:
+                        # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
+                        lst_data = [item.convert_to_dict() for item in data]
+
+                if len(lst_data)==1:
                     # Retornando a resposta da requuisição
-                    return ("", 201, {**DEFAULT_RESP_HEADERS})
+                    return (json_dumps(lst_data[0]), 200, {**DEFAULT_RESP_HEADERS})
+
+                if len(lst_data)>1:
+                    # Retornando a resposta da requuisição
+                    return (json_dumps(lst_data), 200, {**DEFAULT_RESP_HEADERS})
+
+                # Retornando a resposta da requuisição
+                return ("", 201, {**DEFAULT_RESP_HEADERS})
             except JsonLoadException as e:
                 get_logger().warning(e)
                 if self._handle_exception is not None:
