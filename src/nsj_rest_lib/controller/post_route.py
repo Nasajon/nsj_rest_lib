@@ -69,7 +69,7 @@ class PostRoute(RouteBase):
 
         with self._injector_factory() as factory:
             try:
-                # Recuperando os dados do corpo da rquisição
+                # Recuperando os dados do corpo da requisição
                 if os.getenv("ENV", "").lower() != "erp_sql":
                     request_data = request.json
                 else:
@@ -122,14 +122,14 @@ class PostRoute(RouteBase):
                         lst_data = [item.convert_to_dict() for item in data]
 
                 if len(lst_data)==1:
-                    # Retornando a resposta da requuisição
+                    # Retornando a resposta da requisição
                     return (json_dumps(lst_data[0]), 200, {**DEFAULT_RESP_HEADERS})
 
                 if len(lst_data)>1:
-                    # Retornando a resposta da requuisição
+                    # Retornando a resposta da requisição
                     return (json_dumps(lst_data), 200, {**DEFAULT_RESP_HEADERS})
 
-                # Retornando a resposta da requuisição
+                # Retornando a resposta da requisição
                 return ("", 201, {**DEFAULT_RESP_HEADERS})
             except JsonLoadException as e:
                 get_logger().warning(e)

@@ -784,6 +784,7 @@ class ServiceBase:
         aditional_filters: Dict[str, Any] = None,
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
+        upsert: bool = False
     ) -> DTOBase:
         return self._save(
             insert=False,
@@ -794,15 +795,16 @@ class ServiceBase:
             aditional_filters=aditional_filters,
             custom_before_update=custom_before_update,
             custom_after_update=custom_after_update,
+            upsert=upsert
         )
 
     def update_list(
         self,
         dtos: List[DTOBase],
-        #id: Any,
         aditional_filters: Dict[str, Any] = None,
         custom_before_update: Callable = None,
-        custom_after_update: Callable = None
+        custom_after_update: Callable = None,
+        upsert: bool = False
     ) -> List[DTOBase]:
 
         _lst_return = []
@@ -815,10 +817,11 @@ class ServiceBase:
                     dto=dto,
                     manage_transaction=True,
                     partial_update=False,
-                    #id=id,
+                    id=getattr(dto, dto.pk_field),
                     aditional_filters=aditional_filters,
                     custom_before_update=custom_before_update,
                     custom_after_update=custom_after_update,
+                    upsert=upsert
                 )
 
                 if _return_object is not None:
@@ -884,6 +887,7 @@ class ServiceBase:
         custom_before_update: Callable = None,
         custom_after_insert: Callable = None,
         custom_after_update: Callable = None,
+        upsert: bool = False
     ) -> DTOBase:
         try:
             # Guardando um ponteiro para o DTO recebido
@@ -894,9 +898,12 @@ class ServiceBase:
 
             old_dto = None
             # Recuperando o DTO antes da gravação (apenas se for update, e houver um custom_after_update)
-            if not insert:
+            if not insert and not upsert:
                 old_dto = self._retrieve_old_dto(dto, id, aditional_filters)
                 setattr(dto, dto.pk_field, getattr(old_dto, dto.pk_field))
+
+            if not insert and upsert:
+                old_dto = dto
 
             if custom_before_insert:
                 received_dto = copy.deepcopy(dto)
@@ -1002,6 +1009,7 @@ class ServiceBase:
                     aditional_entity_filters,
                     partial_update,
                     dto.sql_read_only_fields,
+                    upsert
                 )
 
             # Convertendo a entity para o DTO de resposta (se houver um)
@@ -1235,6 +1243,21 @@ class ServiceBase:
 
     def delete(self, id: Any, additional_filters: Dict[str, Any] = None) -> DTOBase:
         self._delete(id, manage_transaction=True, additional_filters=additional_filters)
+
+    def delete_list(self,ids: list, additional_filters: Dict[str, Any] = None):
+
+        try:
+            self._dao.begin()
+
+            for _id in ids:
+                self._delete(_id, manage_transaction=True, additional_filters=additional_filters)
+
+        except:
+            self._dao.rollback()
+            raise
+        finally:
+            self._dao.commit()
+
 
     def entity_exists(
         self,

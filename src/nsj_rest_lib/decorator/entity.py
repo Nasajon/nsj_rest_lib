@@ -15,12 +15,14 @@ class Entity:
         table_name: str,
         pk_field: str,
         default_order_fields: List[str],
+        tenant_is_pk: bool = False
     ) -> None:
         super().__init__()
 
         self.table_name = table_name
         self.pk_field = pk_field
         self.default_order_fields = default_order_fields
+        self.tenant_is_pk = tenant_is_pk
 
     def __call__(self, cls: object):
         """
@@ -32,6 +34,9 @@ class Entity:
 
         # Guardando o nome do campo PK na classe
         self._check_class_attribute(cls, "pk_field", self.pk_field)
+
+        # Guardando se o campo tenant deve fazer parte da PK
+        self._check_class_attribute(cls, "tenant_is_pk", self.tenant_is_pk)
 
         # Guardando a lista default de ordenação, na classe
         self._check_class_attribute(
