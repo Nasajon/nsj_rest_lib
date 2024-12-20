@@ -632,7 +632,7 @@ class DAOBase:
                     and est_c0.cadastro = :conjunto_cadastro
                 )
                 group by gemp0.grupoempresarial, gemp0.codigo, est_c0.conjunto
-            )    
+            )
             """
 
         join_conjuntos = f"""
@@ -749,6 +749,7 @@ class DAOBase:
 
         return (", ".join(fields), ", ".join(ref_values))
 
+
     def insert(self, entity: EntityBase, sql_read_only_fields: List[str] = []):
         """
         Insere o objeto de entidade "entity" no banco de dados
@@ -804,6 +805,41 @@ class DAOBase:
 
         return entity
 
+    def _sql_upsert_fields(
+        self,
+        entity: EntityBase,
+        ignore_nones: bool = False,
+        sql_read_only_fields: List[str] = [],
+    ) -> str:
+        """
+        Retorna lista com os campos para upsert, no padrão "field = excluded.field"
+        """
+
+        # Building SQL fields
+        if ignore_nones:
+            fields = [
+                f"{k} = excluded.{k}"
+                for k in entity.__dict__
+                if not callable(getattr(entity, k, None))
+                and not k.startswith("_")
+                and getattr(entity, k) is not None
+                and k not in entity.get_const_fields()
+                and (k != entity.get_pk_field() ) #or getattr(entity, k) is not None)
+                and k not in sql_read_only_fields
+            ]
+        else:
+            fields = [
+                f"{k} = excluded.{k}"
+                for k in entity.__dict__
+                if not callable(getattr(entity, k, None))
+                and not k.startswith("_")
+                and k not in entity.get_const_fields()
+                and (k != entity.get_pk_field() ) #or getattr(entity, k) is not None)
+                and k not in sql_read_only_fields
+            ]
+
+        return ", ".join(fields)
+
     def _sql_update_fields(
         self,
         entity: EntityBase,
@@ -847,15 +883,11 @@ class DAOBase:
         filters: Dict[str, List[Filter]],
         partial_update: bool = False,
         sql_read_only_fields: List[str] = [],
+        upsert: bool = False
     ):
         """
         Atualiza o objeto de entidade "entity" no banco de dados
         """
-
-        # Montando a cláusula dos campos
-        sql_fields = self._sql_update_fields(
-            entity, partial_update, sql_read_only_fields
-        )
 
         # Organizando o where dos filtros
         filters_where, filter_values_map = self._make_filters_sql(filters, True, False)
@@ -866,17 +898,63 @@ class DAOBase:
         #         f"{self._entity_class.__name__} não encontrado. Filtros: {filters}"
         #     )
 
-        # Montando a query principal
-        sql = f"""
-        update {entity.get_table_name()} set
+        # Montando cláusula upsert
+        if upsert:
 
-            {sql_fields}
+            # Montando as cláusulas dos campos
+            sql_fields, sql_ref_values = self._sql_insert_fields(
+                entity, sql_read_only_fields
+            )
 
-        where
-            true
-            and {key_field} = :candidate_key_value
-            {filters_where}
-        """
+            sql_upsert_fields = self._sql_upsert_fields(
+                entity, partial_update, sql_read_only_fields
+            )
+
+            conflict_fields = f"{entity.get_pk_field()}{',tenant' if entity.get_tenant_is_pk() else ''}"
+
+            conflict_rules = f"""
+            ON CONFLICT ({conflict_fields}) DO
+            UPDATE
+            SET
+                {sql_upsert_fields}
+
+                """
+
+            # Montando a query principal
+            sql = f"""
+            insert into {entity.get_table_name()} as t0 (
+
+                {sql_fields}
+
+            ) values (
+
+                {sql_ref_values}
+
+            )
+            {conflict_rules}
+            where
+                true
+                and t0.{key_field} = :candidate_key_value
+                {filters_where}
+            """
+        else:
+
+            # Montando a cláusula dos campos
+            sql_fields = self._sql_update_fields(
+                entity, partial_update, sql_read_only_fields
+            )
+
+            # Montando a query principal
+            sql = f"""
+            update {entity.get_table_name()} set
+
+                {sql_fields}
+
+            where
+                true
+                and {key_field} = :candidate_key_value
+                {filters_where}
+            """
 
         # Montando as cláusulas returning
         returning_fields = entity.get_update_returning_fields()

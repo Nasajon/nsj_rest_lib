@@ -1,5 +1,3 @@
-import os
-
 from flask import request
 from typing import Callable
 
@@ -42,12 +40,18 @@ class DeleteRoute(RouteBase):
             handle_exception=handle_exception,
         )
 
-    def handle_request(
-        self,
-        id: str,
-        query_args: dict[str, any] = None,
-        body: dict[str, any] = None,
-    ):
+    def _partition_filters(self, args):
+        partition_filters = {}
+        # Tratando campos de particionamento
+        for field in self._dto_class.partition_fields:
+            value = args.get(field)
+            if value is None:
+                raise MissingParameterException(field)
+            partition_filters[field] = value
+
+        return partition_filters
+
+    def handle_request(self, id = None):
         """
         Tratando requisições HTTP Delete para excluir uma instância de uma entidade.
         """
@@ -55,29 +59,31 @@ class DeleteRoute(RouteBase):
         with self._injector_factory() as factory:
             try:
                 # Recuperando os parâmetros básicos
-                if os.getenv("ENV", "").lower() != "erp_sql":
-                    args = request.args
-                else:
-                    args = query_args
+                args = request.args
+                # Recuperando os dados do corpo da requisição
+                request_data = request.json
 
-                partition_fields = {}
-                # Tratando campos de particionamento
-                for field in self._dto_class.partition_fields:
-                    value = args.get(field)
-                    if value is None:
-                        raise MissingParameterException(field)
+                if request_data is not None:
+                    if not isinstance(request_data, list):
+                        request_data = [request_data]
 
-                    partition_fields[field] = value
+                partition_filters = self._partition_filters(args)
 
                 # Construindo os objetos
                 service = self._get_service(factory)
 
-                # Chamando o service (método get)
-                # TODO Rever parametro order_fields abaixo
-                service.delete(id, partition_fields)
+                if id is not None:
+                    # Chamando o service (método get)
+                    # TODO Rever parametro order_fields abaixo
+                    service.delete(id, partition_filters)
+                else:
+                    service.delete_list(
+                        request_data,
+                        partition_filters
+                    )
 
                 # Retornando a resposta da requuisição
-                return ("", 204, {**DEFAULT_RESP_HEADERS})
+                return ('', 204, {**DEFAULT_RESP_HEADERS})
             except MissingParameterException as e:
                 get_logger().warning(e)
                 if self._handle_exception is not None:
@@ -95,8 +101,4 @@ class DeleteRoute(RouteBase):
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (
-                        format_json_error(f"Erro desconhecido: {e}"),
-                        500,
-                        {**DEFAULT_RESP_HEADERS},
-                    )
+                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {**DEFAULT_RESP_HEADERS})
