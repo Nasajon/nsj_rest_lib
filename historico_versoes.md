@@ -1,5 +1,13 @@
 # Histórico de Versões
 
+## 2.12.1
+
+Novas features:
+
+* Suportar a passagem de listas de objetos nos métodos `POST`, `PUT` e `DELETE`.
+
+* Recurso de **UPSERT**  no método `PUT`, onde para se usar basta passar o parâmetro `?upsert=true`.
+
 ## 2.11.0
 
 Novas features:

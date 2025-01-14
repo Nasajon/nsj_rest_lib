@@ -14,7 +14,7 @@ class Entity:
         self,
         table_name: str,
         pk_field: str,
-        default_order_fields: List[str],
+        default_order_fields: List[str]
     ) -> None:
         super().__init__()
 
