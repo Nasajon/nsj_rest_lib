@@ -1,3 +1,4 @@
+import os
 from flask import request
 from typing import Callable
 
@@ -5,11 +6,7 @@ from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.exception import (
-    DTOConfigException,
-    MissingParameterException,
-    NotFoundException,
-)
+from nsj_rest_lib.exception import DTOConfigException, MissingParameterException, NotFoundException
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger
 
@@ -51,7 +48,12 @@ class DeleteRoute(RouteBase):
 
         return partition_filters
 
-    def handle_request(self, id = None):
+    def handle_request(
+        self,
+        id: str = None,
+        query_args: dict[str, any] = None,
+        body: dict[str, any] = None,
+    ):
         """
         Tratando requisições HTTP Delete para excluir uma instância de uma entidade.
         """
@@ -59,7 +61,11 @@ class DeleteRoute(RouteBase):
         with self._injector_factory() as factory:
             try:
                 # Recuperando os parâmetros básicos
-                args = request.args
+                if os.getenv("ENV", "").lower() != "erp_sql":
+                    args = request.args
+                else:
+                    args = query_args
+
                 # Recuperando os dados do corpo da requisição
                 request_data = request.json
 
@@ -83,7 +89,7 @@ class DeleteRoute(RouteBase):
                     )
 
                 # Retornando a resposta da requuisição
-                return ('', 204, {**DEFAULT_RESP_HEADERS})
+                return ("", 204, {**DEFAULT_RESP_HEADERS})
             except MissingParameterException as e:
                 get_logger().warning(e)
                 if self._handle_exception is not None:

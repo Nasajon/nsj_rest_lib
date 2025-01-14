@@ -816,27 +816,18 @@ class DAOBase:
         """
 
         # Building SQL fields
-        if ignore_nones:
-            fields = [
-                f"{k} = excluded.{k}"
-                for k in entity.__dict__
-                if not callable(getattr(entity, k, None))
-                and not k.startswith("_")
-                and getattr(entity, k) is not None
-                and k not in entity.get_const_fields()
-                and (k != entity.get_pk_field() ) #or getattr(entity, k) is not None)
-                and k not in sql_read_only_fields
-            ]
-        else:
-            fields = [
-                f"{k} = excluded.{k}"
-                for k in entity.__dict__
-                if not callable(getattr(entity, k, None))
-                and not k.startswith("_")
-                and k not in entity.get_const_fields()
-                and (k != entity.get_pk_field() ) #or getattr(entity, k) is not None)
-                and k not in sql_read_only_fields
-            ]
+        fields = [
+            f"{k} = excluded.{k}"
+            for k in entity.__dict__
+            if not callable(getattr(entity, k, None))
+            and not k.startswith("_")
+            and getattr(entity, k) is not None
+            and (ignore_nones and getattr(entity, k) is not None or not ignore_nones)
+            and k not in entity.get_const_fields()
+            and (k != entity.get_pk_field() ) #or getattr(entity, k) is not None)
+            and k not in sql_read_only_fields
+        ]
+
 
         return ", ".join(fields)
 
@@ -890,7 +881,7 @@ class DAOBase:
         """
 
         # Organizando o where dos filtros
-        filters_where, filter_values_map = self._make_filters_sql(filters, True, False)
+        filters_where, filter_values_map = self._make_filters_sql(filters, True, True)
 
         # # CUIDADO PARA NÂO ATUALIZAR O QUE NÃO DEVE
         # if filters_where is None or filters_where.strip() == "":
@@ -910,7 +901,7 @@ class DAOBase:
                 entity, partial_update, sql_read_only_fields
             )
 
-            conflict_fields = f"{entity.get_pk_field()}{',tenant' if entity.get_tenant_is_pk() else ''}"
+            conflict_fields = f"{entity.get_pk_field()}{',' + ','.join(filters.keys()) if filters else ''}"
 
             conflict_rules = f"""
             ON CONFLICT ({conflict_fields}) DO

@@ -44,14 +44,6 @@ class EntityBase(abc.ABC):
                 f"Método get_pk_field não implementado na classe: {self.__class__}"
             )
 
-    def get_tenant_is_pk(self) -> str:
-        if hasattr(self.__class__, "tenant_is_pk"):
-            return self.__class__.tenant_is_pk
-        else:
-            raise NotImplementedError(
-                f"Método tenant_is_pk não implementado na classe: {self.__class__}"
-            )
-
     def get_fields_map(self) -> str:
         if hasattr(self.__class__, "fields_map"):
             return self.__class__.fields_map

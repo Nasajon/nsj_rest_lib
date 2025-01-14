@@ -1,3 +1,4 @@
+import os
 from flask import request
 from typing import Callable
 
@@ -57,17 +58,25 @@ class PutRoute(RouteBase):
         return partition_filters
 
 
-    def handle_request(self, id = None):
+    def handle_request(
+        self,
+        id: str = None, 
+        query_args: dict[str, any] = None,
+        body: dict[str, any] = None,
+    ):
         """
         Tratando requisições HTTP Put para inserir uma instância de uma entidade.
         """
 
         with self._injector_factory() as factory:
             try:
-                # Recuperando os parâmetros básicos
-                args = request.args
-                # Recuperando os dados do corpo da requisição
-                request_data = request.json
+                 # Recuperando os dados do corpo da requisição
+                if os.getenv("ENV", "").lower() != "erp_sql":
+                    request_data = request.json
+                    args = request.args
+                else:
+                    request_data = body
+                    args = query_args
 
                 # Parâmetros da requisição
                 is_upsert = args.get('upsert', False, type=lambda value: value.lower() == 'true')
