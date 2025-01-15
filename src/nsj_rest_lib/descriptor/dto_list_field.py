@@ -1,4 +1,3 @@
-import enum
 import typing
 
 from nsj_rest_lib.dto.dto_base import DTOBase
@@ -76,10 +75,10 @@ class DTOListField:
                 value = self.validate(value)
             else:
                 value = self.validator(value)
-        except ValueError as e:
+        except ValueError:
             if not (
                 "escape_validator" in instance.__dict__
-                and instance.__dict__["escape_validator"] == True
+                and instance.__dict__["escape_validator"] is True
             ):
                 raise
 
@@ -142,13 +141,13 @@ class DTOListField:
             )
 
         # Checking min constraint
-        if self.min is not None and len(value) < self.min:
+        if self.min is not None and (value is None or len(value) < self.min):
             raise ValueError(
                 f"A lista {self.storage_name} deve ter mais do que {self.min} itens. Valor recebido: {value}."
             )
 
-        # Checking min constraint
-        if self.max is not None and len(value) > self.max:
+        # Checking max constraint
+        if self.max is not None and value is not None and len(value) > self.max:
             raise ValueError(
                 f"A lista {self.storage_name} deve ter menos do que {self.max} itens. Valor recebido: {value}."
             )

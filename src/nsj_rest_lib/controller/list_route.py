@@ -70,7 +70,7 @@ class ListRoute(RouteBase):
                         [
                             f"{arg}={value}"
                             for arg, value in args.items()
-                            if arg not in ["limit", "after", "offset", "fields"]
+                            if arg not in ["limit", "after", "offset"]
                         ]
                     )
                 )
