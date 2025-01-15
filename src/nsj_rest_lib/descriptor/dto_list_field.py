@@ -141,17 +141,13 @@ class DTOListField:
             )
 
         # Checking min constraint
-        if self.min is not None and (
-            value is None or (isinstance(value, list) and len(value) < self.min)
-        ):
+        if self.min is not None and (value is None or len(value) < self.min):
             raise ValueError(
                 f"A lista {self.storage_name} deve ter mais do que {self.min} itens. Valor recebido: {value}."
             )
 
-        # Checking min constraint
-        if self.max is not None and (
-            value is None or (isinstance(value, list) and len(value) > self.max)
-        ):
+        # Checking max constraint
+        if self.max is not None and value is not None and len(value) > self.max:
             raise ValueError(
                 f"A lista {self.storage_name} deve ter menos do que {self.max} itens. Valor recebido: {value}."
             )
