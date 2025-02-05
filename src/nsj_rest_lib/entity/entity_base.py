@@ -8,6 +8,8 @@ class EMPTY:
 
 
 class EntityBase(abc.ABC):
+    sql_fields: list[str] = []
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -48,7 +50,9 @@ class EntityBase(abc.ABC):
         if hasattr(self.__class__, "fields_map"):
             return self.__class__.fields_map
         else:
-            raise {}
+            raise NotImplementedError(
+                f"Método get_fields_map não implementado na classe: {self.__class__}"
+            )
 
     def get_insert_returning_fields(self) -> List[str]:
         return []
