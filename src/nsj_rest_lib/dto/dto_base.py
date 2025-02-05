@@ -214,7 +214,7 @@ class DTOBase(abc.ABC):
         são tratadas neste método.
         """
 
-        entity = entity_class()
+        entity: EntityBase = entity_class()
 
         for field, dto_field in self.__class__.fields_map.items():
             # Verificando se é preciso realizar uma tradução de nome do campo
@@ -230,29 +230,29 @@ class DTOBase(abc.ABC):
             value = getattr(self, field)
 
             # Verificando se é necessária alguma conversão customizada
-            custom_value_conveted = DTOBase.custom_convert_value_to_entity(
+            custom_value_converted = DTOBase.custom_convert_value_to_entity(
                 value,
                 dto_field,
                 entity_field,
                 none_as_empty,
                 self.__dict__,
             )
-            for key in custom_value_conveted:
-                setattr(entity, key, custom_value_conveted[key])
+            if len(custom_value_converted) > 0:
+                for key in custom_value_converted:
+                    setattr(entity, key, custom_value_converted[key])
+                    entity.sql_fields.append(key)
+            else:
+                # Convertendo o value para o correspondente nos fields
+                value = DTOBase.convert_value_to_entity(
+                    value,
+                    dto_field,
+                    none_as_empty,
+                    entity_class,
+                )
 
-            if len(custom_value_conveted) > 0:
-                continue
-
-            # Convertendo o value para o correspondente nos fields
-            value = DTOBase.convert_value_to_entity(
-                value,
-                dto_field,
-                none_as_empty,
-                entity_class,
-            )
-
-            # Setando na entidade
-            setattr(entity, entity_field, value)
+                # Setando na entidade
+                setattr(entity, entity_field, value)
+                entity.sql_fields.append(entity_field)
 
         return entity
 

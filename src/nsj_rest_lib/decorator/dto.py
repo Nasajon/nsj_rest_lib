@@ -138,8 +138,8 @@ def DTO(
                         if attr.search:
                             getattr(cls, "search_fields").add(key)
 
-                        # Verifica se um campo é somente para leitura
-                        if attr.read_only:
+                        # Verifica se um campo é somente para leitura (e não deve ser atualizado). Com exceção do campo "atualizado_em".
+                        if attr.read_only and key != "atualizado_em":
                             getattr(cls, "sql_read_only_fields").append(
                                 attr.entity_field or key
                             )
