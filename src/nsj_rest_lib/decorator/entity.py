@@ -1,3 +1,5 @@
+import functools
+
 from typing import Any, Dict, List
 
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
@@ -26,6 +28,9 @@ class Entity:
         """
         Tratando dos tipos de dados dos atributos, e criando os getters necessários.
         """
+
+        # Mantém metadados da classe original
+        functools.update_wrapper(self, cls)
 
         # Guardando o nome da tabela na classe
         self._check_class_attribute(cls, "table_name", self.table_name)
