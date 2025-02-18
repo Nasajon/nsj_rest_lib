@@ -31,6 +31,7 @@ class PostRoute(RouteBase):
         handle_exception: Callable = None,
         custom_before_insert: Callable = None,
         custom_after_insert: Callable = None,
+        retrieve_after_insert: bool = False,
     ):
         super().__init__(
             url=url,
@@ -44,6 +45,7 @@ class PostRoute(RouteBase):
         )
         self.custom_before_insert = custom_before_insert
         self.custom_after_insert = custom_after_insert
+        self.retrieve_after_insert = retrieve_after_insert
 
     def _partition_filters(self, data):
         # Montando os filtros de particao de dados
@@ -104,6 +106,7 @@ class PostRoute(RouteBase):
                         aditional_filters=partition_filters,
                         custom_before_insert=self.custom_before_insert,
                         custom_after_insert=self.custom_after_insert,
+                        retrieve_after_insert=self.retrieve_after_insert,
                     )
 
                     if data is not None:
@@ -115,6 +118,7 @@ class PostRoute(RouteBase):
                         aditional_filters=partition_filters,
                         custom_before_insert=self.custom_before_insert,
                         custom_after_insert=self.custom_after_insert,
+                        retrieve_after_insert=self.retrieve_after_insert,
                     )
 
                     if data is not None or not len(data)>0:

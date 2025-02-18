@@ -1,4 +1,5 @@
 import functools
+
 from typing import Any, List
 
 
@@ -7,61 +8,60 @@ class EntityField:
     expected_type: object
 
 
-def Entity(table_name: str, pk_field: str, default_order_fields: List[str]):
-    def EntityWrapper(classe):
-        class EntityClass:
-            def __init__(self) -> None:
-                super().__init__()
+class Entity:
+    def __init__(
+        self,
+        table_name: str,
+        pk_field: str,
+        default_order_fields: List[str]
+    ) -> None:
+        super().__init__()
 
-                self.table_name = table_name
-                self.pk_field = pk_field
-                self.default_order_fields = default_order_fields
+        self.table_name = table_name
+        self.pk_field = pk_field
+        self.default_order_fields = default_order_fields
 
-            @functools.wraps(classe)
-            def __call__(self, cls: object):
-                """
-                Tratando dos tipos de dados dos atributos, e criando os getters necessários.
-                """
+    def __call__(self, cls):
+        """
+        Tratando dos tipos de dados dos atributos, e criando os getters necessários.
+        """
 
-                # Guardando o nome da tabela na classe
-                self._check_class_attribute(cls, "table_name", self.table_name)
+        # Mantém metadados da classe original
+        functools.update_wrapper(self, cls)
 
-                # Guardando o nome do campo PK na classe
-                self._check_class_attribute(cls, "pk_field", self.pk_field)
+        # Guardando o nome da tabela na classe
+        self._check_class_attribute(cls, "table_name", self.table_name)
 
-                # Guardando a lista default de ordenação, na classe
-                self._check_class_attribute(
-                    cls, "default_order_fields", self.default_order_fields
-                )
+        # Guardando o nome do campo PK na classe
+        self._check_class_attribute(cls, "pk_field", self.pk_field)
 
-                # Creating fields_map in cls, if needed
-                self._check_class_attribute(cls, "fields_map", {})
+        # Guardando a lista default de ordenação, na classe
+        self._check_class_attribute(
+            cls, "default_order_fields", self.default_order_fields
+        )
 
-                # Iterando pelos atributos de classe
-                for key, attr in cls.__dict__.items():
-                    # Copiando o tipo a partir da anotação de tipo (se existir)
-                    if key in cls.__annotations__:
-                        atributo = attr
-                        if not isinstance(attr, EntityField):
-                            atributo = EntityField()
+        # Creating fields_map in cls, if needed
+        self._check_class_attribute(cls, "fields_map", {})
 
-                        atributo.expected_type = cls.__annotations__[key]
+        # Iterando pelos atributos de classe
+        for key, attr in cls.__dict__.items():
+            # Copiando o tipo a partir da anotação de tipo (se existir)
+            if key in cls.__annotations__:
+                atributo = attr
+                if not isinstance(attr, EntityField):
+                    atributo = EntityField()
 
-                        # Guardando o atributo no fields_map
-                        getattr(cls, "fields_map")[key] = atributo
+                atributo.expected_type = cls.__annotations__[key]
 
-                return cls
+                # Guardando o atributo no fields_map
+                getattr(cls, "fields_map")[key] = atributo
 
-            def _check_class_attribute(
-                self, cls: object, attr_name: str, default_value: Any
-            ):
-                """
-                Add attribute "attr_name" in class "cls", if not exists.
-                """
+        return cls
 
-                if attr_name not in cls.__dict__:
-                    setattr(cls, attr_name, default_value)
+    def _check_class_attribute(self, cls: object, attr_name: str, default_value: Any):
+        """
+        Add attribute "attr_name" in class "cls", if not exists.
+        """
 
-        return EntityClass().__call__(classe)
-
-    return EntityWrapper
+        if attr_name not in cls.__dict__:
+            setattr(cls, attr_name, default_value)
