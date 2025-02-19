@@ -333,7 +333,7 @@ class DAOBase:
                     after_obj = self.get(entity.get_pk_field(), after, fields)
                 else:
                     after_obj = self.get(entity_key_field, entity_id_value, fields)
-            except NotFoundException as e:
+            except NotFoundException:
                 raise AfterRecordNotFoundException(
                     f"Identificador recebido no parâmetro after {id}, não encontrado para a entidade {self._entity_class.__name__}."
                 )
@@ -518,7 +518,7 @@ class DAOBase:
                         data_obj = None
                         try:
                             data_obj = datetime.date(ano, mes, dia)
-                        except:
+                        except Exception:
                             continue
 
                         search_buffer += (
@@ -640,7 +640,7 @@ class DAOBase:
             join grupos_conjuntos as gc0 on (gc0.conjunto = cr0.conjunto)
             """
 
-        fields_conjunto = f"""
+        fields_conjunto = """
             gc0.grupo_empresarial_pk,
             gc0.grupo_empresarial_codigo,
             gc0.conjunto as conjunto,
@@ -734,17 +734,13 @@ class DAOBase:
         # Building SQL fields
         fields = [
             f"{k}"
-            for k in entity.__dict__
-            if not callable(getattr(entity, k, None))
-            and not k.startswith("_")
-            and (k not in sql_read_only_fields or getattr(entity, k, None) is not None)
+            for k in entity.sql_fields
+            if k not in sql_read_only_fields or getattr(entity, k, None) is not None
         ]
         ref_values = [
             f":{k}"
-            for k in entity.__dict__
-            if not callable(getattr(entity, k, None))
-            and not k.startswith("_")
-            and (k not in sql_read_only_fields or getattr(entity, k, None) is not None)
+            for k in entity.sql_fields
+            if k not in sql_read_only_fields or getattr(entity, k, None) is not None
         ]
 
         return (", ".join(fields), ", ".join(ref_values))
@@ -818,13 +814,10 @@ class DAOBase:
         # Building SQL fields
         fields = [
             f"{k} = excluded.{k}"
-            for k in entity.__dict__
-            if not callable(getattr(entity, k, None))
-            and not k.startswith("_")
-            and getattr(entity, k) is not None
-            and (ignore_nones and getattr(entity, k) is not None or not ignore_nones)
+            for k in entity.sql_fields
+            if (ignore_nones and getattr(entity, k) is not None or not ignore_nones)
             and k not in entity.get_const_fields()
-            and (k != entity.get_pk_field() ) #or getattr(entity, k) is not None)
+            and k != entity.get_pk_field()
             and k not in sql_read_only_fields
         ]
 
@@ -845,22 +838,17 @@ class DAOBase:
         if ignore_nones:
             fields = [
                 f"{k} = :{k}"
-                for k in entity.__dict__
-                if not callable(getattr(entity, k, None))
-                and not k.startswith("_")
-                and getattr(entity, k) is not None
-                and k not in entity.get_const_fields()
-                and (k != entity.get_pk_field() or getattr(entity, k) is not None)
+                for k in entity.sql_fields
+                if k not in entity.get_const_fields()
+                and k != entity.get_pk_field()
                 and k not in sql_read_only_fields
             ]
         else:
             fields = [
                 f"{k} = :{k}"
                 for k in entity.__dict__
-                if not callable(getattr(entity, k, None))
-                and not k.startswith("_")
-                and k not in entity.get_const_fields()
-                and (k != entity.get_pk_field() or getattr(entity, k) is not None)
+                if k not in entity.get_const_fields()
+                and k != entity.get_pk_field()
                 and k not in sql_read_only_fields
             ]
 

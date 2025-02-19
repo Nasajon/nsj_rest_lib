@@ -135,7 +135,7 @@ class DTO:
                     getattr(cls, "search_fields").add(key)
 
                 # Verifica se um campo é somente para leitura
-                if attr.read_only:
+                if attr.read_only and key != "atualizado_em":
                     getattr(cls, "sql_read_only_fields").append(
                         attr.entity_field or key
                     )

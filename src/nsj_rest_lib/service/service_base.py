@@ -1002,9 +1002,6 @@ class ServiceBase:
                         id, conjunto_field_value, self._dto_class.conjunto_type
                     )
             else:
-                # Suporte para evitar que o usuário possa alterar esse campo e que seja atualizado pelo sistema
-                if "atualizado_em" in dto.sql_read_only_fields:
-                    dto.sql_read_only_fields.remove("atualizado_em")
                 # Executando o update pelo DAO
                 entity = self._dao.update(
                     entity.get_pk_field(),
