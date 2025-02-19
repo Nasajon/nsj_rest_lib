@@ -1,8 +1,7 @@
-from typing import Any, Dict, List
+import functools
 
-from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
-from nsj_rest_lib.descriptor.dto_field import DTOField
-from nsj_rest_lib.descriptor.dto_list_field import DTOListField
+from typing import Any, List
+
 
 
 class EntityField:
@@ -22,10 +21,13 @@ class Entity:
         self.pk_field = pk_field
         self.default_order_fields = default_order_fields
 
-    def __call__(self, cls: object):
+    def __call__(self, cls):
         """
         Tratando dos tipos de dados dos atributos, e criando os getters necessários.
         """
+
+        # Mantém metadados da classe original
+        functools.update_wrapper(self, cls)
 
         # Guardando o nome da tabela na classe
         self._check_class_attribute(cls, "table_name", self.table_name)

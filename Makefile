@@ -12,10 +12,10 @@ install_to_pkg:
 	pip install twine
 
 build_pkg:
-	python -m build
+	python3 -m build
 
 upload_pkg:
-	python -m twine upload --skip-existing dist/*
+	python3 -m twine upload --skip-existing dist/*
 
 tests: env_setup
 	pytest -s tests/api/casos_de_teste

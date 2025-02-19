@@ -225,12 +225,12 @@ class ServiceBase:
         entity_fields = []
         for field in fields:
             # Skipping not DTO fields
-            if not (field in dto_class.fields_map):
+            if field not in dto_class.fields_map:
                 continue
 
             entity_field_name = self._convert_to_entity_field(field, dto_class)
             # Skipping not Entity fields
-            if not (entity_field_name in entity.__dict__):
+            if entity_field_name not in entity.__dict__:
                 continue
 
             entity_fields.append(entity_field_name)
@@ -325,7 +325,7 @@ class ServiceBase:
                         try:
                             TypeValidatorUtil.validate(obj, values[0])
                             convertido = True
-                        except:
+                        except Exception:
                             convertido = False
 
                         if convertido:
@@ -479,7 +479,7 @@ class ServiceBase:
 
         # Resolving fields
         if fields is None:
-            result = {"root": set()}
+            result = {"root": self._dto_class.resume_fields}
         else:
             result = copy.deepcopy(fields)
             result["root"] = result["root"].union(self._dto_class.resume_fields)
@@ -684,7 +684,7 @@ class ServiceBase:
                             f"PK field not found in class: {self._dto_class}"
                         )
 
-                    if not (self._dto_class.pk_field in dto.__dict__):
+                    if self._dto_class.pk_field not in dto.__dict__:
                         raise DTOListFieldConfigException(
                             f"PK field not found in DTO: {self._dto_class}"
                         )
@@ -731,6 +731,7 @@ class ServiceBase:
         aditional_filters: Dict[str, Any] = None,
         custom_before_insert: Callable = None,
         custom_after_insert: Callable = None,
+        retrieve_after_insert: bool = False,
     ) -> DTOBase:
         return self._save(
             insert=True,
@@ -740,6 +741,7 @@ class ServiceBase:
             aditional_filters=aditional_filters,
             custom_before_insert=custom_before_insert,
             custom_after_insert=custom_after_insert,
+            retrieve_after_insert=retrieve_after_insert,
         )
 
     def insert_list(
@@ -748,8 +750,8 @@ class ServiceBase:
         aditional_filters: Dict[str, Any] = None,
         custom_before_insert: Callable = None,
         custom_after_insert: Callable = None,
+        retrieve_after_insert: bool = False,
     ) -> List[DTOBase]:
-
         _lst_return = []
         try:
             self._dao.begin()
@@ -763,6 +765,7 @@ class ServiceBase:
                     aditional_filters=aditional_filters,
                     custom_before_insert=custom_before_insert,
                     custom_after_insert=custom_after_insert,
+                    retrieve_after_insert=retrieve_after_insert,
                 )
 
                 if _return_object is not None:
@@ -776,7 +779,6 @@ class ServiceBase:
 
         return _lst_return
 
-
     def update(
         self,
         dto: DTOBase,
@@ -784,7 +786,7 @@ class ServiceBase:
         aditional_filters: Dict[str, Any] = None,
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
-        upsert: bool = False
+        upsert: bool = False,
     ) -> DTOBase:
         return self._save(
             insert=False,
@@ -795,7 +797,7 @@ class ServiceBase:
             aditional_filters=aditional_filters,
             custom_before_update=custom_before_update,
             custom_after_update=custom_after_update,
-            upsert=upsert
+            upsert=upsert,
         )
 
     def update_list(
@@ -804,9 +806,8 @@ class ServiceBase:
         aditional_filters: Dict[str, Any] = None,
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
-        upsert: bool = False
+        upsert: bool = False,
     ) -> List[DTOBase]:
-
         _lst_return = []
         try:
             self._dao.begin()
@@ -821,7 +822,7 @@ class ServiceBase:
                     aditional_filters=aditional_filters,
                     custom_before_update=custom_before_update,
                     custom_after_update=custom_after_update,
-                    upsert=upsert
+                    upsert=upsert,
                 )
 
                 if _return_object is not None:
@@ -887,7 +888,8 @@ class ServiceBase:
         custom_before_update: Callable = None,
         custom_after_insert: Callable = None,
         custom_after_update: Callable = None,
-        upsert: bool = False
+        upsert: bool = False,
+        retrieve_after_insert: bool = False,
     ) -> DTOBase:
         try:
             # Guardando um ponteiro para o DTO recebido
@@ -994,6 +996,8 @@ class ServiceBase:
                 if self._dto_class.conjunto_type is not None:
                     conjunto_field_value = getattr(dto, self._dto_class.conjunto_field)
 
+                    aditional_filters[self._dto_class.conjunto_field] = conjunto_field_value
+
                     self._dao.insert_relacionamento_conjunto(
                         id, conjunto_field_value, self._dto_class.conjunto_type
                     )
@@ -1006,11 +1010,11 @@ class ServiceBase:
                     aditional_entity_filters,
                     partial_update,
                     dto.sql_read_only_fields,
-                    upsert
+                    upsert,
                 )
 
             # Convertendo a entity para o DTO de resposta (se houver um)
-            if self._dto_post_response_class is not None:
+            if self._dto_post_response_class is not None and not retrieve_after_insert:
                 response_dto = self._dto_post_response_class(
                     entity, escape_validator=True
                 )
@@ -1051,6 +1055,9 @@ class ServiceBase:
             else:
                 if custom_after_update is not None:
                     custom_after_update(self._dao._db, old_dto, new_dto, after_data)
+
+            if retrieve_after_insert:
+                response_dto = self.get(id, aditional_filters, None)
 
             # Retornando o DTO de resposta
             return response_dto
@@ -1191,7 +1198,7 @@ class ServiceBase:
                         f"PK field not found in class: {self._dto_class}"
                     )
 
-                if not (self._dto_class.pk_field in dto.__dict__):
+                if self._dto_class.pk_field not in dto.__dict__:
                     raise DTOListFieldConfigException(
                         f"PK field not found in DTO: {self._dto_class}"
                     )
@@ -1241,20 +1248,20 @@ class ServiceBase:
     def delete(self, id: Any, additional_filters: Dict[str, Any] = None) -> DTOBase:
         self._delete(id, manage_transaction=True, additional_filters=additional_filters)
 
-    def delete_list(self,ids: list, additional_filters: Dict[str, Any] = None):
-
+    def delete_list(self, ids: list, additional_filters: Dict[str, Any] = None):
         try:
             self._dao.begin()
 
             for _id in ids:
-                self._delete(_id, manage_transaction=True, additional_filters=additional_filters)
+                self._delete(
+                    _id, manage_transaction=True, additional_filters=additional_filters
+                )
 
         except:
             self._dao.rollback()
             raise
         finally:
             self._dao.commit()
-
 
     def entity_exists(
         self,
@@ -1276,7 +1283,7 @@ class ServiceBase:
                 [entity.get_pk_field()],
                 entity_filters,
             )
-        except NotFoundException as e:
+        except NotFoundException:
             return False
 
         return True
@@ -1418,7 +1425,7 @@ class ServiceBase:
                         f"PK field not found in class: {self._dto_class}"
                     )
 
-                if not (list_field.dto_type.pk_field in related_dto.__dict__):
+                if list_field.dto_type.pk_field not in related_dto.__dict__:
                     raise DTOListFieldConfigException(
                         f"PK field not found in DTO: {self._dto_class}"
                     )
