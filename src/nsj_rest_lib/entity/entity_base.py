@@ -8,11 +8,9 @@ class EMPTY:
 
 
 class EntityBase(abc.ABC):
-    sql_fields: list[str] = []
-
     def __init__(self) -> None:
         super().__init__()
-
+        self.sql_fields: list[str] = []
         if "fields_map" in self.__class__.__dict__:
             for field in self.__class__.fields_map:
                 if field not in self.__dict__:
