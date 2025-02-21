@@ -846,7 +846,7 @@ class DAOBase:
         else:
             fields = [
                 f"{k} = :{k}"
-                for k in entity.__dict__
+                for k in entity.sql_fields
                 if k not in entity.get_const_fields()
                 and k != entity.get_pk_field()
                 and k not in sql_read_only_fields
@@ -869,7 +869,7 @@ class DAOBase:
         """
 
         # Organizando o where dos filtros
-        filters_where, filter_values_map = self._make_filters_sql(filters, True, True)
+        filters_where, filter_values_map = self._make_filters_sql(filters, True, upsert)
 
         # # CUIDADO PARA NÂO ATUALIZAR O QUE NÃO DEVE
         # if filters_where is None or filters_where.strip() == "":
