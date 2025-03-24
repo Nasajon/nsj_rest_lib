@@ -85,6 +85,9 @@ class DTO:
         # Criando a propriedade "search_fields" na classe "cls", se necessário
         self._check_class_attribute(cls, "search_fields", set())
 
+        # Criando a propriedade "metric_fields" na classe "cls", se necessário
+        self._check_class_attribute(cls, "metric_fields", set())
+
         # Iterating for the class attributes
         for key, attr in cls.__dict__.items():
             # Test if the attribute uses the DTOFiel descriptor
@@ -139,6 +142,10 @@ class DTO:
                     getattr(cls, "sql_read_only_fields").append(
                         attr.entity_field or key
                     )
+
+                # Verifica se é um campo é uma métrica do opentelemetry
+                if attr.metric_label:
+                    getattr(cls, "metric_fields").add(key)
 
             elif isinstance(attr, DTOListField):
                 # Storing field in fields_map

@@ -43,6 +43,7 @@ class DTOField:
         candidate_key: bool = False,
         search: bool = True,
         read_only: bool = False,
+        metric_label: bool = False,
     ):
         """
         -----------
@@ -72,6 +73,7 @@ class DTOField:
         candidate_key: Permite indicar que este campo se trata de uma chave candidata (útil para operações unitárias, como GTE e DELETE, pois estas irão verificar se o tipo do dado recebido bate com a PK, ou com as chaves candidatas, para resolver como fará a query).
         search: Indica que esse campo é passível de busca, por meio do argumento "search" passado num GET List, como query string (por hora, apenas pesquisas simples, por meio de operador like, estão implementadas).
         read_only: Permite declarar propriedades que estão disponíveis no GET (list ou unitário), mas que não poderão ser usadas para gravação (POST, PUT ou PATCH).
+        metric_label: Permite indicar quais campos serão enviados como métricas para o OpenTelemetry Collector.
         """
         self.name = None
         self.expected_type = type
@@ -93,6 +95,7 @@ class DTOField:
         self.candidate_key = candidate_key
         self.search = search
         self.read_only = read_only
+        self.metric_label = metric_label
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -196,3 +199,28 @@ class DTOField:
             return self.entity_field
         else:
             return self.name
+        
+    def get_metric_labels(dto_class, request, tenant, grupo_empresarial):
+        """
+        Retorna os campos que possuem metric_label=True,
+        incluindo sempre tenant e grupo_empresarial se existirem no DTO.
+        """
+        metric_fields = {}
+
+        if hasattr(dto_class, tenant):
+            metric_fields[tenant] = request.args.get(tenant, "")
+        if hasattr(dto_class, grupo_empresarial):
+            metric_fields[grupo_empresarial] = request.args.get(grupo_empresarial, "")
+
+        if hasattr(dto_class, "metric_fields"):
+            for field_name in dto_class.metric_fields:
+                metric_fields[field_name] = request.args.get(field_name, "")
+
+        json_data = request.get_json(silent=True) or {} 
+
+        if json_data:
+            for field_name in metric_fields:
+                if not metric_fields[field_name] and field_name in json_data:
+                    metric_fields[field_name] = json_data[field_name]
+
+        return metric_fields
