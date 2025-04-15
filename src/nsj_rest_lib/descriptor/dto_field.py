@@ -221,6 +221,6 @@ class DTOField:
         if json_data:
             for field_name in metric_fields:
                 if not metric_fields[field_name] and field_name in json_data:
-                    metric_fields[field_name] = json_data[field_name]
+                    metric_fields[field_name] = json_data.get(field_name, "")
 
         return metric_fields

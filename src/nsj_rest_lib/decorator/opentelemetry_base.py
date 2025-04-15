@@ -30,19 +30,22 @@ class OpenTelemetryBase:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             response = func(*args, **kwargs)
-            status_code = response[1] if isinstance(response, tuple) and len(response) > 1 else ""
+            try:
+                status_code = response[1] if isinstance(response, tuple) and len(response) > 1 else ""
 
-            metric_data = {
-                "route": self.route,
-                "method": request.method,
-                "status_code": str(status_code),
-                self.time_grouping.value: get_time_grouping(self.time_grouping.name),
-                self.tenant_field: request.headers.get(self.tenant_field, ""),
-                self.grupo_empresarial_field: request.headers.get(self.grupo_empresarial_field, ""),
-                **self.extra_fields
-            }
+                metric_data = {
+                    "route": self.route,
+                    "method": request.method,
+                    "status_code": str(status_code),
+                    self.time_grouping.value: get_time_grouping(self.time_grouping.name),
+                    self.tenant_field: request.headers.get(self.tenant_field, ""),
+                    self.grupo_empresarial_field: request.headers.get(self.grupo_empresarial_field, ""),
+                    **self.extra_fields
+                }
 
-            self._send_telemetry(metric_data)
+                self._send_telemetry(metric_data)
+            except Exception as e:
+                self.logger.exception(f"Falha ao enviar métricas: {e}")    
             return response
 
         return wrapper

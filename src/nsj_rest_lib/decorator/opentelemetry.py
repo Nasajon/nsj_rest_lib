@@ -31,8 +31,6 @@ class OpenTelemetry:
         self.grupo_empresarial_field = grupo_empresarial_field
 
     def __call__(self, func):
-        wrapped = self.decorator(func)
-
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             metric_fields = DTOField.get_metric_labels(
