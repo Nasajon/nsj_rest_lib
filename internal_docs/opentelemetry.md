@@ -2,7 +2,7 @@
 
 ## O que é telemetria e por que usamos?
 
-Telemetria é a coleta automática de dados sobre o uso das APIs. Esses dados ajudam a responder perguntas essenciais para o negócio e desenvolvimento, tais como:
+Telemetria é a coleta automática de dados sobre o uso dos sistemas. Esses dados ajudam a responder perguntas essenciais para o negócio e o desenvolvimento, tais como:
 
 - **Quantificar o uso de cada rota** (quantas requisições cada rota recebeu).
 - **Identificar quem mais consome** (clientes com maior volume de chamadas em determinada API).
@@ -15,6 +15,8 @@ Com esses dados, conseguimos tomar decisões técnicas e comerciais baseadas em 
 ## Como funciona (nossa arquitetura)?
 
 A telemetria da Nasajon segue os padrões da ferramenta **OpenTelemetry**, porém simplificada através da nossa própria biblioteca interna **RestLib**.
+
+Você pode ver a especificação arquitetura aprovada [aqui](https://github.com/Nasajon/Arquitetura/blob/master/RFCs/aprovados/telemetria_web.md).
 
 ### Processo detalhado:
 
@@ -74,7 +76,7 @@ def get_ping():
 | `status_code`       | Código HTTP da resposta                         |
 | `tenant`            | Campo padrão para identificação do tenant, mas pode ser renomeado para outro campo personalizado                   |
 | `grupo_empresarial` | Campo padrão indicando o grupo empresarial, também pode ser renomeado para outro campo personalizado     |
-| `time_grouping`     | Agrupamento temporal utiliza por padrão a semana do ano, pode ser alterado para o mês do ano              |
+| `time_grouping`     | Agrupamento temporal, o qual utiliza, por padrão, a semana do ano, pode ser alterado para o mês do ano              |
 
 ## Como coletar campos extras?
 
