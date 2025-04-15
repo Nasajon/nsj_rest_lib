@@ -1,7 +1,5 @@
 # RestLib (nsj_rest_lib)
 
-Ver [Histórico de Versões](historico_versoes.md) da biblioteca.
-
 # QuickStart
 
 Biblioteca para construção de APIs Rest Python, de acordo com o guidelines interno, e com paradigma declarativo.
@@ -66,3 +64,4 @@ A grande diferença, na filosofia de desenvolvimento, é que se prioriza um esfo
   * Uso manual do DAO (para queries manuais) (TODO)
   * Uso manual do Service (para consultas ou inserts manuais) (TODO)
   * Customizando comportamentos (TODO)
+  * [Gravação de Telemetria (com o OpenTelemetry)](internal_docs/opentelemetry.md)
