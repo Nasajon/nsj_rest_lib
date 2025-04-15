@@ -154,10 +154,7 @@ class DAOBase:
         return resp[0]
 
     def _make_filters_sql(
-        self,
-        filters: Dict[str, List[Filter]],
-        with_and: bool = True,
-        use_table_alias: bool = True,
+        self, filters: Dict[str, List[Filter]], with_and: bool = True
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Interpreta os filtros, retornando uma tupla com formato (filters_where, filter_values_map), onde
@@ -221,12 +218,7 @@ class DAOBase:
                     condiction_alias_subtituir = ""
 
                 # Making condiction buffer
-                if use_table_alias:
-                    condiction_buffer = f"{table_alias}.{filter_field} {operator} {condiction_alias_subtituir}"
-                else:
-                    condiction_buffer = (
-                        f"{filter_field} {operator} {condiction_alias_subtituir}"
-                    )
+                condiction_buffer = f"{table_alias}.{filter_field} {operator} {condiction_alias_subtituir}"
 
                 multiple_values = len(filters[filter_field]) > 1 or (
                     isinstance(condiction.value, set) and len(condiction.value) > 1
@@ -842,6 +834,7 @@ class DAOBase:
                 if k not in entity.get_const_fields()
                 and k != entity.get_pk_field()
                 and k not in sql_read_only_fields
+                and getattr(entity, k) is not EMPTY
             ]
         else:
             fields = [
@@ -869,7 +862,7 @@ class DAOBase:
         """
 
         # Organizando o where dos filtros
-        filters_where, filter_values_map = self._make_filters_sql(filters, True, upsert)
+        filters_where, filter_values_map = self._make_filters_sql(filters, True)
 
         # # CUIDADO PARA NÂO ATUALIZAR O QUE NÃO DEVE
         # if filters_where is None or filters_where.strip() == "":
@@ -925,13 +918,13 @@ class DAOBase:
 
             # Montando a query principal
             sql = f"""
-            update {entity.get_table_name()} set
+            update {entity.get_table_name()} as t0 set
 
                 {sql_fields}
 
             where
                 true
-                and {key_field} = :candidate_key_value
+                and t0.{key_field} = :candidate_key_value
                 {filters_where}
             """
 
@@ -951,12 +944,6 @@ class DAOBase:
 
         # Montando um dicionário com valores das propriedades
         values_map = convert_to_dumps(entity)
-
-        # Convertendo EMPTY para None, se necessário
-        if partial_update:
-            for key in values_map:
-                if values_map[key] == EMPTY:
-                    values_map[key] = None
 
         # Montado o map de valores a passar no update
         kwargs = {"candidate_key_value": key_value, **values_map, **filter_values_map}
@@ -1023,7 +1010,7 @@ class DAOBase:
         entity = self._entity_class()
 
         # Organizando o where dos filtros
-        filters_where, filter_values_map = self._make_filters_sql(filters, False, False)
+        filters_where, filter_values_map = self._make_filters_sql(filters, False)
 
         # CUIDADO PARA NÂO EXCLUIR O QUE NÃO DEVE
         if filters_where is None or filters_where.strip() == "":
@@ -1033,7 +1020,7 @@ class DAOBase:
 
         # Montando a query
         sql = f"""
-        delete from {entity.get_table_name()} where {filters_where}
+        delete from {entity.get_table_name()} as t0 where {filters_where}
         """
 
         # Executando a query

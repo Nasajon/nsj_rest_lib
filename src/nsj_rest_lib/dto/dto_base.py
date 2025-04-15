@@ -291,7 +291,7 @@ class DTOBase(abc.ABC):
                 # (ou índice da tupla dentro do value, se houver uma tupla)
                 # Porque parece que ele tenta sempre converter para o tipo esperado, mas isso pode já ter sido
                 # feito no DTO
-                return DTOBase._convert_enum_to_entity(value, dto_field)
+                return DTOBase._convert_enum_to_entity(value, dto_field, none_as_empty)
             except ValueError:
                 # Retornando o pórpio valor, caso se deseje converter um enumerado que não seja válido
                 # Isso é, aceitando enumerados inválidos (só para os filtros)
@@ -305,6 +305,8 @@ class DTOBase(abc.ABC):
             and entity_field_name in entity_fields_map
             and entity_fields_map[entity_field_name].expected_type == int
         ):
+            if value is None and none_as_empty:
+                return EMPTY
             return 1 if value else 0
 
         # Convertendo None para EMPTY (se desejado)
@@ -319,10 +321,14 @@ class DTOBase(abc.ABC):
     def _convert_enum_to_entity(
         value: Any,
         dto_field: DTOField,
+        none_as_empty: bool
     ):
         # Ignorando valores nulos
         if value is None:
-            return None
+            if none_as_empty:
+                return EMPTY
+            else:
+                return None
 
         # Construindo uma lista com os itens do enumerado esperado
         lista_enum = list(dto_field.expected_type)
