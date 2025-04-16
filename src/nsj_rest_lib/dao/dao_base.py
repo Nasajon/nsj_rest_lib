@@ -726,12 +726,12 @@ class DAOBase:
         # Building SQL fields
         fields = [
             f"{k}"
-            for k in entity.sql_fields
+            for k in entity._sql_fields
             if k not in sql_read_only_fields or getattr(entity, k, None) is not None
         ]
         ref_values = [
             f":{k}"
-            for k in entity.sql_fields
+            for k in entity._sql_fields
             if k not in sql_read_only_fields or getattr(entity, k, None) is not None
         ]
 
@@ -806,7 +806,7 @@ class DAOBase:
         # Building SQL fields
         fields = [
             f"{k} = excluded.{k}"
-            for k in entity.sql_fields
+            for k in entity._sql_fields
             if (ignore_nones and getattr(entity, k) is not None or not ignore_nones)
             and k not in entity.get_const_fields()
             and k != entity.get_pk_field()
@@ -830,7 +830,7 @@ class DAOBase:
         if ignore_nones:
             fields = [
                 f"{k} = :{k}"
-                for k in entity.sql_fields
+                for k in entity._sql_fields
                 if k not in entity.get_const_fields()
                 and k != entity.get_pk_field()
                 and k not in sql_read_only_fields
@@ -839,7 +839,7 @@ class DAOBase:
         else:
             fields = [
                 f"{k} = :{k}"
-                for k in entity.sql_fields
+                for k in entity._sql_fields
                 if k not in entity.get_const_fields()
                 and k != entity.get_pk_field()
                 and k not in sql_read_only_fields

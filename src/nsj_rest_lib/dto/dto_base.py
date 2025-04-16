@@ -240,7 +240,7 @@ class DTOBase(abc.ABC):
             if len(custom_value_converted) > 0:
                 for key in custom_value_converted:
                     setattr(entity, key, custom_value_converted[key])
-                    entity.sql_fields.append(key)
+                    entity._sql_fields.append(key)
             else:
                 # Convertendo o value para o correspondente nos fields
                 value = DTOBase.convert_value_to_entity(
@@ -252,7 +252,7 @@ class DTOBase(abc.ABC):
 
                 # Setando na entidade
                 setattr(entity, entity_field, value)
-                entity.sql_fields.append(entity_field)
+                entity._sql_fields.append(entity_field)
 
         return entity
 
