@@ -1,0 +1,1 @@
+nsj-rest-test-util>=0.1.13,<1.0.0
