@@ -934,6 +934,7 @@ class ServiceBase:
                 for entity_field, value in relation_field_map.items():
                     if hasattr(entity, entity_field):
                         setattr(entity, entity_field, value)
+                        entity._sql_fields.append(entity_field)
 
             # Setando campos criado_por e atualizado_por quando existirem
             if (insert and hasattr(entity, self._created_by_property)) or (
