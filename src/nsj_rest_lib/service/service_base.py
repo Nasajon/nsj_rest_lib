@@ -12,6 +12,7 @@ from nsj_rest_lib.descriptor.dto_left_join_field import (
     EntityRelationOwner,
     LeftJoinQuery,
 )
+from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.dto.after_insert_update_data import AfterInsertUpdateData
@@ -125,6 +126,13 @@ class ServiceBase:
         # Tratando das propriedades de relacionamento left join
         if len(self._dto_class.left_join_fields_map) > 0:
             self._retrieve_left_join_fields(
+                [dto],
+                fields,
+                partition_fields,
+            )
+
+        if len(self._dto_class.object_fields_map) > 0:
+            self._retrieve_object_fields(
                 [dto],
                 fields,
                 partition_fields,
@@ -644,6 +652,13 @@ class ServiceBase:
         # TODO Verificar se está certo passar os filtros como campos de partição
         if len(self._dto_class.left_join_fields_map) > 0:
             self._retrieve_left_join_fields(
+                dto_list,
+                fields,
+                filters,
+            )
+
+        if len(self._dto_class.object_fields_map) > 0:
+            self._retrieve_object_fields(
                 dto_list,
                 fields,
                 filters,
@@ -1247,8 +1262,18 @@ class ServiceBase:
             ):
                 setattr(response_dto, master_dto_field, response_list)
 
-    def delete(self, id: Any, additional_filters: Dict[str, Any] = None) -> DTOBase:
-        self._delete(id, manage_transaction=True, additional_filters=additional_filters)
+    def delete(
+        self,
+        id: Any,
+        additional_filters: Dict[str, Any] = None,
+        custom_before_delete=None,
+    ) -> DTOBase:
+        self._delete(
+            id,
+            manage_transaction=True,
+            additional_filters=additional_filters,
+            custom_before_delete=custom_before_delete,
+        )
 
     def delete_list(self, ids: list, additional_filters: Dict[str, Any] = None):
         try:
@@ -1356,10 +1381,16 @@ class ServiceBase:
         id: str,
         manage_transaction: bool,
         additional_filters: Dict[str, Any] = None,
+        custom_before_delete=None,
     ) -> DTOBase:
         try:
             if manage_transaction:
                 self._dao.begin()
+
+            # Função para validar ou fazer outras consultas antes de deletar
+            if custom_before_delete is not None:
+                dto = self.get(id, additional_filters, None)
+                custom_before_delete(self._dao._db, dto)
 
             # Convertendo os filtros para os filtros de entidade
             entity_filters = {}
@@ -1559,3 +1590,73 @@ class ServiceBase:
 
                         # Gravando o valor no DTO de interesse
                         setattr(dto, field, field_value)
+
+    def _retrieve_object_fields(
+        self,
+        dto_list: List[DTOBase],
+        fields: Dict[str, Set[str]],
+        partition_fields: Dict[str, Any],
+    ):
+        # Tratando cada dto recebido
+        for dto in dto_list:
+            for key in dto.object_fields_map:
+                # Verificando se o campo está no retorno
+                if key not in fields["root"]:
+                    continue
+
+                object_field: DTOObjectField = dto.object_fields_map[key]
+
+                if object_field.entity_type is None:
+                    continue
+
+                service = ServiceBase(
+                    self._injector_factory,
+                    DAOBase(
+                        self._injector_factory.db_adapter(),
+                        object_field.entity_type,
+                    ),
+                    object_field.expected_type,
+                    object_field.entity_type,
+                )
+
+                if object_field.entity_relation_owner == EntityRelationOwner.OTHER:
+                    # Checking if pk_field exists
+                    if self._dto_class.pk_field is None:
+                        raise DTOListFieldConfigException(
+                            f"PK field not found in class: {self._dto_class}"
+                        )
+
+                    # Montando os filtros para recuperar o objeto relacionado
+                    related_filters = {
+                        object_field.relation_field: getattr(
+                            dto, self._dto_class.pk_field
+                        )
+                    }
+
+                    # Recuperando a lista de DTOs relacionados (com um único elemento; limit=1)
+                    related_dto = service.list(
+                        None,
+                        1,
+                        {"root": fields[key]} if key in fields else None,
+                        None,
+                        related_filters,
+                    )
+                    if len(related_dto) > 0:
+                        field = related_dto[0]
+                    else:
+                        field = None
+
+                    setattr(dto, key, field)
+
+                elif object_field.entity_relation_owner == EntityRelationOwner.SELF:
+                    if getattr(dto, object_field.relation_field) is not None:
+                        try:
+                            field = service.get(
+                                getattr(dto, object_field.relation_field),
+                                partition_fields,
+                                {"root": fields[key]} if key in fields else None,
+                            )
+                        except NotFoundException:
+                            field = None
+
+                        setattr(dto, key, field)
