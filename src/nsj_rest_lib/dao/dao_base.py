@@ -723,15 +723,25 @@ class DAOBase:
         - sql_ref_values: Lista das referências aos campos, a inserir no insert (parte values)
         """
 
+        sql_fields = (
+            entity._sql_fields
+            if entity._sql_fields
+            else [
+                f"{k}"
+                for k in entity.__dict__
+                if not callable(getattr(entity, k, None)) and not k.startswith("_")
+            ]
+        )
+
         # Building SQL fields
         fields = [
             f"{k}"
-            for k in entity._sql_fields
+            for k in sql_fields
             if k not in sql_read_only_fields or getattr(entity, k, None) is not None
         ]
         ref_values = [
             f":{k}"
-            for k in entity._sql_fields
+            for k in sql_fields
             if k not in sql_read_only_fields or getattr(entity, k, None) is not None
         ]
 
@@ -803,10 +813,20 @@ class DAOBase:
         Retorna lista com os campos para upsert, no padrão "field = excluded.field"
         """
 
+        sql_fields = (
+            entity._sql_fields
+            if entity._sql_fields
+            else [
+                f"{k}"
+                for k in entity.__dict__
+                if not callable(getattr(entity, k, None)) and not k.startswith("_")
+            ]
+        )
+
         # Building SQL fields
         fields = [
             f"{k} = excluded.{k}"
-            for k in entity._sql_fields
+            for k in sql_fields
             if (ignore_nones and getattr(entity, k) is not None or not ignore_nones)
             and k not in entity.get_const_fields()
             and k != entity.get_pk_field()
@@ -826,11 +846,21 @@ class DAOBase:
         Retorna lista com os campos para update, no padrão "field = :field"
         """
 
+        sql_fields = (
+            entity._sql_fields
+            if entity._sql_fields
+            else [
+                f"{k}"
+                for k in entity.__dict__
+                if not callable(getattr(entity, k, None)) and not k.startswith("_")
+            ]
+        )
+
         # Building SQL fields
         if ignore_nones:
             fields = [
                 f"{k} = :{k}"
-                for k in entity._sql_fields
+                for k in sql_fields
                 if k not in entity.get_const_fields()
                 and k != entity.get_pk_field()
                 and k not in sql_read_only_fields
@@ -839,7 +869,7 @@ class DAOBase:
         else:
             fields = [
                 f"{k} = :{k}"
-                for k in entity._sql_fields
+                for k in sql_fields
                 if k not in entity.get_const_fields()
                 and k != entity.get_pk_field()
                 and k not in sql_read_only_fields

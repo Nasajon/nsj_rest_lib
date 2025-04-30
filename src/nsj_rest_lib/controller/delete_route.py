@@ -25,6 +25,7 @@ class DeleteRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
+        custom_before_delete: Callable = None,
     ):
         super().__init__(
             url=url,
@@ -36,6 +37,7 @@ class DeleteRoute(RouteBase):
             service_name=service_name,
             handle_exception=handle_exception,
         )
+        self.custom_before_delete = custom_before_delete
 
     def _partition_filters(self, args):
         partition_filters = {}
@@ -67,9 +69,9 @@ class DeleteRoute(RouteBase):
                     args = query_args
 
                 # Recuperando os dados do corpo da requisição
-                request_data = request.json
+                if request.data:
+                    request_data = request.json
 
-                if request_data is not None:
                     if not isinstance(request_data, list):
                         request_data = [request_data]
 
@@ -79,9 +81,11 @@ class DeleteRoute(RouteBase):
                 service = self._get_service(factory)
 
                 if id is not None:
-                    # Chamando o service (método get)
-                    # TODO Rever parametro order_fields abaixo
-                    service.delete(id, partition_filters)
+                    service.delete(
+                        id,
+                        partition_filters,
+                        custom_before_delete=self.custom_before_delete,
+                    )
                 else:
                     service.delete_list(
                         request_data,
@@ -102,9 +106,19 @@ class DeleteRoute(RouteBase):
                     return self._handle_exception(e)
                 else:
                     return (format_json_error(e), 404, {**DEFAULT_RESP_HEADERS})
+            except ValueError as e:
+                get_logger().warning(e)
+                if self._handle_exception is not None:
+                    return self._handle_exception(e)
+                else:
+                    return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
             except Exception as e:
                 get_logger().exception(e)
                 if self._handle_exception is not None:
                     return self._handle_exception(e)
                 else:
-                    return (format_json_error(f'Erro desconhecido: {e}'), 500, {**DEFAULT_RESP_HEADERS})
+                    return (
+                        format_json_error(f"Erro desconhecido: {e}"),
+                        500,
+                        {**DEFAULT_RESP_HEADERS},
+                    )

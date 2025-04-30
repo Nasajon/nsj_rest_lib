@@ -424,6 +424,18 @@ class DTOBase(abc.ABC):
 
             result[field] = getattr(self, field)
 
+        for field in self.object_fields_map:
+            if not field in fields["root"]:
+                continue
+
+            result[field] = (
+                getattr(self, field).convert_to_dict(
+                    {"root": fields[field]} if field in fields else None
+                )
+                if getattr(self, field) is not None
+                else None
+            )
+
         # Converting list fields
         for field in self.list_fields_map:
             if not field in fields["root"]:
