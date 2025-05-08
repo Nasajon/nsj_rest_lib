@@ -24,6 +24,10 @@ class DTO:
         self._conjunto_type = conjunto_type
         self._conjunto_field = conjunto_field
         self._filter_aliases = filter_aliases
+
+        # Validando os parâmetros de data_override
+        self._validate_data_override(data_override)
+
         self._data_override_group = (
             data_override["group"]
             if data_override is not None and "group" in data_override
@@ -41,6 +45,44 @@ class DTO:
             raise Exception(
                 "Os parâmetros conjunto_type e conjunto_field devem ser preenchidos juntos (se um for não nulo, ambos devem ser preenchidos)."
             )
+
+    def _validate_data_override(self, data_override):
+        """
+        Valida os parâmetros de data_override.
+        :param data_override: Parâmetro de data_override
+        :type data_override: dict
+        :raises Exception: Se o parâmetro de data_override não for um dicionário ou não contiver as chaves 'group' e 'fields'.
+        """
+
+        if data_override is not None:
+            if not isinstance(data_override, dict):
+                raise Exception(
+                    "O parâmetro data_override deve ser um dicionário com as chaves 'group' e 'fields'."
+                )
+            if "group" not in data_override or "fields" not in data_override:
+                raise Exception(
+                    "O parâmetro data_override deve conter as chaves 'group' e 'fields'."
+                )
+            if not isinstance(data_override["group"], list) or not all(
+                isinstance(item, str) for item in data_override["group"]
+            ):
+                raise Exception(
+                    "O parâmetro data_override deve conter a chave 'group' com uma lista de strings."
+                )
+            if not isinstance(data_override["fields"], list) or not all(
+                isinstance(field, str) for field in data_override["fields"]
+            ):
+                raise Exception(
+                    "O parâmetro data_override deve conter a chave 'fields' com uma lista de strings."
+                )
+            if len(data_override["group"]) <= 0:
+                raise Exception(
+                    "O parâmetro data_override deve conter a chave 'group' com ao menos uma propriedade para agrupamento."
+                )
+            if len(data_override["fields"]) <= 0:
+                raise Exception(
+                    "O parâmetro data_override deve conter a chave 'fields' com ao menos uma propriedade que permita override das configurações."
+                )
 
     def __call__(self, cls):
         """
@@ -246,7 +288,24 @@ class DTO:
         # Setting filter aliases
         setattr(cls, "filter_aliases", self._filter_aliases)
 
+        # Checking data_override properties exists as DTOFields
+        self._validate_data_override_properties(cls)
+
         return cls
+
+    def _validate_data_override_properties(self, cls):
+        for field in self._data_override_fields:
+            if field not in cls.fields_map:
+                raise Exception(
+                    f"A propriedade '{field}', apontada como campo de sobrescrita (no 'data_override' do decorator DTO) deve existit como DTOField na classe '{cls.__name__}'."
+                )
+
+        if self._data_override_group is not None:
+            for field in self._data_override_group:
+                if field not in cls.fields_map:
+                    raise Exception(
+                        f"A propriedade '{field}', apontada como campo de agrupamento (no 'data_override' do decorator DTO) deve existit como DTOField na classe '{cls.__name__}'."
+                    )
 
     def _check_filters(self, cls: object, field_name: str, dto_field: DTOField):
         """

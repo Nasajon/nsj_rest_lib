@@ -7,7 +7,10 @@ from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.exception import DTOConfigException, MissingParameterException
+from nsj_rest_lib.exception import (
+    DataOverrideParameterException,
+    MissingParameterException,
+)
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger, DEFAULT_PAGE_SIZE
 
@@ -99,6 +102,9 @@ class ListRoute(RouteBase):
 
                     filters[field] = value
 
+                # Tratando dos campos de data_override
+                self._validade_data_override_parameters(args)
+
                 # Construindo os objetos
                 service = self._get_service(factory)
 
@@ -132,6 +138,12 @@ class ListRoute(RouteBase):
                 # Retornando a resposta da requuisição
                 return (json_dumps(page), 200, {**DEFAULT_RESP_HEADERS})
             except MissingParameterException as e:
+                get_logger().warning(e)
+                if self._handle_exception is not None:
+                    return self._handle_exception(e)
+                else:
+                    return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
+            except DataOverrideParameterException as e:
                 get_logger().warning(e)
                 if self._handle_exception is not None:
                     return self._handle_exception(e)

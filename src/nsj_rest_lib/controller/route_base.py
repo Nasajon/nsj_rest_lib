@@ -6,6 +6,7 @@ from nsj_rest_lib.controller.funtion_route_wrapper import FunctionRouteWrapper
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.exception import DataOverrideParameterException
 from nsj_rest_lib.service.service_base import ServiceBase
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 
@@ -144,3 +145,28 @@ class RouteBase:
                 root_field_list.add(field)
 
         return fields_map
+
+    def _validade_data_override_parameters(self, args):
+        """
+        Validates the data override parameters provided in the request arguments.
+
+        This method ensures that if a field in the data override fields list has a value (received as args),
+        the preceding field in the list must also have a value. If this condition is not met,
+        a DataOverrideParameterException is raised.
+
+        Args:
+            args (dict): The request arguments containing the data override parameters.
+
+        Raises:
+            DataOverrideParameterException: If a field has a value but the preceding field does not.
+        """
+        for i in range(1, len(self._dto_class.data_override_fields)):
+            field = self._dto_class.data_override_fields[-i]
+            previous_field = self._dto_class.data_override_fields[-i - 1]
+
+            value_field = args.get(field)
+            previous_value_field = args.get(previous_field)
+
+            # Ensure that if a field has a value, its preceding field must also have a value
+            if value_field is not None and previous_value_field is None:
+                raise DataOverrideParameterException(field, previous_field)
