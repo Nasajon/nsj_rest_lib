@@ -1,4 +1,5 @@
 import typing
+import uuid
 
 from decimal import Decimal
 from typing import Any
@@ -199,7 +200,7 @@ class DTOField:
             return self.entity_field
         else:
             return self.name
-        
+
     def get_metric_labels(dto_class, request, tenant, grupo_empresarial):
         """
         Retorna os campos que possuem metric_label=True,
@@ -216,7 +217,7 @@ class DTOField:
             for field_name in dto_class.metric_fields:
                 metric_fields[field_name] = request.args.get(field_name, "")
 
-        json_data = request.get_json(silent=True) or {} 
+        json_data = request.get_json(silent=True) or {}
 
         if json_data:
             for field_name in metric_fields:
@@ -224,3 +225,28 @@ class DTOField:
                     metric_fields[field_name] = json_data.get(field_name, "")
 
         return metric_fields
+
+    def get_null_value(self):
+        """
+        Retorna o valor nulo esperado para o campo (para quando for necessário representar, no BD,
+        com um valor, mas, o campos mesmo assim deve ser entedido como vazio - isso só faz sentido para campos do tipo not_null,
+        mas que precisem de um valor a ser ignorado).
+
+        Caso de uso de exemplo: Tabelas de configuração, onde pode-se ter uma configuração global (com valor 0 na coluna tenant),
+        e a sobrescreita da mesma configuração por tenant.
+        """
+
+        if self.expected_type is None:
+            return None
+        elif self.expected_type == uuid.UUID:
+            return uuid.UUID(int=0)
+        elif self.expected_type == str:
+            return ""
+        elif self.expected_type == int:
+            return 0
+        elif self.expected_type == float:
+            return 0.0
+        elif self.expected_type == Decimal:
+            return Decimal(0)
+        else:
+            return None

@@ -32,6 +32,8 @@ class DTOBase(abc.ABC):
     uniques: Dict[str, Set[str]]
     candidate_keys: List[str]
     search_fields: Set[str]
+    data_override_group: list[str]
+    data_override_fields: list[str]
 
     def __init__(
         self,
@@ -318,11 +320,7 @@ class DTOBase(abc.ABC):
 
         return value
 
-    def _convert_enum_to_entity(
-        value: Any,
-        dto_field: DTOField,
-        none_as_empty: bool
-    ):
+    def _convert_enum_to_entity(value: Any, dto_field: DTOField, none_as_empty: bool):
         # Ignorando valores nulos
         if value is None:
             if none_as_empty:

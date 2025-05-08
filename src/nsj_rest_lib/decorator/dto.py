@@ -16,6 +16,7 @@ class DTO:
         conjunto_type: ConjuntoType = None,
         conjunto_field: str = None,
         filter_aliases: Dict[str, Any] = None,
+        data_override: dict[str, list[str]] = None,
     ) -> None:
         super().__init__()
 
@@ -23,6 +24,16 @@ class DTO:
         self._conjunto_type = conjunto_type
         self._conjunto_field = conjunto_field
         self._filter_aliases = filter_aliases
+        self._data_override_group = (
+            data_override["group"]
+            if data_override is not None and "group" in data_override
+            else None
+        )
+        self._data_override_fields = (
+            data_override["fields"]
+            if data_override is not None and "fields" in data_override
+            else []
+        )
 
         if (self._conjunto_type is None and self._conjunto_field is not None) or (
             self._conjunto_type is not None and self._conjunto_field is None
@@ -87,6 +98,16 @@ class DTO:
 
         # Criando a propriedade "metric_fields" na classe "cls", se necessário
         self._check_class_attribute(cls, "metric_fields", set())
+
+        # Criando a propriedade "data_override_group"
+        self._check_class_attribute(
+            cls, "data_override_group", self._data_override_group
+        )
+
+        # Criando a propriedade "data_override_fields"
+        self._check_class_attribute(
+            cls, "data_override_fields", self._data_override_fields
+        )
 
         # Iterating for the class attributes
         for key, attr in cls.__dict__.items():
