@@ -131,7 +131,7 @@ class DAOBase:
         where
             t0.{key_field} = :id
             {filters_where}
-        limit 2
+        limit 10
         """
         values = {"id": id}
         values.update(filter_values_map)
@@ -155,7 +155,7 @@ class DAOBase:
         if not override_data:
             return resp[0]
         else:
-            resp
+            return resp
 
     def _make_filters_sql(
         self, filters: Dict[str, List[Filter]], with_and: bool = True

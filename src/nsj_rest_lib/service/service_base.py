@@ -129,14 +129,12 @@ class ServiceBase:
             dto = self._dto_class(entity, escape_validator=True)
         else:
             # Convertendo para uma lista de DTOs
-            dto_list = [
-                self._dto_class(entity, escape_validator=True) for entity in entity
-            ]
+            dto_list = [self._dto_class(e, escape_validator=True) for e in entity]
 
             # Agrupando o resultado, de acordo com o override de dados
             dto_list = self._group_by_override_data(dto_list)
 
-            if len(dto_list) > 0:
+            if len(dto_list) > 1:
                 raise ConflictException(
                     f"Encontrado mais de um registro do tipo {self._entity_class.__name__}, para o id {id}."
                 )
