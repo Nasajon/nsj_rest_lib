@@ -8,8 +8,8 @@ env_setup:
 	$(foreach v,$(ENV_VARS),$(eval export $(v)))
 
 install_to_pkg:
-	pip install build
-	pip install twine
+	pip install build==1.2.2.post1
+	pip install twine==6.1.0
 
 build_pkg:
 	python3 -m build

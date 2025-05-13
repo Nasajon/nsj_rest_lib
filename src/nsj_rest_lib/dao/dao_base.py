@@ -89,6 +89,7 @@ class DAOBase:
         conjunto_type: ConjuntoType = None,
         conjunto_field: str = None,
         joins_aux: List[JoinAux] = None,
+        override_data: bool = False,
     ) -> EntityBase:
         """
         Returns an entity instance by its ID.
@@ -130,7 +131,7 @@ class DAOBase:
         where
             t0.{key_field} = :id
             {filters_where}
-        limit 2
+        limit 10
         """
         values = {"id": id}
         values.update(filter_values_map)
@@ -146,12 +147,15 @@ class DAOBase:
             )
 
         # Verificando se foi encontrado mais de um registro para o ID passado
-        if len(resp) > 1:
+        if not override_data and len(resp) > 1:
             raise ConflictException(
                 f"Encontrado mais de um registro do tipo {self._entity_class.__name__}, para o id {id}."
             )
 
-        return resp[0]
+        if not override_data:
+            return resp[0]
+        else:
+            return resp
 
     def _make_filters_sql(
         self, filters: Dict[str, List[Filter]], with_and: bool = True
@@ -747,7 +751,6 @@ class DAOBase:
 
         return (", ".join(fields), ", ".join(ref_values))
 
-
     def insert(self, entity: EntityBase, sql_read_only_fields: List[str] = []):
         """
         Insere o objeto de entidade "entity" no banco de dados
@@ -833,7 +836,6 @@ class DAOBase:
             and k not in sql_read_only_fields
         ]
 
-
         return ", ".join(fields)
 
     def _sql_update_fields(
@@ -885,7 +887,7 @@ class DAOBase:
         filters: Dict[str, List[Filter]],
         partial_update: bool = False,
         sql_read_only_fields: List[str] = [],
-        upsert: bool = False
+        upsert: bool = False,
     ):
         """
         Atualiza o objeto de entidade "entity" no banco de dados

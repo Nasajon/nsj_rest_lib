@@ -8,7 +8,7 @@ from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import (
-    DTOConfigException,
+    DataOverrideParameterException,
     MissingParameterException,
     NotFoundException,
 )
@@ -81,6 +81,9 @@ class GetRoute(RouteBase):
                     elif value is not None:
                         partition_fields[self._dto_class.conjunto_field] = value
 
+                # Tratando dos campos de data_override
+                self._validade_data_override_parameters(args)
+
                 # Construindo os objetos
                 service = self._get_service(factory)
 
@@ -94,6 +97,12 @@ class GetRoute(RouteBase):
                 # Retornando a resposta da requuisição
                 return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})
             except MissingParameterException as e:
+                get_logger().warning(e)
+                if self._handle_exception is not None:
+                    return self._handle_exception(e)
+                else:
+                    return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
+            except DataOverrideParameterException as e:
                 get_logger().warning(e)
                 if self._handle_exception is not None:
                     return self._handle_exception(e)

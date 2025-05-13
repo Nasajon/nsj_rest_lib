@@ -94,6 +94,9 @@ class ServiceBase:
         if partition_fields is not None:
             all_filters.update(partition_fields)
 
+        ## Adicionando os filtros para override de dados
+        self._add_overide_data_filters(all_filters)
+
         entity_filters = self._create_entity_filters(all_filters)
 
         # Resolve o campo de chave sendo utilizado
@@ -106,6 +109,10 @@ class ServiceBase:
         joins_aux = self._resolve_sql_join_fields(fields["root"], entity_filters)
 
         # Recuperando a entity
+        override_data = (
+            self._dto_class.data_override_group is not None
+            and self._dto_class.data_override_fields is not None
+        )
         entity = self._dao.get(
             entity_key_field,
             entity_id_value,
@@ -114,10 +121,25 @@ class ServiceBase:
             conjunto_type=self._dto_class.conjunto_type,
             conjunto_field=self._dto_class.conjunto_field,
             joins_aux=joins_aux,
+            override_data=override_data,
         )
 
         # Convertendo para DTO
-        dto = self._dto_class(entity, escape_validator=True)
+        if not override_data:
+            dto = self._dto_class(entity, escape_validator=True)
+        else:
+            # Convertendo para uma lista de DTOs
+            dto_list = [self._dto_class(e, escape_validator=True) for e in entity]
+
+            # Agrupando o resultado, de acordo com o override de dados
+            dto_list = self._group_by_override_data(dto_list)
+
+            if len(dto_list) > 1:
+                raise ConflictException(
+                    f"Encontrado mais de um registro do tipo {self._entity_class.__name__}, para o id {id}."
+                )
+
+            dto = dto_list[0]
 
         # Tratando das propriedades de lista
         if len(self._dto_class.list_fields_map) > 0:
@@ -603,6 +625,9 @@ class ServiceBase:
         if filters is not None:
             all_filters.update(filters)
 
+        ## Adicionando os filtros para override de dados
+        self._add_overide_data_filters(all_filters)
+
         entity_filters = self._create_entity_filters(all_filters)
 
         # Tratando dos campos a serem enviados ao DAO para uso do search (se necessário)
@@ -644,6 +669,9 @@ class ServiceBase:
             self._dto_class(entity, escape_validator=True) for entity in entity_list
         ]
 
+        # Agrupando o resultado, de acordo com o override de dados
+        dto_list = self._group_by_override_data(dto_list)
+
         # Retrieving related lists
         if len(self._dto_class.list_fields_map) > 0:
             self._retrieve_related_lists(dto_list, fields)
@@ -665,6 +693,66 @@ class ServiceBase:
             )
 
         # Returning
+        return dto_list
+
+    def _add_overide_data_filters(self, all_filters):
+        if (
+            self._dto_class.data_override_group is not None
+            and self._dto_class.data_override_fields is not None
+        ):
+            for field in self._dto_class.data_override_fields:
+                if field in self._dto_class.fields_map:
+                    null_value = self._dto_class.fields_map[field].get_null_value()
+                    if field in all_filters:
+                        all_filters[field] += f",{null_value}"
+                    else:
+                        all_filters[field] = f"{null_value}"
+
+    def _group_by_override_data(self, dto_list):
+
+        if (
+            self._dto_class.data_override_group is not None
+            and self._dto_class.data_override_fields is not None
+        ):
+            grouped_dto_list = {}
+            reversed_data_override_fields = reversed(
+                self._dto_class.data_override_fields
+            )
+            for dto in dto_list:
+                ## Resolvendo o ID do grupo
+                group_id = ""
+                for field in self._dto_class.data_override_group:
+                    if field in self._dto_class.fields_map:
+                        group_id += f"{getattr(dto, field)}_"
+
+                ## Guardando o DTO mais completo do grupo
+                if group_id not in grouped_dto_list:
+                    grouped_dto_list[group_id] = dto
+                else:
+                    ### Testa se o novo DTO é mais específico do que o já guardado, e o troca, caso positivo
+                    last_dto_group = grouped_dto_list[group_id]
+                    for field in reversed_data_override_fields:
+                        if field in self._dto_class.fields_map:
+                            dto_value = getattr(dto, field)
+                            last_dto_value = getattr(last_dto_group, field)
+                            null_value = self._dto_class.fields_map[
+                                field
+                            ].get_null_value()
+
+                            if (
+                                dto_value is not None
+                                and null_value is not None
+                                and dto_value != null_value
+                                and (
+                                    last_dto_value is None
+                                    or last_dto_value == null_value
+                                )
+                            ):
+                                grouped_dto_list[group_id] = dto
+
+            ## Atualizando a lista de DTOs
+            dto_list = list(grouped_dto_list.values())
+
         return dto_list
 
     def _retrieve_related_lists(
@@ -1013,7 +1101,9 @@ class ServiceBase:
                 if self._dto_class.conjunto_type is not None:
                     conjunto_field_value = getattr(dto, self._dto_class.conjunto_field)
 
-                    aditional_filters[self._dto_class.conjunto_field] = conjunto_field_value
+                    aditional_filters[self._dto_class.conjunto_field] = (
+                        conjunto_field_value
+                    )
 
                     self._dao.insert_relacionamento_conjunto(
                         id, conjunto_field_value, self._dto_class.conjunto_type
