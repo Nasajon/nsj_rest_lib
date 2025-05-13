@@ -2,47 +2,28 @@ import datetime
 
 from typing import List
 
+from nsj_rest_lib.decorator.entity import Entity
 from nsj_rest_lib.entity.entity_base import EntityBase
 
 
+@Entity(
+    table_name="teste.cliente",
+    pk_field="id",
+    default_order_fields=["estabelecimento", "cliente", "id"],
+)
 class ClienteEntity(EntityBase):
 
     # Atributos do relacionamento
-    id: str
-    estabelecimento: str
-    cliente: str
+    id: str = None
+    estabelecimento: str = None
+    cliente: str = None
     # Atributos de auditoria
-    criado_em: datetime.datetime
-    criado_por: str
-    atualizado_em: datetime.datetime
-    atualizado_por: str
-    apagado_em: datetime.datetime
-    apagado_por: str
+    criado_em: datetime.datetime = None
+    criado_por: str = None
+    atualizado_em: datetime.datetime = None
+    atualizado_por: str = None
+    apagado_em: datetime.datetime = None
+    apagado_por: str = None
     # Atributos de segmentação dos dados
-    grupo_empresarial: str
-    tenant: int
-
-    def __init__(self) -> None:
-        # Atributos do relacionamento
-        self.id: str = None
-        self.estabelecimento: str = None
-        self.cliente: str = None
-        # Atributos de auditoria
-        self.criado_em: datetime.datetime = None
-        self.criado_por: str = None
-        self.atualizado_em: datetime.datetime = None
-        self.atualizado_por: str = None
-        self.apagado_em: datetime.datetime = None
-        self.apagado_por: str = None
-        # Atributos de segmentação dos dados
-        self.grupo_empresarial: str = None
-        self.tenant: int = None
-
-    def get_table_name(self) -> str:
-        return 'teste.cliente'
-
-    def get_pk_field(self) -> str:
-        return 'id'
-
-    def get_default_order_fields(self) -> List[str]:
-        return ['estabelecimento', 'cliente', 'id']
+    grupo_empresarial: str = None
+    tenant: int = None
