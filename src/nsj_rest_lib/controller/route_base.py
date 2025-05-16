@@ -80,7 +80,8 @@ class RouteBase:
                 self._dto_response_class,
             )
 
-    def _parse_fields(self, fields: str) -> Dict[str, Set[str]]:
+    @staticmethod
+    def parse_fields(dto_class: DTOBase, fields: str) -> Dict[str, Set[str]]:
         """
         Trata a lista de fields recebida, construindo um dict, onde as chaves
         serão os nomes das propriedades com objetos aninhados), ou o "root"
@@ -92,7 +93,7 @@ class RouteBase:
 
         if fields is None:
             fields_map = {}
-            fields_map.setdefault("root", self._dto_class.resume_fields)
+            fields_map.setdefault("root", dto_class.resume_fields)
             return fields_map
 
         fields = fields.split(",")

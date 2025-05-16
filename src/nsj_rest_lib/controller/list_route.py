@@ -65,7 +65,7 @@ class ListRoute(RouteBase):
 
                 # Tratando dos fields
                 fields = args.get("fields")
-                fields = self._parse_fields(fields)
+                fields = RouteBase.parse_fields(self._dto_class, fields)
                 url_args = (
                     base_url
                     + "?"

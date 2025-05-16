@@ -1487,11 +1487,16 @@ class ServiceBase:
             if additional_filters is not None:
                 entity_filters = self._create_entity_filters(additional_filters)
 
-            # Adicionando o ID nos filtros
-            id_condiction = Filter(FilterOperator.EQUALS, id)
+            # Resolve o campo de chave sendo utilizado
+            entity_key_field, entity_id_value = self._resolve_field_key(
+                id,
+                additional_filters,
+            )
 
-            pk_field = self._entity_class().get_pk_field()
-            entity_filters[pk_field] = [id_condiction]
+            # Adicionando o ID nos filtros
+            id_condiction = Filter(FilterOperator.EQUALS, entity_id_value)
+
+            entity_filters[entity_key_field] = [id_condiction]
 
             # Tratando das propriedades de lista
             if len(self._dto_class.list_fields_map) > 0:
