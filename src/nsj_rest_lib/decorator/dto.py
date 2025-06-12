@@ -335,7 +335,18 @@ class DTO:
         """
 
         if attr_name not in cls.__dict__:
-            setattr(cls, attr_name, default_value)
+            inherited = getattr(cls, attr_name, None)
+            if inherited is not None:
+                if isinstance(inherited, dict):
+                    setattr(cls, attr_name, dict(inherited))
+                elif isinstance(inherited, set):
+                    setattr(cls, attr_name, set(inherited))
+                elif isinstance(inherited, list):
+                    setattr(cls, attr_name, list(inherited))
+                else:
+                    setattr(cls, attr_name, inherited)
+            else:
+                setattr(cls, attr_name, default_value)
 
     def set_left_join_fields_map_to_query(
         self,
