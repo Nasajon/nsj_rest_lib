@@ -9,6 +9,7 @@ from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import (
     MissingParameterException,
     NotFoundException,
+    ConflictException,
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger
@@ -158,6 +159,12 @@ class PutRoute(RouteBase):
                     return self._handle_exception(e)
                 else:
                     return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
+            except ConflictException as e:
+                get_logger().warning(e)
+                if self._handle_exception is not None:
+                    return self._handle_exception(e)
+                else:
+                    return (format_json_error(e), 409, {**DEFAULT_RESP_HEADERS})
             except NotFoundException as e:
                 get_logger().warning(e)
                 if self._handle_exception is not None:
