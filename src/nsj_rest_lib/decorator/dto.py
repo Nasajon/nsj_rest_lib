@@ -18,6 +18,55 @@ class DTO:
         filter_aliases: Dict[str, Any] = None,
         data_override: dict[str, list[str]] = None,
     ) -> None:
+        """
+        Parâmetros:
+
+        - fixed_filters: Filtros fixos a serem usados numa rota de GET. A ideia é que, se não for dito em contrário,
+            o retorno do GET será filtrado de acordo com o valor aqui passado.
+            O formato esperado é de um dict, onde as chaves são os nomes dos fields, e os valores, o valor que seria
+            passado na URL, para realizar o mesmo filtro. Exemplo:
+
+            fixed_filters={"cliente": True}
+
+            No exemplo, o GET normal só trará dados onde a propriedade "cliente" seja igual a "true".
+
+        - conjunto_type: Tipo do conjunto, se usado, de acordo com os padrões do BD do ERP (conjunto de produto, unidade,
+            rubrica, etc).
+
+        - conjunto_field: Nome do campo onde o grupo_empresarial, referente ao conjunto do registro, será carregado.
+            A ideia é que os conjuntos são resolvidos de acordo com a PK da entidade, e retornados como "grupo_empresarial_pk",
+            e "grupo_empresarial_codigo" nas queries. Assim, se o nome do campo conscidir com um desses nomes, o grupo_empresarial
+            é retornado no objeto. Mas, mesmo que não seja, será possível filtrar a entidade pelo grupo_empresarial, passando um
+            query arg com o mesmo nome do campo escolhido como "conjunto_field" (filtrando assim uma entidade pelo grupo_empsarial
+            referente ao conjunto da mesma).
+
+        - filter_aliases: Permite especificar nome alternativos para os filtros, suportando, inclusive, que um mesmo nome de filtro
+            (query arg) aponte para diversos campos da entidade, de acordo com o tipo do dado recebido no filtro. Exemplo de uso:
+
+            filter_aliases={
+                "id": {
+                    uuid.UUID: "pk",
+                    str: "id"
+                }
+            }
+
+            No exemplo, o filtro "id" (passado como query_args), será aplicado sobre a propriedade "pk", se o dado recebido for UUID,
+            ou sobre a propriedade "id", se o dado recebido for string.
+
+        - data_override: Permite fazer override ao nível dos dados. Normalmente é útil para configurações que tenham um padrão para
+            a empresa, mas que possam ser sobrescritas por tenant, grupo empresarial, etc. Forma de uso:
+
+            data_override={
+                "group": ["escopo", "codigo"],
+                "fields": ["tenant", "grupo_empresarial"],
+            }
+
+            Onde "group" se refere aos campos utilizados para agrupar dados (isso é, os campos que indicam quando um dado equivale
+            ao outro). E, "fields" se refere aos campos que, na ordem passada, serão considerados para especificação da configuração.
+
+            No exemplo, os dados com mesmo "escopo" e "codigo" são equivalentes, e, podem ser especificados de maneira a ter um padrão
+            global, o qual pode ser especializado para um tenant, e, dentro de um tenant, especializado ainda mais para um grupo_empresarial.
+        """
         super().__init__()
 
         self._fixed_filters = fixed_filters
