@@ -620,18 +620,19 @@ class ServiceBase:
         # Handling order fields
         asc_set = set()
         desc_set = set()
-        for field in order_fields:
-            aux = re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip()
-            if re.search(r"\bdesc\b", field):
-                desc_set.add(aux)
-            else:
-                asc_set.add(aux)
+        if order_fields is not None:
+            for field in order_fields:
+                aux = re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip()
+                if re.search(r"\bdesc\b", field):
+                    desc_set.add(aux)
+                else:
+                    asc_set.add(aux)
 
-        order_fields = self._convert_to_entity_fields(asc_set)
-        desc_fields = self._convert_to_entity_fields(desc_set)
+            order_fields = self._convert_to_entity_fields(asc_set)
+            desc_fields = self._convert_to_entity_fields(desc_set)
 
-        for field in desc_fields:
-            order_fields.append(f"{field} desc")
+            for field in desc_fields:
+                order_fields.append(f"{field} desc")
 
         # Tratando dos filtros
         all_filters = {}
