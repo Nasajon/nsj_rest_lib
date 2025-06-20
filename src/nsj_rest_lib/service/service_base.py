@@ -1,4 +1,6 @@
+
 import copy
+import re
 import uuid
 
 from typing import Any, Callable, Dict, List, Set, Tuple
@@ -616,7 +618,20 @@ class ServiceBase:
         entity_fields = self._convert_to_entity_fields(fields["root"])
 
         # Handling order fields
-        order_fields = self._convert_to_entity_fields(order_fields)
+        asc_set = set()
+        desc_set = set()
+        for field in order_fields:
+            aux = re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip()
+            if re.search(r"\bdesc\b", field):
+                desc_set.add(aux)
+            else:
+                asc_set.add(aux)
+
+        order_fields = self._convert_to_entity_fields(asc_set)
+        desc_fields = self._convert_to_entity_fields(desc_set)
+
+        for field in desc_fields:
+            order_fields.append(f"{field} desc")
 
         # Tratando dos filtros
         all_filters = {}
