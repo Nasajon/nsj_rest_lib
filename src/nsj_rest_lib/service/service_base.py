@@ -719,7 +719,7 @@ class ServiceBase:
                 if field in self._dto_class.fields_map:
                     null_value = self._dto_class.fields_map[field].get_null_value()
                     if field in all_filters:
-                        all_filters[field] += f",{null_value}"
+                        all_filters[field] = f"{all_filters[field]},{null_value}"
                     else:
                         all_filters[field] = f"{null_value}"
 
