@@ -20,6 +20,20 @@ class DTOFieldFilter:
         self.field_name = field_name
 
 
+class DTOAutoIncrementField:
+    def __init__(
+        self,
+        sequence_name: str,
+        template: str,
+        group: list[str],
+        start_value: int = 1,
+    ):
+        self.sequence_name = sequence_name
+        self.template = template
+        self.group = group
+        self.start_value = start_value
+
+
 class DTOField:
     _ref_counter = 0
 
@@ -45,6 +59,7 @@ class DTOField:
         search: bool = True,
         read_only: bool = False,
         metric_label: bool = False,
+        auto_increment: dict[str, any] = None,
     ):
         """
         -----------
@@ -75,6 +90,31 @@ class DTOField:
         search: Indica que esse campo é passível de busca, por meio do argumento "search" passado num GET List, como query string (por hora, apenas pesquisas simples, por meio de operador like, estão implementadas).
         read_only: Permite declarar propriedades que estão disponíveis no GET (list ou unitário), mas que não poderão ser usadas para gravação (POST, PUT ou PATCH).
         metric_label: Permite indicar quais campos serão enviados como métricas para o OpenTelemetry Collector.
+
+        auto_increment: Dicionário para controle de campos com auto incremento de valores. O padrão do dicionário é:
+            {
+                "sequence_name": "NOME_DA_SEQUENCIA",
+                "template": "{seq}",
+                "group": ["field1", "field2", ...],
+                "start_value": 1
+            }
+
+            Onde:
+                - "sequence_name": Nome da sequência de auto incremento (que será combinado com os campos de agrupamento, mas serve para impedir conflito com outras sequências num mesmo DTO).
+                - "template": Indica o formato padrão do campo que sofrerá o auto incremento; seguindo o padrão do python, e, podendo conter:
+                  - Qualquer coisa fixa.
+                  - Placeholder "{seq}" (que controla onde entrará a numeração automática)
+                  - Qualquer outro nome de DTOField, passado como placeholder, para substituição automatica.
+                  - Como segue o padrão python, sintaxes como "{seq:04d}" são aceitas (formatando, no exemplo, o número com 4 dígitos, e zeros à esquerda).
+                - "group": Indica a lista de campos utilizados para resolver o próximo número da sequencia de autoincremento (o próximo número será o maior do grupo + 1).
+                - Para que esse tipo de comportamento funcione corretamente, é necessário que a variável de ambiente "REST_LIB_AUTO_INCREMENT_TABLE" seja declarada com o nome da tabela de controle do auto incremento, a qual deve seguir o DDL:
+                    CREATE TABLE seq_control (
+                        seq_name VARCHAR PRIMARY KEY,
+                        current_value INTEGER NOT NULL,
+                        unique (seq_name)
+                    );
+                - Os campos de particionamento de dados sempre entram (automaticamente), no agrupamento de auto incremento.
+                - "start_value": Valor inicial da sequência de auto incremento (opcional, default 1).
         """
         self.name = None
         self.expected_type = type
@@ -97,6 +137,12 @@ class DTOField:
         self.search = search
         self.read_only = read_only
         self.metric_label = metric_label
+        self.auto_increment = DTOAutoIncrementField(
+            sequence_name=auto_increment["sequence_name"],
+            template=auto_increment["template"],
+            group=auto_increment["group"],
+            start_value=auto_increment["start_value"],
+        )
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1

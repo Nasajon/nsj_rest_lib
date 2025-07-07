@@ -1,4 +1,3 @@
-
 import copy
 import re
 import uuid
@@ -1014,6 +1013,10 @@ class ServiceBase:
             # Guardando um ponteiro para o DTO recebido
             received_dto = dto
 
+            # Tratando dos campos de auto-incremento
+            self.fill_auto_increment_fields(insert, dto)
+
+            # Iniciando a transação de controle
             if manage_transaction:
                 self._dao.begin()
 
@@ -1192,6 +1195,44 @@ class ServiceBase:
         finally:
             if manage_transaction:
                 self._dao.commit()
+
+    def fill_auto_increment_fields(self, insert, dto):
+        if insert:
+            auto_increment_fields = getattr(self._dto_class, "auto_increment_fields")
+
+            # Preenchendo os campos de auto-incremento
+            for field in auto_increment_fields:
+                # Se já recebeu um valor, não altera
+                if field in dto.__dict__:
+                    continue
+
+                    # Resolvendo os nomes dos campos de agrupamento, e adicionando os campos de particionamento sempre
+                group_fields = field.group
+                for partition_field in dto.partition_fields:
+                    if partition_field not in group_fields:
+                        group_fields.insert(0, partition_field)
+
+                    # Considerando os valores dos campos de agrupamento
+                group_values = []
+                for group_field in group_fields:
+                    group_values.append(getattr(dto, group_field))
+
+                    # Descobrindo o próximo valor da sequencia
+                next_value = self._dao.next_val(
+                    sequence_base_name=field.sequence_name,
+                    group_fields=group_values,
+                    start_value=field.start_value,
+                )
+
+                # Tratando do template
+                obj_values = {}
+                for f in dto.fields_map:
+                    obj_values[f] = getattr(dto, f)
+
+                value = field.template.format(**obj_values, seq=next_value)
+
+                # Escrevendo o valor gerado no DTO
+                setattr(dto, field, value)
 
     def _retrieve_old_dto(self, dto, id, aditional_filters):
         fields = self._make_fields_from_dto(dto)
