@@ -28,9 +28,14 @@ DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", 1))
 CLOUD_SQL_CONN_NAME = os.getenv("CLOUD_SQL_CONN_NAME", "")
 ENV = os.getenv("ENV", "")
 
+REST_LIB_AUTO_INCREMENT_TABLE = os.getenv(
+    "REST_LIB_AUTO_INCREMENT_TABLE", "seq_control"
+)
+
 
 def get_logger():
     return logging.getLogger(APP_NAME)
+
 
 # Endpoint do OpenTelemetry Collector
 OTLP_ENDPOINT = os.getenv("OTLP_ENDPOINT", "otel-collector.prometheus-otel:4317")

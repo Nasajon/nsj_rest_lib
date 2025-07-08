@@ -21,7 +21,10 @@ from nsj_rest_lib.util.join_aux import JoinAux
 from nsj_gcf_utils.db_adapter2 import DBAdapter2
 from nsj_gcf_utils.json_util import convert_to_dumps
 
-from nsj_rest_lib.settings import USE_SQL_RETURNING_CLAUSE
+from nsj_rest_lib.settings import (
+    USE_SQL_RETURNING_CLAUSE,
+    REST_LIB_AUTO_INCREMENT_TABLE,
+)
 
 
 class DAOBase:
@@ -1071,3 +1074,27 @@ class DAOBase:
             return True
         except ValueError:
             return False
+
+    def next_val(
+        self,
+        sequence_base_name: str,
+        group_fields: List[str],
+        start_value: int = 1,
+    ):
+        # Resolvendo o nome da sequência
+        sequence_name = f"{sequence_base_name}_{'_'.join(group_fields)}"
+
+        # Montando a query
+        sql = f"""
+        INSERT INTO {REST_LIB_AUTO_INCREMENT_TABLE} (seq_name, current_value)
+        VALUES (:sequence_name, :start_value)
+        ON CONFLICT (seq_name)
+        DO UPDATE SET current_value = {REST_LIB_AUTO_INCREMENT_TABLE}.current_value + 1 
+        RETURNING {REST_LIB_AUTO_INCREMENT_TABLE}.current_value
+        """
+
+        # Executando e retornando
+        resp = self._db.execute_query_first_result(
+            sql, sequence_name=sequence_name, start_value=start_value
+        )
+        return resp["current_value"]
