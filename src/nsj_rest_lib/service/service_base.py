@@ -1201,27 +1201,32 @@ class ServiceBase:
             auto_increment_fields = getattr(self._dto_class, "auto_increment_fields")
 
             # Preenchendo os campos de auto-incremento
-            for field in auto_increment_fields:
+            for field_key in auto_increment_fields:
+                # Recuperando o field em questão
+                field = self._dto_class.fields_map[field_key]
+
                 # Se já recebeu um valor, não altera
-                if field in dto.__dict__:
+                if dto.__dict__.get(field.name, None):
                     continue
 
-                    # Resolvendo os nomes dos campos de agrupamento, e adicionando os campos de particionamento sempre
-                group_fields = field.group
+                # Resolvendo os nomes dos campos de agrupamento, e adicionando os campos de particionamento sempre
+                group_fields = set(field.auto_increment.group)
                 for partition_field in dto.partition_fields:
                     if partition_field not in group_fields:
-                        group_fields.insert(0, partition_field)
+                        group_fields.add(partition_field)
+                group_fields = list(group_fields)
+                group_fields.sort()
 
-                    # Considerando os valores dos campos de agrupamento
+                # Considerando os valores dos campos de agrupamento
                 group_values = []
                 for group_field in group_fields:
-                    group_values.append(getattr(dto, group_field))
+                    group_values.append(str(getattr(dto, group_field, "----")))
 
-                    # Descobrindo o próximo valor da sequencia
+                # Descobrindo o próximo valor da sequencia
                 next_value = self._dao.next_val(
-                    sequence_base_name=field.sequence_name,
+                    sequence_base_name=field.auto_increment.sequence_name,
                     group_fields=group_values,
-                    start_value=field.start_value,
+                    start_value=field.auto_increment.start_value,
                 )
 
                 # Tratando do template
@@ -1229,10 +1234,15 @@ class ServiceBase:
                 for f in dto.fields_map:
                     obj_values[f] = getattr(dto, f)
 
-                value = field.template.format(**obj_values, seq=next_value)
+                value = field.auto_increment.template.format(
+                    **obj_values, seq=next_value
+                )
 
                 # Escrevendo o valor gerado no DTO
-                setattr(dto, field, value)
+                if field.expected_type == int:
+                    setattr(dto, field.name, int(value))
+                else:
+                    setattr(dto, field.name, value)
 
     def _retrieve_old_dto(self, dto, id, aditional_filters):
         fields = self._make_fields_from_dto(dto)

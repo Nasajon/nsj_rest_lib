@@ -201,7 +201,7 @@ class DTO:
         )
 
         # Criando a propriedade "auto_increment_fields"
-        self._check_class_attribute(cls, "auto_increment_fields", [])
+        self._check_class_attribute(cls, "auto_increment_fields", set())
 
         # Iterating for the class attributes
         for key, attr in cls.__dict__.items():
@@ -258,11 +258,11 @@ class DTO:
                         attr.entity_field or key
                     )
 
-                # Verifica se é um campo é uma métrica do opentelemetry
+                # Verifica se o campo é uma métrica do opentelemetry
                 if attr.metric_label:
                     getattr(cls, "metric_fields").add(key)
 
-                # Verifica se é um campo é uma métrica do opentelemetry
+                # Verifica se tem a propriedade auto_increment habilitada
                 if attr.auto_increment:
                     getattr(cls, "auto_increment_fields").add(key)
 

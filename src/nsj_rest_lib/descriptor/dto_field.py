@@ -59,7 +59,7 @@ class DTOField:
         search: bool = True,
         read_only: bool = False,
         metric_label: bool = False,
-        auto_increment: dict[str, any] = None,
+        auto_increment: dict[str, any] = {},
     ):
         """
         -----------
@@ -137,12 +137,16 @@ class DTOField:
         self.search = search
         self.read_only = read_only
         self.metric_label = metric_label
-        self.auto_increment = DTOAutoIncrementField(
-            sequence_name=auto_increment["sequence_name"],
-            template=auto_increment["template"],
-            group=auto_increment["group"],
-            start_value=auto_increment["start_value"],
-        )
+
+        self.auto_increment = None
+        if auto_increment:
+            start_value = auto_increment.get("start_value", 1)
+            self.auto_increment = DTOAutoIncrementField(
+                sequence_name=auto_increment["sequence_name"],
+                template=auto_increment["template"],
+                group=auto_increment["group"],
+                start_value=start_value,
+            )
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1

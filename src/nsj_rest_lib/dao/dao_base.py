@@ -1078,7 +1078,7 @@ class DAOBase:
     def next_val(
         self,
         sequence_base_name: str,
-        group_fields: list[str],
+        group_fields: List[str],
         start_value: int = 1,
     ):
         # Resolvendo o nome da sequência
@@ -1089,8 +1089,8 @@ class DAOBase:
         INSERT INTO {REST_LIB_AUTO_INCREMENT_TABLE} (seq_name, current_value)
         VALUES (:sequence_name, :start_value)
         ON CONFLICT (seq_name)
-        DO UPDATE SET current_value = current_value + 1 
-        RETURNING current_value
+        DO UPDATE SET current_value = {REST_LIB_AUTO_INCREMENT_TABLE}.current_value + 1 
+        RETURNING {REST_LIB_AUTO_INCREMENT_TABLE}.current_value
         """
 
         # Executando e retornando
