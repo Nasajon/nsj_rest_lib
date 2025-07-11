@@ -20,17 +20,24 @@ class DTOObjectField:
         -----------
         Parameters:
         -----------
-        entity_type: Expected entity type for the related DTO (must be subclasse from EntityBase).
-        relation_field: Nome do campo, usado na query, para correlacionar as entidades (correspondete
+
+        - entity_type: Expected entity type for the related DTO (must be subclasse from EntityBase).
+
+        - relation_field: Nome do campo, usado na query, para correlacionar as entidades (correspondete
             ao campo usado no "on" de um "join").
-        entity_relation_owner: Indica qual entidade contém o campo que aponta o relacionamento (
+
+        - entity_relation_owner: Indica qual entidade contém o campo que aponta o relacionamento (
             se for EntityRelationField.OTHER, implica que a entidade apontada pela classe de DTO
             passada no decorator, é que contem o campo; se for o EntityRelationField.SELF, indica
             que o próprio DTO que contém o campo).
-        type: Tipo esperado para a propriedade. Se for do tipo enum.Enum, o valor recebido, para atribuição à propriedade, será convertido para o enumerado.
-        not_null: O campo não poderá ser None, ou vazio, no caso de strings.
-        resume: O campo será usado como resumo, isto é, será sempre rotornado num HTTP GET que liste os dados (mesmo que não seja solicitado por meio da query string "fields").
-        validator: Função que recebe o valor (a ser atribuído), e retorna o mesmo valor após algum
+
+        - type: Tipo esperado para a propriedade. Se for do tipo enum.Enum, o valor recebido, para atribuição à propriedade, será convertido para o enumerado.
+
+        - not_null: O campo não poderá ser None, ou vazio, no caso de strings.
+
+        - resume: O campo será usado como resumo, isto é, será sempre rotornado num HTTP GET que liste os dados (mesmo que não seja solicitado por meio da query string "fields").
+
+        - validator: Função que recebe o valor (a ser atribuído), e retorna o mesmo valor após algum
             tipo de tratamento (como adição ou remoção, automática, de formatação).
         """
         self.name = None

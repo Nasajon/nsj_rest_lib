@@ -25,17 +25,26 @@ class DTOListField:
         -----------
         Parameters:
         -----------
-        dto_type: Expected type for the related DTO (must be subclasse from DTOBase).
-        entity_type: Expected entity type for the related DTO (must be subclasse from EntityBase).
-        not_null: The field cannot be None (or an empty list).
-        min: Minimum number of itens in the list.
-        max: Maximum number of itens in the list.
-        validator: Function that receives the value (to be setted), and returns the same value (after any adjust).
+
+        - dto_type: Expected type for the related DTO (must be subclasse from DTOBase).
+
+        - entity_type: Expected entity type for the related DTO (must be subclasse from EntityBase).
+
+        - not_null: The field cannot be None (or an empty list).
+
+        - min: Minimum number of itens in the list.
+
+        - max: Maximum number of itens in the list.
+
+        - validator: Function that receives the value (to be setted), and returns the same value (after any adjust).
             This function overrides the default behaviour and all default constraints.
-        related_entity_field: Fields, from related entity, used for relation in database.
-        relation_key_field: Nome do campo, no DTO corrente, utilizado como chave de apontamento no relacionamento
+
+        - related_entity_field: Fields, from related entity, used for relation in database.
+
+        - relation_key_field: Nome do campo, no DTO corrente, utilizado como chave de apontamento no relacionamento
             (isso é, campo para o qual a entidade, do lado N, aponta via FK).
-        service_name: Nome do serviço customizado, caso se deseje que as operações sobre esse tipo de lista se façam
+
+        - service_name: Nome do serviço customizado, caso se deseje que as operações sobre esse tipo de lista se façam
             de um modo customizado (e não usando o service_base do próprio RestLib).
         """
         self.name = None

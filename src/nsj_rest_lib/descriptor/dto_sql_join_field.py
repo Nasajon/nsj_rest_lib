@@ -44,25 +44,36 @@ class DTOSQLJoinField:
         Parameters:
         -----------
 
-        dto_type: Expected type for the related DTO (must be subclasse from DTOBase).
-        entity_type: Expected entity type for the related DTO (must be subclasse from EntityBase).
-        related_dto_field: Nome do campo, no DTO relacionado, a ser copiado para esse campo.
-        relation_field: Nome do campo, usado na query, para correlacionar as entidades (correspondete
+        - dto_type: Expected type for the related DTO (must be subclasse from DTOBase).
+
+        - entity_type: Expected entity type for the related DTO (must be subclasse from EntityBase).
+
+        - related_dto_field: Nome do campo, no DTO relacionado, a ser copiado para esse campo.
+
+        - relation_field: Nome do campo, usado na query, para correlacionar as entidades (correspondete
             ao campo usado no "on" de um "join").
-        entity_relation_owner: Indica qual entidade contém o campo que aponta o relacionamento (
+
+        - entity_relation_owner: Indica qual entidade contém o campo que aponta o relacionamento (
             se for EntityRelationField.OTHER, implica que a entidade apontada pela classe de DTO
             passada no decorator, é que contem o campo; se for o EntityRelationField.SELF, indica
             que o próprio DTO que contém o campo).
-        join_type: Indica o tipo de Join a ser realizado na query (LEFT, INNER ou FULL).
-        type: Tipo esperado para a propriedade. Se for do tipo enum.Enum, o valor recebido, para atribuição à propriedade, será convertido para o enumerado.
-        not_null: O campo não poderá ser None, ou vazio, no caso de strings.
-        resume: O campo será usado como resumo, isto é, será sempre rotornado num HTTP GET que liste os dados (mesmo que não seja solicitado por meio da query string "fields").
-        convert_from_entity: Função para converter o valor contido na Entity, para o(s) valor(es) a serem gravados no objeto DTO (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
-          (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
-          A função recebida deve suportar os parâmetros (entity_value: Any, entity_fields: Dict[str, Any]), e retornar um Dict[str, Any], como uma coleção de chaves e valores a serem atribuídos no DTO.
-        validator: Função que recebe o valor (a ser atribuído), e retorna o mesmo valor após algum
+
+        - join_type: Indica o tipo de Join a ser realizado na query (LEFT, INNER ou FULL).
+
+        - type: Tipo esperado para a propriedade. Se for do tipo enum.Enum, o valor recebido, para atribuição à propriedade, será convertido para o enumerado.
+
+        - not_null: O campo não poderá ser None, ou vazio, no caso de strings.
+
+        - resume: O campo será usado como resumo, isto é, será sempre rotornado num HTTP GET que liste os dados (mesmo que não seja solicitado por meio da query string "fields").
+
+        - convert_from_entity: Função para converter o valor contido na Entity, para o(s) valor(es) a serem gravados no objeto DTO (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
+            (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
+            A função recebida deve suportar os parâmetros (entity_value: Any, entity_fields: Dict[str, Any]), e retornar um Dict[str, Any], como uma coleção de chaves e valores a serem atribuídos no DTO.
+
+        - validator: Função que recebe o valor (a ser atribuído), e retorna o mesmo valor após algum
             tipo de tratamento (como adição ou remoção, automática, de formatação).
-        use_default_validator: Flag indicando se o validator padrão deve ser aplicado à propriedade
+
+        - use_default_validator: Flag indicando se o validator padrão deve ser aplicado à propriedade
             (esse validator padrão verifica o tipo de dados passado, e as demais verificações
             recebidas no filed, como, por exemplo, valor máximo, mínio, not_null, etc).
         """
