@@ -43,6 +43,7 @@ class DTOSQLJoinField:
         -----------
         Parameters:
         -----------
+
         dto_type: Expected type for the related DTO (must be subclasse from DTOBase).
         entity_type: Expected entity type for the related DTO (must be subclasse from EntityBase).
         related_dto_field: Nome do campo, no DTO relacionado, a ser copiado para esse campo.

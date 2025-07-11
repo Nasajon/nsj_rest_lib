@@ -19,7 +19,9 @@ class DTO:
         data_override: dict[str, list[str]] = None,
     ) -> None:
         """
+        -----------
         Parâmetros:
+        -----------
 
         - fixed_filters: Filtros fixos a serem usados numa rota de GET. A ideia é que, se não for dito em contrário,
             o retorno do GET será filtrado de acordo com o valor aqui passado.
