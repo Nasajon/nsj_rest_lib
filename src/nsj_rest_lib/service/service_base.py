@@ -850,11 +850,12 @@ class ServiceBase:
         custom_before_insert: Callable = None,
         custom_after_insert: Callable = None,
         retrieve_after_insert: bool = False,
+        manage_transaction: bool = True,
     ) -> DTOBase:
         return self._save(
             insert=True,
             dto=dto,
-            manage_transaction=True,
+            manage_transaction=manage_transaction,
             partial_update=False,
             aditional_filters=aditional_filters,
             custom_before_insert=custom_before_insert,
@@ -869,10 +870,12 @@ class ServiceBase:
         custom_before_insert: Callable = None,
         custom_after_insert: Callable = None,
         retrieve_after_insert: bool = False,
+        manage_transaction: bool = True,
     ) -> List[DTOBase]:
         _lst_return = []
         try:
-            self._dao.begin()
+            if manage_transaction:
+                self._dao.begin()
 
             for dto in dtos:
                 _return_object = self._save(
@@ -890,10 +893,12 @@ class ServiceBase:
                     _lst_return.append(_return_object)
 
         except:
-            self._dao.rollback()
+            if manage_transaction:
+                self._dao.rollback()
             raise
         finally:
-            self._dao.commit()
+            if manage_transaction:
+                self._dao.commit()
 
         return _lst_return
 
@@ -905,11 +910,12 @@ class ServiceBase:
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
         upsert: bool = False,
+        manage_transaction: bool = True,
     ) -> DTOBase:
         return self._save(
             insert=False,
             dto=dto,
-            manage_transaction=True,
+            manage_transaction=manage_transaction,
             partial_update=False,
             id=id,
             aditional_filters=aditional_filters,
@@ -925,10 +931,12 @@ class ServiceBase:
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
         upsert: bool = False,
+        manage_transaction: bool = True,
     ) -> List[DTOBase]:
         _lst_return = []
         try:
-            self._dao.begin()
+            if manage_transaction:
+                self._dao.begin()
 
             for dto in dtos:
                 _return_object = self._save(
@@ -947,10 +955,12 @@ class ServiceBase:
                     _lst_return.append(_return_object)
 
         except:
-            self._dao.rollback()
+            if manage_transaction:
+                self._dao.rollback()
             raise
         finally:
-            self._dao.commit()
+            if manage_transaction:
+                self._dao.commit()
 
         return _lst_return
 
@@ -961,11 +971,12 @@ class ServiceBase:
         aditional_filters: Dict[str, Any] = None,
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
+        manage_transaction: bool = True,
     ) -> DTOBase:
         return self._save(
             insert=False,
             dto=dto,
-            manage_transaction=True,
+            manage_transaction=manage_transaction,
             partial_update=True,
             id=id,
             aditional_filters=aditional_filters,
