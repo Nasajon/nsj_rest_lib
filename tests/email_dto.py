@@ -8,20 +8,16 @@ from nsj_rest_lib.descriptor.dto_field_validators import DTOFieldValidators
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.dto.dto_base import DTOBase
 
-from email_entity import EmailEntity
-from email_dto import EmailDTO
-
 
 @DTO()
-class ClienteDTO(DTOBase):
+class EmailDTO(DTOBase):
 
     # Atributos do relacionamento
     id: uuid.UUID = DTOField(resume=True, pk=True, not_null=True,
                              validator=DTOFieldValidators().validate_uuid, default_value=uuid.uuid4)
-    estabelecimento: str = DTOField(resume=True, not_null=True,
-                                    strip=True, min=11, max=60, validator=DTOFieldValidators().validate_cpf_or_cnpj)
-    cliente: str = DTOField(resume=True, not_null=True,
-                            strip=True, min=11, max=60, validator=DTOFieldValidators().validate_cpf_or_cnpj)
+    cliente_id: str = DTOField(
+        resume=True, not_null=True,validator=DTOFieldValidators().validate_uuid, default_value=uuid.uuid4)
+    email: str = DTOField(resume=True, not_null=True, strip=True)
     # Atributos de auditoria
     criado_em: datetime.datetime = DTOField(
         resume=True,
@@ -55,9 +51,3 @@ class ClienteDTO(DTOBase):
     grupo_empresarial: uuid.UUID = DTOField(
         resume=True, not_null=True, partition_data=True)
     tenant: int = DTOField(resume=True, not_null=True, partition_data=True)
-
-    emails: list = DTOListField(
-        dto_type=EmailDTO,
-        entity_type=EmailEntity,
-        related_entity_field='cliente_id'
-    )
