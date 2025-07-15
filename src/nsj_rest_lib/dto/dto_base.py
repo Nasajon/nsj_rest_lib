@@ -179,7 +179,9 @@ class DTOBase(abc.ABC):
                 dto_list_field = self.__class__.list_fields_map[field]
 
                 if field in kwargs:
-                    if not isinstance(kwargs[field], list):
+                    if kwargs[field] is None:
+                        continue
+                    elif not isinstance(kwargs[field], list):
                         raise ValueError(
                             f"O campo {field} deveria ser uma lista do tipo {dto_list_field.dto_type}."
                         )
