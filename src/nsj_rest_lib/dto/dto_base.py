@@ -162,7 +162,14 @@ class DTOBase(abc.ABC):
 
             # Atribuindo o valor à propriedade do DTO
             if field in kwargs:
-                setattr(self, field, aux_dto_field.expected_type(**kwargs[field]))
+                if kwargs[field] is None:
+                    continue
+                elif not isinstance(kwargs[field], dict):
+                    raise ValueError(
+                        f"O campo {field} deveria ser um dicionário com os campos da classe {aux_dto_field.dto_type}."
+                    )
+                else:
+                    setattr(self, field, aux_dto_field.expected_type(**kwargs[field]))
             else:
                 setattr(self, field, None)
 
