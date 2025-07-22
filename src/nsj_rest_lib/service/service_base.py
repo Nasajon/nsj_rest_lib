@@ -773,75 +773,90 @@ class ServiceBase:
     def _retrieve_related_lists(
         self, dto_list: List[DTOBase], fields: Dict[str, Set[str]]
     ):
+
         # TODO Controlar profundidade?!
+        if not dto_list:
+            return
 
-        # Handling each dto
-        for dto in dto_list:
-            # Handling each related list
-            for master_dto_attr, list_field in self._dto_class.list_fields_map.items():
-                if master_dto_attr in fields["root"]:
-                    # Getting service instance
-                    if list_field.service_name is not None:
-                        service = self._injector_factory.get_service_by_name(
-                            list_field.service_name
-                        )
-                    else:
-                        service = ServiceBase(
-                            self._injector_factory,
-                            DAOBase(
-                                self._injector_factory.db_adapter(),
-                                list_field.entity_type,
-                            ),
-                            list_field.dto_type,
-                            list_field.entity_type,
-                        )
+        for master_dto_attr, list_field in self._dto_class.list_fields_map.items():
+            if master_dto_attr not in fields["root"]:
+                continue
 
-                    # Checking if pk_field exists
-                    if self._dto_class.pk_field is None:
-                        raise DTOListFieldConfigException(
-                            f"PK field not found in class: {self._dto_class}"
-                        )
+            # Coletar todos os valores de chave relacionados dos DTOs
+            relation_key_field = self._dto_class.pk_field
+            if list_field.relation_key_field is not None:
+                relation_key_field = list_field.relation_key_field
 
-                    if self._dto_class.pk_field not in dto.__dict__:
-                        raise DTOListFieldConfigException(
-                            f"PK field not found in DTO: {self._dto_class}"
-                        )
+            # Mapeia valor da chave -> lista de DTOs que possuem esse valor
+            key_to_dtos = {}
+            for dto in dto_list:
+                relation_filter_value = getattr(dto, relation_key_field, None)
+                if relation_filter_value is not None:
+                    key_to_dtos.setdefault(relation_filter_value, []).append(dto)
+                else:
+                    setattr(dto, master_dto_attr, [])
 
-                    # Resolvendo a chave do relacionamento
-                    relation_key_field = self._dto_class.pk_field
-                    if list_field.relation_key_field is not None:
-                        relation_key_field = list_field.relation_key_field
+            if not key_to_dtos:
+                continue
 
-                    # Getting value to filter related list
-                    relation_filter_value = getattr(dto, relation_key_field)
-                    if relation_filter_value is None:
-                        # If None, there is no related objects. So, set empty list and continue.
-                        setattr(dto, master_dto_attr, [])
-                        continue
+            # Instancia o service
+            if list_field.service_name is not None:
+                service = self._injector_factory.get_service_by_name(
+                    list_field.service_name
+                )
+            else:
+                service = ServiceBase(
+                    self._injector_factory,
+                    DAOBase(
+                        self._injector_factory.db_adapter(),
+                        list_field.entity_type,
+                    ),
+                    list_field.dto_type,
+                    list_field.entity_type,
+                )
 
-                    # Making filter to relation
-                    filters = {list_field.related_entity_field: relation_filter_value}
+            # Monta o filtro IN para buscar todos os relacionados de uma vez
+            filters = {
+                list_field.related_entity_field: ",".join([str(key) for key in key_to_dtos])
+            }
 
-                    # Tratando campos de particionamento
-                    for field in self._dto_class.partition_fields:
-                        if field in list_field.dto_type.partition_fields:
-                            filters[field] = getattr(dto, field)
+            # Campos de particionamento: se existirem, só faz sentido se todos os DTOs tiverem o mesmo valor
+            # (caso contrário, teria que quebrar em vários queries)
+            # Aqui, só trata se todos tiverem o mesmo valor para cada campo de partição
+            for field in self._dto_class.partition_fields:
+                if field in list_field.dto_type.partition_fields:
+                    partition_values = set(getattr(dto, field, None) for dto in dto_list)
+                    partition_values.discard(None)
+                    if len(partition_values) == 1:
+                        filters[field] = partition_values.pop()
+                    # Se houver mais de um valor, teria que quebrar em vários queries (não tratado aqui)
 
-                    # Resolvendo os fields da entidade aninhada
-                    fields_to_list = copy.deepcopy(fields)
-                    if master_dto_attr in fields:
-                        fields_to_list["root"] = fields[master_dto_attr]
-                        del fields_to_list[master_dto_attr]
-                    else:
-                        fields_to_list["root"] = set()
+            # Resolvendo os fields da entidade aninhada
+            fields_to_list = copy.deepcopy(fields)
+            if master_dto_attr in fields:
+                fields_to_list["root"] = fields[master_dto_attr]
+                del fields_to_list[master_dto_attr]
+            else:
+                fields_to_list["root"] = set()
 
-                    # Getting related data
-                    related_dto_list = service.list(
-                        None, None, fields_to_list, None, filters
-                    )
+            # Busca todos os relacionados de uma vez
+            related_dto_list = service.list(
+                None, None, fields_to_list, None, filters
+            )
 
-                    # Setting dto property
-                    setattr(dto, master_dto_attr, related_dto_list)
+            # Agrupa os relacionados por chave
+            related_map = {}
+            for related_dto in related_dto_list:
+                key = getattr(related_dto, list_field.related_entity_field, None)
+                if key is not None:
+                    related_map.setdefault(key, []).append(related_dto)
+
+            # Seta nos DTOs principais
+            for key, dtos in key_to_dtos.items():
+                related = related_map.get(key, [])
+                for dto in dtos:
+                    setattr(dto, master_dto_attr, related)
+
 
     def insert(
         self,
