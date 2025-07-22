@@ -571,7 +571,7 @@ class DAOBase:
                             continue
 
                         cont += 1
-                        search_buffer += f" or upper(t0.{search_field}) like upper(unaccent(:shf_{search_field}_{cont})) \n"
+                        search_buffer += f" or upper(CAST(t0.{search_field} AS varchar)) like upper(unaccent(:shf_{search_field}_{cont})) \n"
                         search_map[f"shf_{search_field}_{cont}"] = (
                             f"%{unidecode.unidecode(palavra)}%"
                         )
