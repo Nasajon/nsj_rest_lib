@@ -817,7 +817,9 @@ class ServiceBase:
 
             # Monta o filtro IN para buscar todos os relacionados de uma vez
             filters = {
-                list_field.related_entity_field: ",".join([str(key) for key in key_to_dtos])
+                list_field.related_entity_field: ",".join(
+                    [str(key) for key in key_to_dtos]
+                )
             }
 
             # Campos de particionamento: se existirem, só faz sentido se todos os DTOs tiverem o mesmo valor
@@ -825,7 +827,9 @@ class ServiceBase:
             # Aqui, só trata se todos tiverem o mesmo valor para cada campo de partição
             for field in self._dto_class.partition_fields:
                 if field in list_field.dto_type.partition_fields:
-                    partition_values = set(getattr(dto, field, None) for dto in dto_list)
+                    partition_values = set(
+                        getattr(dto, field, None) for dto in dto_list
+                    )
                     partition_values.discard(None)
                     if len(partition_values) == 1:
                         filters[field] = partition_values.pop()
@@ -840,9 +844,7 @@ class ServiceBase:
                 fields_to_list["root"] = set()
 
             # Busca todos os relacionados de uma vez
-            related_dto_list = service.list(
-                None, None, fields_to_list, None, filters
-            )
+            related_dto_list = service.list(None, None, fields_to_list, None, filters)
 
             # Agrupa os relacionados por chave
             related_map = {}
@@ -856,7 +858,6 @@ class ServiceBase:
                 related = related_map.get(key, [])
                 for dto in dtos:
                     setattr(dto, master_dto_attr, related)
-
 
     def insert(
         self,
@@ -1066,7 +1067,7 @@ class ServiceBase:
 
             # Convertendo o DTO para a Entity
             # TODO Refatorar para usar um construtor do EntityBase (ou algo assim, porque é preciso tratar das equivalências de nome dos campos)
-            entity = dto.convert_to_entity(self._entity_class, partial_update)
+            entity = dto.convert_to_entity(self._entity_class, partial_update, insert)
 
             # Resolvendo o id
             if id is None:
@@ -1233,6 +1234,10 @@ class ServiceBase:
 
                 # Se já recebeu um valor, não altera
                 if dto.__dict__.get(field.name, None):
+                    continue
+
+                # Se for um campo gerenciado pelo bamco de dados, apenas ignora
+                if field.auto_increment.db_managed:
                     continue
 
                 # Resolvendo os nomes dos campos de agrupamento, e adicionando os campos de particionamento sempre

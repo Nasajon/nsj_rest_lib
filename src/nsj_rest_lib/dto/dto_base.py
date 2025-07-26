@@ -216,7 +216,12 @@ class DTOBase(abc.ABC):
         #     if getattr(self, self.__class__.pk_field) is None:
         #         setattr(self, self.__class__.pk_field, uuid.uuid4())
 
-    def convert_to_entity(self, entity_class: EntityBase, none_as_empty: bool = False):
+    def convert_to_entity(
+        self,
+        entity_class: EntityBase,
+        none_as_empty: bool = False,
+        is_insert: bool = False,
+    ) -> EntityBase:
         """
         Cria uma instância da entidade, e a popula com os dados do DTO
         corrente.
@@ -239,6 +244,16 @@ class DTOBase(abc.ABC):
 
             # Recuperando o valor
             value = getattr(self, field)
+
+            # Verificando se o campo é de auto incremento gerenciado pelo banco de dados, e,
+            # se o valor é None pulando o campo para não entrar na query
+            if (
+                is_insert
+                and dto_field.auto_increment is not None
+                and dto_field.auto_increment.db_managed
+                and value is None
+            ):
+                continue
 
             # Verificando se é necessária alguma conversão customizada
             custom_value_converted = DTOBase.custom_convert_value_to_entity(

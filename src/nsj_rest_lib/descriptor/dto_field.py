@@ -23,15 +23,34 @@ class DTOFieldFilter:
 class DTOAutoIncrementField:
     def __init__(
         self,
-        sequence_name: str,
-        template: str,
-        group: list[str],
-        start_value: int = 1,
+        sequence_name: str | None,
+        template: str | None,
+        group: list[str] | None,
+        start_value: int | None = 1,
+        db_managed: bool | None = False,
     ):
         self.sequence_name = sequence_name
         self.template = template
         self.group = group
         self.start_value = start_value
+        self.db_managed = db_managed
+
+        if db_managed:
+            self.sequence_name = None
+            self.template = None
+            self.group = None
+            self.start_value = None
+        else:
+            if not sequence_name:
+                raise ValueError(
+                    "sequence_name must be provided for auto increment field."
+                )
+            if not template:
+                raise ValueError("template must be provided for auto increment field.")
+            if not group or len(group) == 0:
+                raise ValueError(
+                    "group must contain at least one field for auto increment field."
+                )
 
 
 class DTOField:
@@ -116,7 +135,8 @@ class DTOField:
                 "sequence_name": "NOME_DA_SEQUENCIA",
                 "template": "{seq}",
                 "group": ["field1", "field2", ...],
-                "start_value": 1
+                "start_value": 1,
+                "db_managed": False
             }
 
             Onde:
@@ -135,6 +155,8 @@ class DTOField:
                     );
                 - Os campos de particionamento de dados sempre entram (automaticamente), no agrupamento de auto incremento.
                 - "start_value": Valor inicial da sequência de auto incremento (opcional, default 1).
+                - "db_managed": Flag que indica se o auto incremento é gerenciado pelo banco de dados (default False, ou seja, o auto incremento é gerenciado pelo código).
+                    Se for True, todas as outras propriedades são ignoradas, porque o valor será gerencia pelo BD (só faz sentido para campos inteiros).
         """
         self.name = None
         self.expected_type = type
@@ -162,10 +184,11 @@ class DTOField:
         if auto_increment:
             start_value = auto_increment.get("start_value", 1)
             self.auto_increment = DTOAutoIncrementField(
-                sequence_name=auto_increment["sequence_name"],
-                template=auto_increment["template"],
-                group=auto_increment["group"],
+                sequence_name=auto_increment.get("sequence_name"),
+                template=auto_increment.get("template", "{seq}"),
+                group=auto_increment.get("group"),
                 start_value=start_value,
+                db_managed=auto_increment.get("db_managed", False),
             )
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
