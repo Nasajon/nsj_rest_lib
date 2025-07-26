@@ -75,14 +75,18 @@ Há dois conjuntos distintos de teste:
    2. Consiste em testes mais completos, rodando de fato chamadas à APIs fake
    3. Dependem de BD e API em execução
 
-> docker compose up -d postgres
-> docker compose up -d api-test
-> make tests
-> make tests2
+```sh
+docker compose up -d postgres
+docker compose up -d api-test
+make tests
+make tests2
+```
 
 2. Tetes apenas de código fonte
    1. Utiliza apenas o pytest
    2. Equivalem ao que é popularmente chamado de testes unitários
    3. Rodar sem dependências de processos em execução
 
-> make code_tests
+```sh
+make code_tests
+```
