@@ -27,3 +27,6 @@ tests: env_setup
 
 tests2: env_setup
 	pytest -s tests/api/casos_de_teste/clientes/post
+
+code_tests: env_setup
+	pytest -s tests/code_tests
