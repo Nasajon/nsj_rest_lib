@@ -1,5 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 create schema teste;
 
 create table teste.cliente (
@@ -16,7 +18,6 @@ create table teste.cliente (
 	tenant bigint not null,
 	PRIMARY KEY (tenant, grupo_empresarial, id)
 );
-
 
 CREATE TABLE teste.email (
 	id uuid DEFAULT uuid_generate_v4() NOT NULL,

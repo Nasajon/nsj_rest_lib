@@ -78,8 +78,7 @@ Há dois conjuntos distintos de teste:
 ```sh
 docker compose up -d postgres
 docker compose up -d api-test
-make tests
-make tests2
+docker compose up -d test
 ```
 
 2. Tetes apenas de código fonte

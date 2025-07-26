@@ -5,13 +5,18 @@ from nsj_rest_test_util.util.enum_param_mode import ParamMode
 import sys
 
 print(sys.path)
-test_util = TCaseUtil(__file__, '2531', 'clientes/<id>?tenant=<tenant>&grupo_empresarial=<grupo_empresarial>')
+test_util = TCaseUtil(
+    __file__,
+    "2531",
+    "clientes/<id>?tenant=<tenant>&grupo_empresarial=<grupo_empresarial>",
+    port=80,
+)
 
 
 @pytest.mark.parametrize(
     argnames="json_entrada_nome, json_entrada",
     argvalues=test_util.argvalues,
-    scope="class"
+    scope="class",
 )
 class TestClientesDELETE:
     @pytest.fixture(scope="class", autouse=True)
@@ -21,4 +26,9 @@ class TestClientesDELETE:
         test_util.pos_setup(json_entrada_nome)
 
     def test_get(self, json_entrada, json_entrada_nome):
-        test_util.common_request_test(json_entrada, json_entrada_nome, HTTPMethod.DELETE, param_mode=ParamMode.PATH)
+        test_util.common_request_test(
+            json_entrada,
+            json_entrada_nome,
+            HTTPMethod.DELETE,
+            param_mode=ParamMode.PATH,
+        )

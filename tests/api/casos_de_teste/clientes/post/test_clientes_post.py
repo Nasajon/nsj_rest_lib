@@ -2,13 +2,18 @@ import pytest
 from nsj_rest_test_util.util.enum_http_method import HTTPMethod
 from nsj_rest_test_util.util.tcase_util import TCaseUtil
 
-test_util = TCaseUtil(__file__, '2531', 'clientes')
+test_util = TCaseUtil(
+    __file__,
+    "2531",
+    "clientes",
+    port=80,
+)
 
 
 @pytest.mark.parametrize(
     argnames="json_entrada_nome, json_entrada",
     argvalues=test_util.argvalues,
-    scope="class"
+    scope="class",
 )
 class TestClientesPOST:
     @pytest.fixture(scope="class", autouse=True)

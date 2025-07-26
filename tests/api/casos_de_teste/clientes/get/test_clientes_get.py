@@ -4,13 +4,18 @@ from nsj_rest_test_util.util.tcase_util import TCaseUtil
 import sys
 
 print(sys.path)
-test_util = TCaseUtil(__file__, '2531', 'clientes')
+test_util = TCaseUtil(
+    __file__,
+    "2531",
+    "clientes",
+    port=80,
+)
 
 
 @pytest.mark.parametrize(
     argnames="json_entrada_nome, json_entrada",
     argvalues=test_util.argvalues,
-    scope="class"
+    scope="class",
 )
 class TestClientesGET:
     @pytest.fixture(scope="class", autouse=True)

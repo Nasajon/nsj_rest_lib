@@ -7,7 +7,7 @@ services:
             - "5440:5432"
         restart: always
         volumes:
-            - $PWD/src/tests/database/dump:/docker-entrypoint-initdb.d/
+            - $PWD/tests/database/dump:/docker-entrypoint-initdb.d/
         environment:
             - "POSTGRES_DB=projeto"
             - "POSTGRES_USER=projeto"
@@ -24,20 +24,18 @@ services:
             - $PWD/logs:/var/log/nasajon
             - $PWD/wsgi_dev.ini:/etc/wsgi/wsgi.ini
         env_file:
-            - .env
+            - .env.dist
         command: sh -c "python3 -m pip install -r /var/www/html/requirements.txt --no-cache-dir && /entrypoint.sh"
         depends_on:
             - postgres
 
-
     test:
         image: arquiteturansj/flask:2.2
-        restart: always
         volumes:
             - $PWD:/var/www/html
             - $PWD/logs:/var/log/nasajon
         env_file:
-            - .env
-        command: sh -c "python3 -m pip install -r /var/www/html/requirements.txt --no-cache-dir && python3 -m pip install -r /var/www/html/requirements-dev.txt --no-cache-dir && pytest -s src/tests/api/casos_de_teste"
+            - .env.dist
+        command: sh -c "python3 -m pip install -r /var/www/html/requirements.txt --no-cache-dir && python3 -m pip install -r /var/www/html/requirements-dev.txt --no-cache-dir && pytest -s tests/api/casos_de_teste"
         depends_on:
             - postgres

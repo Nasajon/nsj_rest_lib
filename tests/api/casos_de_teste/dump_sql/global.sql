@@ -1,3 +1,4 @@
+DELETE FROM teste.email WHERE tenant=:tenant;
 DELETE FROM teste.cliente WHERE tenant=:tenant;
 
 INSERT INTO teste.cliente
