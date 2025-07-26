@@ -1,6 +1,6 @@
 # RestLib (nsj_rest_lib)
 
-# QuickStart
+## QuickStart
 
 Biblioteca para construção de APIs Rest Python, de acordo com o guidelines interno, e com paradigma declarativo.
 
@@ -65,3 +65,24 @@ A grande diferença, na filosofia de desenvolvimento, é que se prioriza um esfo
   * Uso manual do Service (para consultas ou inserts manuais) (TODO)
   * Customizando comportamentos (TODO)
   * [Gravação de Telemetria (com o OpenTelemetry)](internal_docs/opentelemetry.md)
+
+## Testes automatizados
+
+Há dois conjuntos distintos de teste:
+
+1. Testes utilizando a biblioteca nsj-rest-test-util
+   1. Precisa ser instalada por meio do arquivo requirements-dev.txt
+   2. Consiste em testes mais completos, rodando de fato chamadas à APIs fake
+   3. Dependem de BD e API em execução
+
+> docker compose up -d postgres
+> docker compose up -d api-test
+> make tests
+> make tests2
+
+2. Tetes apenas de código fonte
+   1. Utiliza apenas o pytest
+   2. Equivalem ao que é popularmente chamado de testes unitários
+   3. Rodar sem dependências de processos em execução
+
+> make code_tests
