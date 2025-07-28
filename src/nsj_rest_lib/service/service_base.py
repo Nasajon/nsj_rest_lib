@@ -1,12 +1,14 @@
 import copy
 import re
 import uuid
+import typing as ty
 
 from typing import Any, Callable, Dict, List, Set, Tuple
 
 from flask import g
 
 from nsj_rest_lib.dao.dao_base import DAOBase
+from nsj_rest_lib.descriptor import DTOAggregator
 from nsj_rest_lib.descriptor.dto_field import DTOFieldFilter
 from nsj_rest_lib.descriptor.dto_left_join_field import (
     DTOLeftJoinField,
@@ -160,6 +162,16 @@ class ServiceBase:
                 fields,
                 partition_fields,
             )
+
+        if len(self._dto_class.aggregator_fields_map) > 0:
+            self._retrieve_aggregator_fields(
+                dto_list=[dto],
+                selected_fields=fields,
+                id_=entity_id_value,
+                key_field=entity_key_field,
+                partition_fields=partition_fields,
+            )
+            pass
 
         return dto
 
@@ -1853,3 +1865,39 @@ class ServiceBase:
                             field = None
 
                         setattr(dto, key, field)
+
+    def _retrieve_aggregator_fields(self,
+                                    dto_list: ty.List[DTOBase],
+                                    selected_fields: ty.Dict[str, Set[str]],
+                                    id_: uuid.UUID,
+                                    key_field: str,
+                                    partition_fields: ty.Dict[str, Any]):
+        ns = copy.copy(self)
+
+        for dto in dto_list:
+            k: str
+            v: DTOAggregator
+            for k, v in dto.aggregator_fields_map.items():
+                if k not in selected_fields['root']:
+                    continue
+
+                res_dto = v.expected_type
+
+                fields: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
+                if k in selected_fields:
+                    fields = {'root': selected_fields[k]}
+                    pass
+
+                ns._dto_class = res_dto
+
+                agg_dto = ns.get(
+                    id=id_,
+                    partition_fields=None,
+                    fields=fields,
+                )
+
+                setattr(dto, k, agg_dto)
+                pass
+            pass
+        pass
+

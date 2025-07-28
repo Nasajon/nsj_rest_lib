@@ -2,6 +2,7 @@ import functools
 from typing import Any, Dict
 
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
+from nsj_rest_lib.descriptor import DTOAggregator
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_left_join_field import DTOLeftJoinField, LeftJoinQuery
@@ -173,6 +174,8 @@ class DTO:
         # Creating field_filters_map in cls, if needed
         self._check_class_attribute(cls, "field_filters_map", {})
 
+        self._check_class_attribute(cls, "aggregator_fields_map", {})
+
         # Creating pk_field in cls, if needed
         # TODO Refatorar para suportar PKs compostas
         self._check_class_attribute(cls, "pk_field", None)
@@ -268,6 +271,15 @@ class DTO:
                 if attr.auto_increment:
                     getattr(cls, "auto_increment_fields").add(key)
 
+            elif isinstance(attr, DTOAggregator):
+                attr.storage_name = key
+                attr.name = key
+
+                if key in cls.__annotations__:
+                    attr.expected_type = cls.__annotations__[key]
+                    pass
+
+                cls.aggregator_fields_map[key] = attr
             elif isinstance(attr, DTOListField):
                 # Storing field in fields_map
                 getattr(cls, "list_fields_map")[key] = attr

@@ -7,6 +7,7 @@ import enum
 from typing import Any, Dict, List, Set, Union
 
 from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
+from nsj_rest_lib.descriptor import DTOAggregator
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField, DTOFieldFilter
 
@@ -23,6 +24,7 @@ class DTOBase(abc.ABC):
     sql_read_only_fields: list = []
     object_fields_map: list = []
     field_filters_map: Dict[str, DTOFieldFilter]
+    aggregator_fields_map: Dict[str, DTOAggregator] = {}
     # TODO Refatorar para suportar PK composto
     pk_field: str
     fixed_filters: Dict[str, Any]
@@ -457,6 +459,15 @@ class DTOBase(abc.ABC):
                 if getattr(self, field) is not None
                 else None
             )
+
+        for k in self.aggregator_fields_map:
+            if k not in fields["root"]:
+                continue
+
+            result[k] = getattr(self, k).convert_to_dict(
+                {"root": fields[k]} if k in fields else None
+            )
+            pass
 
         # Converting list fields
         for field in self.list_fields_map:
