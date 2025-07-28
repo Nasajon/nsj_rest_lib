@@ -167,8 +167,6 @@ class ServiceBase:
             self._retrieve_aggregator_fields(
                 dto_list=[dto],
                 selected_fields=fields,
-                id_=entity_id_value,
-                key_field=entity_key_field,
                 partition_fields=partition_fields,
             )
             pass
@@ -718,6 +716,14 @@ class ServiceBase:
                 fields,
                 filters,
             )
+
+        if len(self._dto_class.aggregator_fields_map) > 0:
+            self._retrieve_aggregator_fields(
+                dto_list=dto_list,
+                selected_fields=fields,
+                partition_fields=filters,
+            )
+            pass
 
         # Returning
         return dto_list
@@ -1868,13 +1874,14 @@ class ServiceBase:
 
     def _retrieve_aggregator_fields(self,
                                     dto_list: ty.List[DTOBase],
-                                    selected_fields: ty.Dict[str, Set[str]],
-                                    id_: uuid.UUID,
-                                    key_field: str,
-                                    partition_fields: ty.Dict[str, Any]):
+                                    selected_fields: ty.Dict[str, ty.Set[str]],
+                                    partition_fields: ty.Dict[str, ty.Any]
+                                    ) -> None:
         ns = copy.copy(self)
 
         for dto in dto_list:
+            id_ = getattr(dto, dto.pk_field)
+
             k: str
             v: DTOAggregator
             for k, v in dto.aggregator_fields_map.items():
@@ -1892,7 +1899,7 @@ class ServiceBase:
 
                 agg_dto = ns.get(
                     id=id_,
-                    partition_fields=None,
+                    partition_fields=partition_fields,
                     fields=fields,
                 )
 
