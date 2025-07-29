@@ -313,7 +313,12 @@ class DTOBase(abc.ABC):
                     #           the base DTO is always.
                     continue
 
-                val = getattr(dto, agg_field)
+                val = DTOBase.convert_value_to_entity(
+                    getattr(dto, agg_field),
+                    dto_field,
+                    none_as_empty,
+                    entity_class,
+                )
 
                 setattr(entity, entity_field, val)
                 entity._sql_fields.append(entity_field)
