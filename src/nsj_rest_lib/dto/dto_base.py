@@ -175,6 +175,20 @@ class DTOBase(abc.ABC):
             else:
                 setattr(self, field, None)
 
+        for k, v in self.__class__.aggregator_fields_map.items():
+            if k not in kwargs \
+               or kwargs[k] is None:
+                setattr(self, k, None)
+                continue
+            if isinstance(kwargs[field], dict):
+                raise ValueError(
+                    f"O campo {field} deveria ser um dicionário com " \
+                    f"os campos da classe {v.dto_type}."
+                )
+
+            setattr(self, k, v.expected_type(**kwargs[k]))
+            pass
+
         # Setando os campos registrados como fields de lista
         if entity is None:
             for field in self.__class__.list_fields_map:
@@ -281,6 +295,30 @@ class DTOBase(abc.ABC):
                 # Setando na entidade
                 setattr(entity, entity_field, value)
                 entity._sql_fields.append(entity_field)
+
+        for k, agg in self.__class__.aggregator_fields_map.items():
+            dto = getattr(self, k)
+            for agg_field, dto_field in dto.fields_map.items():
+                entity_field: str = agg_field
+                if dto_field.entity_field is not None:
+                    entity_field = dto_field.entity_field
+                    pass
+
+                if hasattr(entity, entity_field) is False:
+                    continue
+
+                if entity_field in entity._sql_fields:
+                    # NOTE: Skipping a field if it was already created
+                    #           previously. This means that the field in
+                    #           the base DTO is always.
+                    continue
+
+                val = getattr(dto, agg_field)
+
+                setattr(entity, entity_field, val)
+                entity._sql_fields.append(entity_field)
+                pass
+            pass
 
         return entity
 
