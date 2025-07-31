@@ -24,6 +24,8 @@ class DTOJoinFieldType:
 class DTOSQLJoinField:
     _ref_counter = 0
 
+    partition_data: bool
+
     def __init__(
         self,
         dto_type: DTOBase,
@@ -38,6 +40,7 @@ class DTOSQLJoinField:
         convert_from_entity: typing.Callable = None,
         validator: typing.Callable = None,
         use_default_validator: bool = True,
+        partition_data: bool = False,
     ):
         """
         -----------
@@ -90,6 +93,7 @@ class DTOSQLJoinField:
         self.convert_from_entity = convert_from_entity
         self.validator = validator
         self.use_default_validator = use_default_validator
+        self.partition_data = partition_data
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
