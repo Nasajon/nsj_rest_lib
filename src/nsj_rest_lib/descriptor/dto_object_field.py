@@ -7,6 +7,8 @@ from nsj_rest_lib.entity.entity_base import EntityBase
 class DTOObjectField:
     _ref_counter = 0
 
+    description: str
+
     def __init__(
         self,
         entity_type: EntityBase = None,
@@ -15,6 +17,7 @@ class DTOObjectField:
         not_null: bool = False,
         resume: bool = False,
         validator: typing.Callable = None,
+        description: str = '',
     ):
         """
         -----------
@@ -41,6 +44,7 @@ class DTOObjectField:
             tipo de tratamento (como adição ou remoção, automática, de formatação).
         """
         self.name = None
+        self.description = description
         self.entity_type = entity_type
         self.relation_field = relation_field
         self.entity_relation_owner = entity_relation_owner
