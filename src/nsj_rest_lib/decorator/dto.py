@@ -340,6 +340,10 @@ class DTO:
                     if key not in resume_fields:
                         resume_fields.add(key)
 
+                if attr.partition_data is True:
+                    cls.partition_fields.add(key)
+                    pass
+
                 # Montando o mapa de controle das queries (para o service_base)
                 self.set_sql_join_fields_map_to_query(key, attr, cls)
 
