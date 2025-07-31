@@ -15,6 +15,8 @@ class EntityRelationOwner:
 class DTOLeftJoinField:
     _ref_counter = 0
 
+    description: str
+
     def __init__(
         self,
         resume: bool,
@@ -26,6 +28,7 @@ class DTOLeftJoinField:
         type: object = None,
         validator: typing.Callable = None,
         use_default_validator: bool = True,
+        description: str = '',
     ):
         """
         -----------
@@ -51,6 +54,7 @@ class DTOLeftJoinField:
             recebidas no filed, como, por exemplo, valor máximo, mínio, not_null, etc).
         """
         self.name = None
+        self.description = description
         self.resume = resume
         self.expected_type = type
         self.dto_type = dto_type

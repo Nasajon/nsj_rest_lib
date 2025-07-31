@@ -56,6 +56,8 @@ class DTOAutoIncrementField:
 class DTOField:
     _ref_counter = 0
 
+    description: str
+
     def __init__(
         self,
         type: object = None,
@@ -79,6 +81,7 @@ class DTOField:
         read_only: bool = False,
         metric_label: bool = False,
         auto_increment: dict[str, any] = {},
+        description: str = '',
     ):
         """
         -----------
@@ -159,6 +162,7 @@ class DTOField:
                     Se for True, todas as outras propriedades são ignoradas, porque o valor será gerencia pelo BD (só faz sentido para campos inteiros).
         """
         self.name = None
+        self.description = description
         self.expected_type = type
         self.not_null = not_null
         self.resume = resume
