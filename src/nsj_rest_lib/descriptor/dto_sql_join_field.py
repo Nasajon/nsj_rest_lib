@@ -25,6 +25,7 @@ class DTOSQLJoinField:
     _ref_counter = 0
 
     description: str
+    partition_data: bool
 
     def __init__(
         self,
@@ -41,6 +42,7 @@ class DTOSQLJoinField:
         validator: typing.Callable = None,
         use_default_validator: bool = True,
         description: str = '',
+        partition_data: bool = False,
     ):
         """
         -----------
@@ -79,6 +81,8 @@ class DTOSQLJoinField:
         - use_default_validator: Flag indicando se o validator padrão deve ser aplicado à propriedade
             (esse validator padrão verifica o tipo de dados passado, e as demais verificações
             recebidas no filed, como, por exemplo, valor máximo, mínio, not_null, etc).
+
+        - partition_data: Flag indicando se esta propriedade participa dos campos de particionamento da entidade, isto é, campos sempre usados nas queries de listagem gravação dos dados, inclusíve para recuperação de entidades relacionadas.
         """
         self.name = None
         self.description = description
@@ -94,6 +98,7 @@ class DTOSQLJoinField:
         self.convert_from_entity = convert_from_entity
         self.validator = validator
         self.use_default_validator = use_default_validator
+        self.partition_data = partition_data
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
