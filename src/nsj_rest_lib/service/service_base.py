@@ -71,7 +71,7 @@ class ServiceBase:
         """
 
         class FakeInjectorFactory:
-            def db_adapter():
+            def db_adapter(self):
                 return db_adapter
 
         return ServiceBase(
@@ -1831,7 +1831,8 @@ class ServiceBase:
                         # Gravando o valor no DTO de interesse
                         setattr(dto, field, field_value)
 
-    def _retrieve_object_fields(
+
+    def _retrieve_object_fields_old(
         self,
         dto_list: List[DTOBase],
         fields: Dict[str, Set[str]],
@@ -1900,3 +1901,124 @@ class ServiceBase:
                             field = None
 
                         setattr(dto, key, field)
+
+
+
+    def _retrieve_object_fields(
+        self,
+        dto_list: List[DTOBase],
+        fields: Dict[str, Set[str]],
+        partition_fields: Dict[str, Any],
+    ):
+        """
+        Versão otimizada do _retrieve_object_fields_keyson que faz buscas em lote
+        ao invés de consultas individuais para cada DTO.
+        """
+        if not dto_list:
+            return
+
+        # Processando cada tipo de campo de objeto
+        for key in self._dto_class.object_fields_map:
+            # Verificando se o campo está no retorno
+            if key not in fields["root"]:
+                continue
+
+            object_field: DTOObjectField = self._dto_class.object_fields_map[key]
+
+            if object_field.entity_type is None:
+                continue
+
+            # Instanciando o service uma vez só para este tipo de campo
+            service = ServiceBase(
+                self._injector_factory,
+                DAOBase(
+                    self._injector_factory.db_adapter(),
+                    object_field.entity_type,
+                ),
+                object_field.expected_type,
+                object_field.entity_type,
+            )
+
+            if object_field.entity_relation_owner == EntityRelationOwner.OTHER:
+                # Checking if pk_field exists
+                if self._dto_class.pk_field is None:
+                    raise DTOListFieldConfigException(
+                        f"PK field not found in class: {self._dto_class}"
+                    )
+
+                # Coletando todas as chaves primárias dos DTOs para buscar de uma vez
+                keys_to_fetch = set()
+                for dto in dto_list:
+                    pk_value = getattr(dto, self._dto_class.pk_field)
+                    if pk_value is not None:
+                        keys_to_fetch.add(pk_value)
+
+                if not keys_to_fetch:
+                    continue
+
+                # Montando filtro para buscar todos os objetos relacionados de uma vez
+                related_filters = {
+                    object_field.relation_field: ",".join(str(k) for k in keys_to_fetch)
+                }
+
+                # Recuperando todos os DTOs relacionados de uma vez
+                related_dto_list = service.list(
+                    None,
+                    None,
+                    {"root": fields[key]} if key in fields else None,
+                    None,
+                    related_filters,
+                )
+
+                # Criando mapa de chave -> DTO relacionado
+                related_map = {}
+                for related_dto in related_dto_list:
+                    relation_key = getattr(related_dto, object_field.relation_field)
+                    if relation_key is not None:
+                        related_map[relation_key] = related_dto
+
+                # Atribuindo os objetos relacionados nos DTOs originais
+                for dto in dto_list:
+                    pk_value = getattr(dto, self._dto_class.pk_field)
+                    related_dto = related_map.get(pk_value)
+                    setattr(dto, key, related_dto)
+
+            elif object_field.entity_relation_owner == EntityRelationOwner.SELF:
+                # Coletando todas as chaves de relacionamento para buscar de uma vez
+                keys_to_fetch = set()
+                for dto in dto_list:
+                    relation_value = getattr(dto, object_field.relation_field)
+                    if relation_value is not None:
+                        keys_to_fetch.add(relation_value)
+
+                if not keys_to_fetch:
+                    continue
+
+                # Buscando todos os objetos relacionados de uma vez
+                related_dto_list = []
+                for relation_key in keys_to_fetch:
+                    try:
+                        related_dto = service.get(
+                            relation_key,
+                            partition_fields,
+                            {"root": fields[key]} if key in fields else None,
+                        )
+                        related_dto_list.append(related_dto)
+                    except NotFoundException:
+                        # Objeto não encontrado, será tratado como None
+                        pass
+
+                # Criando mapa de chave -> DTO relacionado
+                related_map = {}
+                for related_dto in related_dto_list:
+                    pk_field = getattr(related_dto.__class__, "pk_field")
+                    pk_value = getattr(related_dto, pk_field)
+                    if pk_value is not None:
+                        related_map[pk_value] = related_dto
+
+                # Atribuindo os objetos relacionados nos DTOs originais
+                for dto in dto_list:
+                    relation_value = getattr(dto, object_field.relation_field)
+                    related_dto = related_map.get(relation_value)
+                    setattr(dto, key, related_dto)
+
