@@ -24,6 +24,8 @@ class DTOJoinFieldType:
 class DTOSQLJoinField:
     _ref_counter = 0
 
+    description: str
+
     def __init__(
         self,
         dto_type: DTOBase,
@@ -38,6 +40,7 @@ class DTOSQLJoinField:
         convert_from_entity: typing.Callable = None,
         validator: typing.Callable = None,
         use_default_validator: bool = True,
+        description: str = '',
     ):
         """
         -----------
@@ -78,6 +81,7 @@ class DTOSQLJoinField:
             recebidas no filed, como, por exemplo, valor máximo, mínio, not_null, etc).
         """
         self.name = None
+        self.description = description
         self.dto_type = dto_type
         self.entity_type = entity_type
         self.related_dto_field = related_dto_field

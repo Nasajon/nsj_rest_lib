@@ -45,6 +45,10 @@ class DTOAggregator:
     storage_name: str
     expected_type: ty.Any
 
-    def __init__(self) -> None:
+    description: str
+
+    def __init__(self, description: str = '') -> None:
+        self.description = description
+
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
