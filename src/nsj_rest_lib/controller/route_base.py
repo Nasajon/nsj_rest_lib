@@ -3,6 +3,7 @@ import re
 from typing import Callable, Dict, List, Set
 
 from nsj_rest_lib.controller.funtion_route_wrapper import FunctionRouteWrapper
+from nsj_rest_lib.controller.route_recorder import RouteRecorder
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
@@ -34,6 +35,7 @@ class RouteBase:
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
+        description: str = None,
     ):
         super().__init__()
 
@@ -47,6 +49,14 @@ class RouteBase:
         self._dto_class = dto_class
         self._entity_class = entity_class
         self._dto_response_class = dto_response_class
+        self.description = description
+
+        RouteRecorder.record_route(
+            route_path=url,
+            http_method=http_method,
+            description=description,
+            route_obj=self,
+        )
 
     def __call__(self, func):
         from nsj_rest_lib.controller.command_router import CommandRouter

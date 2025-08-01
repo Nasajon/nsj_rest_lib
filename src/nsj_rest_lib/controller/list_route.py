@@ -29,6 +29,7 @@ class ListRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
+        description: str = None,
     ):
         super().__init__(
             url=url,
@@ -39,6 +40,7 @@ class ListRoute(RouteBase):
             injector_factory=injector_factory,
             service_name=service_name,
             handle_exception=handle_exception,
+            description=description,
         )
 
     def handle_request(

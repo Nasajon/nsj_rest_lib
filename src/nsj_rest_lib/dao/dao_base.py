@@ -444,6 +444,19 @@ class DAOBase:
 
         return resp
 
+    def list_ai_search(
+        self,
+        sql: str,
+    ) -> List[EntityBase]:
+        """
+        Returns a paginated entity list.
+        """
+
+        # Running the SQL query
+        resp = self._db.execute_query_to_model(sql, self._entity_class)
+
+        return resp
+
     def _make_joins_sql(self, joins_aux: List[JoinAux] = []):
         """
         Método auxiliar, para montar a parte dos campos, e do join propriamente dito,

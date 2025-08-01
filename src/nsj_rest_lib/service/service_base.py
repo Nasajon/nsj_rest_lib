@@ -26,6 +26,11 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.validator.validate_data import validate_uuid
+from nsj_rest_lib.service.ai_search_service import (
+    AISerchService,
+    AISearchException,
+    ResponseStatusEnum,
+)
 from nsj_rest_lib.util.join_aux import JoinAux
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
 
@@ -660,24 +665,45 @@ class ServiceBase:
                 filters,
             )
 
-        # Resolvendo os joins
-        joins_aux = self._resolve_sql_join_fields(fields["root"], entity_filters)
+        # Tratando da pesquisa por IA
+        if "ai_search" in filters:
+            ai_query = filters["ai_search"]
 
-        # Retrieving from DAO
-        entity_list = self._dao.list(
-            after,
-            limit,
-            entity_fields,
-            order_fields,
-            entity_filters,
-            conjunto_type=self._dto_class.conjunto_type,
-            conjunto_field=self._dto_class.conjunto_field,
-            entity_key_field=entity_key_field,
-            entity_id_value=entity_id_value,
-            search_query=search_query,
-            search_fields=search_fields,
-            joins_aux=joins_aux,
-        )
+            ai_search_service = AISerchService()
+            result = ai_search_service.search(
+                self._entity_class,
+                ai_query,
+                fields=entity_fields,
+                filters=entity_filters,
+                limit=limit,
+                order_fields=order_fields,
+            )
+
+            if result.status == ResponseStatusEnum.ERRO:
+                raise AISearchException(result.message)
+
+            sql = result.query
+            entity_list = self._dao.list_ai_search(sql)
+
+        else:
+            # Resolvendo os joins
+            joins_aux = self._resolve_sql_join_fields(fields["root"], entity_filters)
+
+            # Retrieving from DAO
+            entity_list = self._dao.list(
+                after,
+                limit,
+                entity_fields,
+                order_fields,
+                entity_filters,
+                conjunto_type=self._dto_class.conjunto_type,
+                conjunto_field=self._dto_class.conjunto_field,
+                entity_key_field=entity_key_field,
+                entity_id_value=entity_id_value,
+                search_query=search_query,
+                search_fields=search_fields,
+                joins_aux=joins_aux,
+            )
 
         # Convertendo para uma lista de DTOs
         dto_list = [
