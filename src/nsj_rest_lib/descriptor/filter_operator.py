@@ -11,3 +11,4 @@ class FilterOperator(enum.Enum):
     LIKE = "like"
     ILIKE = "ilike"
     NOT_NULL = "not_null"
+    IN = "in"
