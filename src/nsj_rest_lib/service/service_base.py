@@ -2,6 +2,7 @@ import copy
 import re
 import uuid
 import typing as ty
+import warnings
 
 from typing import Any, Callable, Dict, List, Set, Tuple
 
@@ -1516,7 +1517,7 @@ class ServiceBase:
 
             for _id in ids:
                 self._delete(
-                    _id, manage_transaction=True, additional_filters=additional_filters
+                    _id, manage_transaction=False, additional_filters=additional_filters
                 )
 
         except:
@@ -1663,7 +1664,67 @@ class ServiceBase:
             if manage_transaction:
                 self._dao.commit()
 
-    def _delete_related_lists(self, id, additional_filters: Dict[str, Any] = None):
+    def _delete_list(
+        self,
+        ids: List[str],
+        manage_transaction: bool,
+        additional_filters: Dict[str, Any] = None,
+        custom_before_delete=None,
+    ) -> DTOBase:
+
+        if not ids:
+            return
+
+        try:
+            if manage_transaction:
+                self._dao.begin()
+
+            # Convertendo os filtros para os filtros de entidade
+            entity_filters = {}
+            if additional_filters is not None:
+                entity_filters = self._create_entity_filters(additional_filters)
+
+            entity_id_values = []
+            for _id in ids:
+                # Função para validar ou fazer outras consultas antes de deletar
+                if custom_before_delete is not None:
+                    dto = self.get(_id, additional_filters, None)
+                    custom_before_delete(self._dao._db, dto)
+
+                # Resolve o campo de chave sendo utilizado
+                entity_key_field, entity_id_value = self._resolve_field_key(
+                    _id,
+                    additional_filters,
+                )
+
+                entity_id_values.append(entity_id_value)
+
+                # Tratando das propriedades de lista
+                if len(self._dto_class.list_fields_map) > 0:
+                    self._delete_related_lists(_id, additional_filters)
+
+            # Adicionando o ID nos filtros
+            id_condiction = Filter(FilterOperator.IN, entity_id_values)
+
+            entity_filters[entity_key_field] = [id_condiction]
+
+            # Excluindo os conjuntos (se necessário)
+            if self._dto_class.conjunto_type is not None:
+                self._dao.delete_relacionamentos_conjunto(
+                    ids, self._dto_class.conjunto_type
+                )
+
+            # Excluindo a entity principal
+            self._dao.delete(entity_filters)
+        except:
+            if manage_transaction:
+                self._dao.rollback()
+            raise
+        finally:
+            if manage_transaction:
+                self._dao.commit()
+
+    def _delete_related_lists_old(self, id, additional_filters: Dict[str, Any] = None):
         # Handling each related list
         for _, list_field in self._dto_class.list_fields_map.items():
             # Getting service instance
@@ -1713,12 +1774,67 @@ class ServiceBase:
                     additional_filters=additional_filters,
                 )
 
+    def _delete_related_lists(self, id, additional_filters: Dict[str, Any] = None):
+        # Handling each related list
+        for _, list_field in self._dto_class.list_fields_map.items():
+            # Getting service instance
+            if list_field.service_name is not None:
+                service = self._injector_factory.get_service_by_name(
+                    list_field.service_name
+                )
+            else:
+                service = ServiceBase(
+                    self._injector_factory,
+                    DAOBase(
+                        self._injector_factory.db_adapter(), list_field.entity_type
+                    ),
+                    list_field.dto_type,
+                    list_field.entity_type,
+                )
+
+            # Making filter to relation
+            filters = {
+                # TODO Adicionar os campos de particionamento de dados
+                list_field.related_entity_field: id
+            }
+
+            # Getting related data
+            related_dto_list = service.list(None, None, {"root": set()}, None, filters)
+
+            # Excluindo cada entidade detalhe
+            related_ids = []
+            for related_dto in related_dto_list:
+                # Checking if pk_field exists
+                if list_field.dto_type.pk_field is None:
+                    raise DTOListFieldConfigException(
+                        f"PK field not found in class: {self._dto_class}"
+                    )
+
+                if list_field.dto_type.pk_field not in related_dto.__dict__:
+                    raise DTOListFieldConfigException(
+                        f"PK field not found in DTO: {self._dto_class}"
+                    )
+
+                # Recuperando o ID da entidade detalhe
+                related_ids.append(getattr(related_dto, list_field.dto_type.pk_field))
+
+            # Chamando a exclusão
+            service._delete_list(
+                related_ids,
+                manage_transaction=False,
+                additional_filters=additional_filters,
+            )
+
     def _retrieve_left_join_fields(
         self,
         dto_list: List[DTOBase],
         fields: Dict[str, Set[str]],
         partition_fields: Dict[str, Any],
     ):
+        warnings.warn(
+            "DTOLeftJoinField está depreciado e será removido em breve.",
+            DeprecationWarning,
+        )
         # Tratando cada dto recebido
         for dto in dto_list:
             # Tratando cada tipo de entidade relacionada
@@ -1831,7 +1947,6 @@ class ServiceBase:
                         # Gravando o valor no DTO de interesse
                         setattr(dto, field, field_value)
 
-
     def _retrieve_object_fields_old(
         self,
         dto_list: List[DTOBase],
@@ -1901,8 +2016,6 @@ class ServiceBase:
                             field = None
 
                         setattr(dto, key, field)
-
-
 
     def _retrieve_object_fields(
         self,
@@ -2021,4 +2134,3 @@ class ServiceBase:
                     relation_value = getattr(dto, object_field.relation_field)
                     related_dto = related_map.get(relation_value)
                     setattr(dto, key, related_dto)
-
