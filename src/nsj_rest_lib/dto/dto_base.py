@@ -48,6 +48,7 @@ class DTOBase(abc.ABC):
 
         self.escape_validator = escape_validator
         self.generate_default_pk_value = generate_default_pk_value
+        self.validate_read_only = validate_read_only
 
         # Transformando a entity em dict (se houver uma entity)
         if entity is not None:
@@ -61,13 +62,6 @@ class DTOBase(abc.ABC):
         for field in self.__class__.fields_map:
             # Recuperando a configuração do campo
             aux_dto_field = self.__class__.fields_map[field]
-
-            if (
-                validate_read_only
-                and aux_dto_field.read_only
-                and kwargs.get(field, None) is not None
-            ):
-                raise ValueError(f"O campo {field} não pode ser preenchido.")
 
             # Tratando do valor default
             if (

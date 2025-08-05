@@ -223,6 +223,14 @@ class DTOField:
         Default validator (ckecking default constraints: not null, type, min, max and enum types).
         """
 
+        # Check read_only
+        if (
+            getattr(instance, "validate_read_only", False)
+            and self.read_only
+            and value is not None
+        ):
+            raise ValueError(f"O campo {self.storage_name} não pode ser preenchido.")
+
         # Checking not null constraint
         if (
             self.not_null
