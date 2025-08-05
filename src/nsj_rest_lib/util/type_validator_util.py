@@ -78,6 +78,16 @@ class TypeValidatorUtil:
                 value = datetime.time(hour=hor, minute=min, second=sec)
             else:
                 erro_tipo = True
+        elif obj.expected_type is datetime.timedelta and isinstance(value, str):
+            match_time = matcher_time.search(value)
+            if match_time:
+                hor = int(match_time.group(1))
+                min = int(match_time.group(2))
+                sec = int(match_time.group(3))
+
+                value = datetime.timedelta(hours=hor, minutes=min, seconds=sec)
+            else:
+                erro_tipo = True
         elif isinstance(obj.expected_type, enum.EnumMeta):
             # Enumerados
             try:
