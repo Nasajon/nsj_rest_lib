@@ -99,6 +99,7 @@ class RouteBase:
         fields = fields.split(",")
 
         matcher_dot = re.compile("(.+)\.(.+)")
+        matcher_dot_fields = re.compile("([^\.]+)")
         matcher_par = re.compile("(.+)\((.+)\)")
 
         # Construindo o mapa de retorno
@@ -112,17 +113,26 @@ class RouteBase:
             match_par = matcher_par.match(field)
 
             if match_dot is not None:
-                # Tratando fields=entidade_aninhada.propriedade
-                key = match_dot.group(1)
-                value = match_dot.group(2)
+                dot_fields = matcher_dot_fields.findall(field)
+                # Tratando fields=entidade_aninhada.propriedade.propriedade.propriedade
+                # onde ele vai preenchendo o mapa da esquerda para a direita
+                # o ponto ruim dessa abordagem é que se houverem duas propriedades iguais elas serão tratadas como uma só
+                for i in range(len(dot_fields)):
+                    #pulando primeira entidade
+                    if i == 0:
+                        continue
+                    
+                    key  = dot_fields[i-1]    
+                    value = dot_fields[i]
+                    
+                    # Adicionando a propriedade do objeto interno as campos root
+                    root_field_list = fields_map.setdefault('root', set())
+                    if not key in root_field_list:
+                        root_field_list.add(key)
 
-                # Adicionando a propriedade do objeto interno as campos root
-                root_field_list = fields_map.setdefault("root", set())
-                if not key in root_field_list:
-                    root_field_list.add(key)
-
-                field_list = fields_map.setdefault(key, set())
-                field_list.add(value)
+                    field_list = fields_map.setdefault(key, set())
+                    field_list.add(value)
+                
             elif match_par is not None:
                 # Tratando fields=entidade_aninhada(propriedade1, propriedade2)
                 key = match_dot.group(1)
