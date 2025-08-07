@@ -466,7 +466,13 @@ class DTOBase(abc.ABC):
             # Criando o mapa de fields para a entidade aninhada
             internal_fields = None
             if field in fields:
+                list_fields = [field]
                 internal_fields = {"root": fields[field]}
+                for list_field in list_fields:
+                    for field_aux in fields[list_field]:
+                        if field_aux in fields:
+                            internal_fields[field_aux] = fields[field_aux]
+                            list_fields += [field_aux]
 
             # Recuperando o valor do atributo
             value = getattr(self, field, None)
