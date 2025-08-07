@@ -2,6 +2,8 @@ import re
 
 from typing import Callable, Dict, List, Set
 
+from pydantic_core.core_schema import none_schema
+
 from nsj_rest_lib.controller.funtion_route_wrapper import FunctionRouteWrapper
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
@@ -79,7 +81,64 @@ class RouteBase:
                 self._entity_class,
                 self._dto_response_class,
             )
+    
+    @staticmethod
+    def extrair_relacoes_hierarquicas(fields: str) -> list[str]:
+        resultado = []
+        def extrair_filhos(pai : str, fields : str, res : List ):
+            listfields = ''
+            i = 0
+            nome = ''         
+            while i < len(fields):
+                c = fields[i]
+                
+                if c == '(':
+                    last_par = encontrar_fecho(fields, i)
+                    sub_str = fields[i+1:last_par]
+                    extrair_filhos(nome,sub_str, res)
+                    i = last_par + 1
+                    continue
+                elif(c == ','):
+                    nome = ''
+                else:
+                    nome += c
+                i += 1
+                    
+                listfields += c
+                
+            if pai is not None:
+                res.append(f"{pai}({listfields})")
+            else:
+                res += listfields.split(',')
+        
+        def encontrar_fecho(s, inicio):
+            count = 1
+            for i in range(inicio + 1, len(s)):
+                if s[i] == '(':
+                    count += 1
+                elif s[i] == ')':
+                    count -= 1
+                    if count == 0:
+                        return i
+                    
+            raise ValueError("Parênteses desbalanceados")
+        
+        extrair_filhos(None, fields, resultado)
+        return resultado        
+                
 
+
+    @staticmethod
+    def parse_entities(pai: str, field: str, fields : Dict) -> dict:
+        if '(' in field:
+            name, rest = field.split('(', 1)
+            rest = rest.rsplit(')', 1)[0]
+            fields.setdefault(name.strip(), set())
+            RouteBase.parse_entities(name, rest, fields)
+        else:
+            for f in field.split(','):
+                fields[pai].add(f)
+            
     @staticmethod
     def parse_fields(dto_class: DTOBase, fields: str) -> Dict[str, Set[str]]:
         """
@@ -96,10 +155,18 @@ class RouteBase:
             fields_map.setdefault("root", dto_class.resume_fields)
             return fields_map
 
-        fields = fields.split(",")
+        # fields = fields.split(",")
 
         matcher_dot = re.compile("(.+)\.(.+)")
+        matcher_dot_fields = re.compile("([^\.]+)")
         matcher_par = re.compile("(.+)\((.+)\)")
+        is_dot_fields = re.compile("^([a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*)(\s*,\s*([a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*))*$")
+        
+        if is_dot_fields.match(fields) is None:
+           fields = RouteBase.extrair_relacoes_hierarquicas(fields)
+        else:
+            fields = fields.split(",")
+        
 
         # Construindo o mapa de retorno
         fields_map = {}
@@ -112,34 +179,30 @@ class RouteBase:
             match_par = matcher_par.match(field)
 
             if match_dot is not None:
-                # Tratando fields=entidade_aninhada.propriedade
-                key = match_dot.group(1)
-                value = match_dot.group(2)
+                dot_fields = matcher_dot_fields.findall(field)
+                # Tratando fields=entidade_aninhada.propriedade.propriedade.propriedade
+                # onde ele vai preenchendo o mapa da esquerda para a direita
+                # o ponto ruim dessa abordagem é que se houverem duas propriedades iguais elas serão tratadas como uma só
+                for i in range(len(dot_fields)):
+                    #pulando primeira entidade
+                    if i == 0:
+                        continue
+                    
+                    key  = dot_fields[i-1]    
+                    value = dot_fields[i]
+                    
+                    # Adicionando a propriedade do objeto interno as campos root
+                    root_field_list = fields_map.setdefault('root', set())
+                    if not key in root_field_list:
+                        root_field_list.add(key)
 
-                # Adicionando a propriedade do objeto interno as campos root
-                root_field_list = fields_map.setdefault("root", set())
-                if not key in root_field_list:
-                    root_field_list.add(key)
-
-                field_list = fields_map.setdefault(key, set())
-                field_list.add(value)
+                    field_list = fields_map.setdefault(key, set())
+                    field_list.add(value)
+                
             elif match_par is not None:
                 # Tratando fields=entidade_aninhada(propriedade1, propriedade2)
-                key = match_dot.group(1)
-                value = match_dot.group(2)
-
-                field_list = fields_map.setdefault(key, set())
-
-                # Adicionando a propriedade do objeto interno as campos root
-                root_field_list = fields_map.setdefault("root", set())
-                if not key in root_field_list:
-                    root_field_list.add(key)
-
-                # Tratando cada campo dentro do parêntese
-                for val in value.split(","):
-                    val = val.strip()
-
-                    field_list.add(val)
+                fields_map.setdefault("root", set())
+                RouteBase.parse_entities("root", field, fields_map)
             else:
                 # Tratando propriedade simples (sem entidade aninhada)
                 root_field_list = fields_map.setdefault("root", set())
