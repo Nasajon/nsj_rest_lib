@@ -185,6 +185,7 @@ class DAOBase:
             field_filter_where_and = []
             field_filter_where_in = []
             field_filter_where_not_in = []
+            field_filter_where_native_in: str = None
             table_alias = "t0"
 
             # Iterating condictions
@@ -213,6 +214,9 @@ class DAOBase:
                     operator = "ilike"
                 elif condiction.operator == FilterOperator.NOT_NULL:
                     operator = "is not null"
+                elif condiction.operator == FilterOperator.IN:
+                    operator = "in"
+
 
                 # Making condiction alias
                 if not (condiction.operator == FilterOperator.NOT_NULL):
@@ -238,6 +242,8 @@ class DAOBase:
                     field_filter_where_not_in.append(condiction_alias_subtituir)
                 elif operator == "=" or operator == "like" or operator == "ilike":
                     field_filter_where_or.append(condiction_buffer)
+                elif operator == "in":
+                    field_filter_where_native_in = condiction_alias_subtituir
                 else:
                     field_filter_where_and.append(condiction_buffer)
 
@@ -258,6 +264,8 @@ class DAOBase:
                             filter_values_map[condiction_alias] = ", ".join(
                                 str(value) for value in condiction.value
                             )
+                        elif isinstance(condiction.value, list) >= 1:
+                            filter_values_map[condiction_alias] = tuple(condiction.value)
                         else:
                             filter_values_map[condiction_alias] = condiction.value
 
@@ -269,9 +277,15 @@ class DAOBase:
             # Formating condictions (with OR)
             field_filter_where_or = " or ".join(field_filter_where_or)
             field_filter_where_and = " and ".join(field_filter_where_and)
+
             if field_filter_where_in:
                 field_filter_where_in = f"{table_alias}.{filter_field} in ({', '.join(field_filter_where_in)})"
                 filters_where.append(field_filter_where_in)
+
+            if field_filter_where_native_in:
+                field_filter_where_native_in = f"{table_alias}.{filter_field} in {field_filter_where_native_in}"
+                filters_where.append(field_filter_where_native_in)
+
             if field_filter_where_not_in:
                 field_filter_where_not_in = f"{table_alias}.{filter_field} not in ({', '.join(field_filter_where_not_in)})"
                 filters_where.append(field_filter_where_not_in)
@@ -721,6 +735,22 @@ class DAOBase:
 
         self._db.execute(sql, registro=id)
 
+
+    def delete_relacionamentos_conjunto(
+        self,
+        ids: List[str],
+        conjunto_type: ConjuntoType = None,
+    ):
+        # Resolvendo a tabela de conjunto
+        tabela_conjunto = f"ns.conjuntos{conjunto_type.name.lower()}"
+
+        # Removendo o relacionamento com o conjunto
+        sql = f"""
+        delete from {tabela_conjunto} where registro in :registro
+        """
+
+        self._db.execute(sql, registro=tuple(ids))
+
     def _sql_insert_fields(
         self, entity: EntityBase, sql_read_only_fields: List[str] = []
     ) -> str:
@@ -1089,7 +1119,7 @@ class DAOBase:
         INSERT INTO {REST_LIB_AUTO_INCREMENT_TABLE} (seq_name, current_value)
         VALUES (:sequence_name, :start_value)
         ON CONFLICT (seq_name)
-        DO UPDATE SET current_value = {REST_LIB_AUTO_INCREMENT_TABLE}.current_value + 1 
+        DO UPDATE SET current_value = {REST_LIB_AUTO_INCREMENT_TABLE}.current_value + 1
         RETURNING {REST_LIB_AUTO_INCREMENT_TABLE}.current_value
         """
 
