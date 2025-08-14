@@ -1090,7 +1090,7 @@ class ServiceBase:
             if (insert and hasattr(entity, self._created_by_property)) or (
                 hasattr(entity, self._updated_by_property)
             ):
-                if hasattr(g, "profile") and g.profile is not None:
+                if g and hasattr(g, "profile") and g.profile is not None:
                     auth_type_is_api_key = g.profile["authentication_type"] == "api_key"
                     user = g.profile["email"]
                     if insert and hasattr(entity, self._created_by_property):
