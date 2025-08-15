@@ -213,6 +213,10 @@ class DAOBase:
                     operator = "ilike"
                 elif condiction.operator == FilterOperator.NOT_NULL:
                     operator = "is not null"
+                elif condiction.operator == FilterOperator.LENGTH_GREATER_OR_EQUAL_THAN:
+                    operator = ">="
+                elif condiction.operator == FilterOperator.LENGTH_LESS_OR_EQUAL_THAN:
+                    operator = "<="
 
                 # Making condiction alias
                 if not (condiction.operator == FilterOperator.NOT_NULL):
@@ -225,7 +229,18 @@ class DAOBase:
                     condiction_alias_subtituir = ""
 
                 # Making condiction buffer
-                condiction_buffer = f"{table_alias}.{filter_field} {operator} {condiction_alias_subtituir}"
+                filter_field_str = filter_field
+                if condiction.operator in [
+                    FilterOperator.LENGTH_GREATER_OR_EQUAL_THAN,
+                    FilterOperator.LENGTH_LESS_OR_EQUAL_THAN,
+                ]:
+                    filter_field_str = f"length({table_alias}.{filter_field})"
+                else:
+                    filter_field_str = f"{table_alias}.{filter_field}"
+
+                condiction_buffer = (
+                    f"{filter_field_str} {operator} {condiction_alias_subtituir}"
+                )
 
                 multiple_values = len(filters[filter_field]) > 1 or (
                     isinstance(condiction.value, set) and len(condiction.value) > 1
