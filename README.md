@@ -78,10 +78,10 @@ Há dois conjuntos distintos de teste:
 ```sh
 docker compose up -d postgres
 docker compose up -d api-test
-docker compose up -d test
+docker compose up test
 ```
 
-2. Tetes apenas de código fonte
+2. Testes apenas de código fonte
    1. Utiliza apenas o pytest
    2. Equivalem ao que é popularmente chamado de testes unitários
    3. Rodar sem dependências de processos em execução
