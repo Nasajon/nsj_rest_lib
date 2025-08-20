@@ -313,6 +313,7 @@ class ServiceBase:
                 is_entity_filter = False
                 is_conjunto_filter = False
                 is_sql_join_filter = False
+                is_length_filter = False
                 dto_field = None
                 dto_sql_join_field = None
                 table_alias = None
@@ -381,6 +382,10 @@ class ServiceBase:
                     field_filter = self._dto_class.field_filters_map[filter]
                     aux = self._dto_class.field_filters_map[filter].field_name
                     dto_field = self._dto_class.fields_map[aux]
+                    is_length_filter = field_filter.operator in [
+                        FilterOperator.LENGTH_GREATER_OR_EQUAL_THAN,
+                        FilterOperator.LENGTH_LESS_OR_EQUAL_THAN,
+                    ]
 
                 elif filter == self._dto_class.conjunto_field:
                     is_conjunto_filter = True
@@ -451,7 +456,11 @@ class ServiceBase:
                         aux_entity_class = dto_sql_join_field.entity_type
 
                     # Convertendo os valores para o formato esperado no entity
-                    if not is_entity_filter and not is_sql_join_filter:
+                    if (
+                        not is_entity_filter
+                        and not is_sql_join_filter
+                        and not is_length_filter
+                    ):
                         converted_values = aux_dto_class.custom_convert_value_to_entity(
                             value,
                             dto_field,
