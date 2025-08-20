@@ -167,6 +167,8 @@ class DTO:
         # Creating sql_read_only_fields in cls, if needed
         self._check_class_attribute(cls, "sql_read_only_fields", [])
 
+        self._check_class_attribute(cls, "sql_no_update_fields", set())
+
         # Creating object_fields_map in cls, if needed
         self._check_class_attribute(cls, "object_fields_map", {})
 
@@ -259,6 +261,10 @@ class DTO:
                     getattr(cls, "sql_read_only_fields").append(
                         attr.entity_field or key
                     )
+
+                if attr.no_update is True:
+                    cls.sql_no_update_fields.add(attr.entity_field or key)
+                    pass
 
                 # Verifica se o campo é uma métrica do opentelemetry
                 if attr.metric_label:
