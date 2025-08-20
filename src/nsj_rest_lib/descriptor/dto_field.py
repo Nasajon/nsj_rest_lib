@@ -77,6 +77,7 @@ class DTOField:
         candidate_key: bool = False,
         search: bool = True,
         read_only: bool = False,
+        no_update: bool = False,
         metric_label: bool = False,
         auto_increment: dict[str, any] = {},
     ):
@@ -128,6 +129,8 @@ class DTOField:
 
         - read_only: Permite declarar propriedades que estão disponíveis no GET (list ou unitário), mas que não poderão ser usadas para gravação (POST, PUT ou PATCH).
 
+        - no_update: Permite declarar propriedades que estão disponíveis no GET e POST, mas que não poderão ser usadas para atualização (PUT ou PATCH).
+
         - metric_label: Permite indicar quais campos serão enviados como métricas para o OpenTelemetry Collector.
 
         - auto_increment: Dicionário para controle de campos com auto incremento de valores. O padrão do dicionário é:
@@ -178,6 +181,7 @@ class DTOField:
         self.candidate_key = candidate_key
         self.search = search
         self.read_only = read_only
+        self.no_update = no_update
         self.metric_label = metric_label
 
         self.auto_increment = None
