@@ -190,19 +190,39 @@ class DTOBase(abc.ABC):
                     for item in kwargs[field]:
                         # Preenchendo os campos de particionanmento, se necessário (normalmente: tenant e grupo_empresarial)
                         for partition_field in self.__class__.partition_fields:
-                            if (
-                                (
-                                    partition_field not in item
-                                    or item[partition_field] is None
+                            if isinstance(item, dict):
+                                if (
+                                    (
+                                        partition_field not in item
+                                        or item[partition_field] is None
+                                    )
+                                    and partition_field
+                                    in dto_list_field.dto_type.partition_fields
+                                ):
+                                    partition_value = getattr(self, partition_field)
+                                    item[partition_field] = partition_value
+                            elif isinstance(item, dto_list_field.dto_type):
+                                if (
+                                    not getattr(item, partition_field)
+                                    and partition_field
+                                    in dto_list_field.dto_type.partition_fields
+                                ):
+                                    partition_value = getattr(self, partition_field)
+                                    setattr(item, partition_field, partition_value)
+                            else:
+                                raise ValueError(
+                                    f"O campo {field} deveria ser uma lista do tipo {dto_list_field.dto_type}."
                                 )
-                                and partition_field
-                                in dto_list_field.dto_type.partition_fields
-                            ):
-                                partition_value = getattr(self, partition_field)
-                                item[partition_field] = partition_value
 
                         # Criando o DTO relacionado
-                        item_dto = dto_list_field.dto_type(**item)
+                        if isinstance(item, dict):
+                            item_dto = dto_list_field.dto_type(**item)
+                        elif isinstance(item, dto_list_field.dto_type):
+                            item_dto = item
+                        else:
+                            raise ValueError(
+                                f"O campo {field} deveria ser uma lista do tipo {dto_list_field.dto_type}."
+                            )
 
                         # Adicionando o DTO na lista do relacionamento
                         related_itens.append(item_dto)
