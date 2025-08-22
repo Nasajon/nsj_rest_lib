@@ -314,16 +314,32 @@ class DTOBase(abc.ABC):
                     #           the base DTO is always.
                     continue
 
-                val = DTOBase.convert_value_to_entity(
-                    getattr(dto, agg_field),
+                value = getattr(dto, agg_field)
+                custom_value_converted = DTOBase.custom_convert_value_to_entity(
+                    value,
                     dto_field,
+                    entity_field,
                     none_as_empty,
-                    entity_class,
+                    self.__dict__,
                 )
+                if len(custom_value_converted) > 0:
+                    for k1, v1 in custom_value_converted.items():
+                        setattr(entity, k1, v1)
+                        # pylint: disable-next=protected-access
+                        entity._sql_fields.append(k1)
+                        pass
+                else:
+                    val = DTOBase.convert_value_to_entity(
+                        value,
+                        dto_field,
+                        none_as_empty,
+                        entity_class,
+                    )
 
-                setattr(entity, entity_field, val)
-                # pylint: disable-next=protected-access
-                entity._sql_fields.append(entity_field)
+                    setattr(entity, entity_field, val)
+                    # pylint: disable-next=protected-access
+                    entity._sql_fields.append(entity_field)
+                    pass
                 pass
             pass
 
