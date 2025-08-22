@@ -1877,7 +1877,7 @@ class ServiceBase:
                                     selected_fields: ty.Dict[str, ty.Set[str]],
                                     partition_fields: ty.Dict[str, ty.Any]
                                     ) -> None:
-        ns = copy.copy(self)
+        dto_bak = self._dto_class
 
         for dto in dto_list:
             id_ = getattr(dto, dto.pk_field)
@@ -1888,23 +1888,24 @@ class ServiceBase:
                 if k not in selected_fields['root']:
                     continue
 
-                res_dto = v.expected_type
+                res_dto: DTOBase = ty.cast(DTOBase, v.expected_type)
 
                 fields: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
                 if k in selected_fields:
                     fields = {'root': selected_fields[k]}
                     pass
 
-                ns._dto_class = res_dto
+                self._dto_class = res_dto
 
-                agg_dto = ns.get(
+                agg_dto = self.get(
                     id=id_,
                     partition_fields=partition_fields,
-                    fields=fields,
+                    fields=ty.cast(ty.Dict[str, ty.Any], fields),
                 )
 
                 setattr(dto, k, agg_dto)
                 pass
             pass
-        pass
 
+        self._dto_class = dto_bak
+        pass
