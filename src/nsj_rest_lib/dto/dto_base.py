@@ -187,7 +187,6 @@ class DTOBase(abc.ABC):
 
             if isinstance(kwargs[k], dict):
                 setattr(self, k, v.expected_type(**kwargs[k]))
-                pass
 
             raise ValueError(f"O campo {k} deveria ser um dicionário com" \
                              f" os campos da classe {v.expected_type}.")
@@ -327,7 +326,6 @@ class DTOBase(abc.ABC):
                         setattr(entity, k1, v1)
                         # pylint: disable-next=protected-access
                         entity._sql_fields.append(k1)
-                        pass
                 else:
                     val = DTOBase.convert_value_to_entity(
                         value,
@@ -339,9 +337,6 @@ class DTOBase(abc.ABC):
                     setattr(entity, entity_field, val)
                     # pylint: disable-next=protected-access
                     entity._sql_fields.append(entity_field)
-                    pass
-                pass
-            pass
 
         return entity
 
@@ -528,7 +523,6 @@ class DTOBase(abc.ABC):
             result[k] = getattr(self, k).convert_to_dict(
                 {"root": fields[k]} if k in fields else None
             )
-            pass
 
         # Converting list fields
         for field in self.list_fields_map:
