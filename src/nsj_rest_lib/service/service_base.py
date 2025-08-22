@@ -144,6 +144,12 @@ class ServiceBase:
 
             dto = dto_list[0]
 
+        for k, v in self._dto_class.aggregator_fields_map.items():
+            if k not in fields['root']:
+                continue
+            setattr(dto, k, v.expected_type(entity, escape_validator=True))
+            pass
+
         # Tratando das propriedades de lista
         if len(self._dto_class.list_fields_map) > 0:
             self._retrieve_related_lists([dto], fields)
@@ -162,14 +168,6 @@ class ServiceBase:
                 fields,
                 partition_fields,
             )
-
-        if len(self._dto_class.aggregator_fields_map) > 0:
-            self._retrieve_aggregator_fields(
-                dto_list=[dto],
-                selected_fields=fields,
-                partition_fields=partition_fields,
-            )
-            pass
 
         return dto
 
@@ -263,20 +261,23 @@ class ServiceBase:
         if dto_class is None:
             dto_class = self._dto_class
 
-        entity_fields = []
-        for field in fields:
-            # Skipping not DTO fields
-            if field not in dto_class.fields_map:
-                continue
+        acceptable_fields: ty.Set[str] = {
+            self._convert_to_entity_field(k, dto_class)
+            for k, v in dto_class.fields_map.items()
+            if k in fields
+        }
+        for v in dto_class.aggregator_fields_map.values():
+            acceptable_fields.update({
+                self._convert_to_entity_field(k1, v.expected_type)
+                for k1, v1 in v.expected_type.fields_map.items()
+                if k1 in fields
+            })
+            pass
 
-            entity_field_name = self._convert_to_entity_field(field, dto_class)
-            # Skipping not Entity fields
-            if entity_field_name not in entity.__dict__:
-                continue
+        # Removing all the fields not in the entity
+        acceptable_fields &= set(entity.__dict__)
 
-            entity_fields.append(entity_field_name)
-
-        return entity_fields
+        return list(acceptable_fields)
 
     def _convert_to_entity_field(
         self,
@@ -525,6 +526,14 @@ class ServiceBase:
             result = copy.deepcopy(fields)
             result["root"] = result["root"].union(self._dto_class.resume_fields)
 
+            for k, v in self._dto_class.aggregator_fields_map.items():
+                if k not in result['root']:
+                    continue
+
+                result['root'] |= v.expected_type.resume_fields
+                pass
+            pass
+
         return result
 
     def filter_list(self, filters: Dict[str, Any]):
@@ -689,10 +698,21 @@ class ServiceBase:
             joins_aux=joins_aux,
         )
 
+        agg_field_map: ty.Dict[str, DTOAggregator] = {
+            k: v
+            for k, v in self._dto_class.aggregator_fields_map.items()
+            if k in fields['root']
+        }
+
         # Convertendo para uma lista de DTOs
-        dto_list = [
-            self._dto_class(entity, escape_validator=True) for entity in entity_list
-        ]
+        dto_list = []
+        for entity in entity_list:
+            dto = self._dto_class(entity, escape_validator=True) # type: ignore
+            for k, v in agg_field_map.items():
+                setattr(dto, k, v.expected_type(entity, escape_validator=True))
+                pass
+            dto_list.append(dto)
+            pass
 
         # Agrupando o resultado, de acordo com o override de dados
         dto_list = self._group_by_override_data(dto_list)
@@ -716,14 +736,6 @@ class ServiceBase:
                 fields,
                 filters,
             )
-
-        if len(self._dto_class.aggregator_fields_map) > 0:
-            self._retrieve_aggregator_fields(
-                dto_list=dto_list,
-                selected_fields=fields,
-                partition_fields=filters,
-            )
-            pass
 
         # Returning
         return dto_list
@@ -1871,41 +1883,3 @@ class ServiceBase:
                             field = None
 
                         setattr(dto, key, field)
-
-    def _retrieve_aggregator_fields(self,
-                                    dto_list: ty.List[DTOBase],
-                                    selected_fields: ty.Dict[str, ty.Set[str]],
-                                    partition_fields: ty.Dict[str, ty.Any]
-                                    ) -> None:
-        dto_bak = self._dto_class
-
-        for dto in dto_list:
-            id_ = getattr(dto, dto.pk_field)
-
-            k: str
-            v: DTOAggregator
-            for k, v in dto.aggregator_fields_map.items():
-                if k not in selected_fields['root']:
-                    continue
-
-                res_dto: DTOBase = ty.cast(DTOBase, v.expected_type)
-
-                fields: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
-                if k in selected_fields:
-                    fields = {'root': selected_fields[k]}
-                    pass
-
-                self._dto_class = res_dto
-
-                agg_dto = self.get(
-                    id=id_,
-                    partition_fields=partition_fields,
-                    fields=ty.cast(ty.Dict[str, ty.Any], fields),
-                )
-
-                setattr(dto, k, agg_dto)
-                pass
-            pass
-
-        self._dto_class = dto_bak
-        pass
