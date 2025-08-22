@@ -299,17 +299,15 @@ class DTOBase(abc.ABC):
                 setattr(entity, entity_field, value)
                 entity._sql_fields.append(entity_field)
 
-        for k, agg in self.__class__.aggregator_fields_map.items():
+        for k, _ in self.__class__.aggregator_fields_map.items():
             dto = getattr(self, k)
             for agg_field, dto_field in dto.fields_map.items():
-                entity_field: str = agg_field
-                if dto_field.entity_field is not None:
-                    entity_field = dto_field.entity_field
-                    pass
+                entity_field = dto_field.entity_field or agg_field
 
                 if hasattr(entity, entity_field) is False:
                     continue
 
+                # pylint: disable-next=protected-access
                 if entity_field in entity._sql_fields:
                     # NOTE: Skipping a field if it was already created
                     #           previously. This means that the field in
@@ -324,6 +322,7 @@ class DTOBase(abc.ABC):
                 )
 
                 setattr(entity, entity_field, val)
+                # pylint: disable-next=protected-access
                 entity._sql_fields.append(entity_field)
                 pass
             pass
