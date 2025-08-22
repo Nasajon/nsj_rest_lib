@@ -180,14 +180,17 @@ class DTOBase(abc.ABC):
                or kwargs[k] is None:
                 setattr(self, k, None)
                 continue
-            if isinstance(kwargs[field], dict):
-                raise ValueError(
-                    f"O campo {field} deveria ser um dicionário com " \
-                    f"os campos da classe {v.dto_type}."
-                )
 
-            setattr(self, k, v.expected_type(**kwargs[k]))
-            pass
+            if isinstance(kwargs[k], v.expected_type):
+                setattr(self, k, kwargs[k])
+                continue
+
+            if isinstance(kwargs[k], dict):
+                setattr(self, k, v.expected_type(**kwargs[k]))
+                pass
+
+            raise ValueError(f"O campo {k} deveria ser um dicionário com" \
+                             f" os campos da classe {v.expected_type}.")
 
         # Setando os campos registrados como fields de lista
         if entity is None:
