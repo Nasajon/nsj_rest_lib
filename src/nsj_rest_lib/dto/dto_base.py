@@ -187,6 +187,7 @@ class DTOBase(abc.ABC):
 
             if isinstance(kwargs[k], dict):
                 setattr(self, k, v.expected_type(**kwargs[k]))
+                continue
 
             raise ValueError(f"O campo {k} deveria ser um dicionário com" \
                              f" os campos da classe {v.expected_type}.")
