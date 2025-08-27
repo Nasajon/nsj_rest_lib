@@ -1,12 +1,14 @@
 import copy
 import re
 import uuid
+import typing as ty
 
 from typing import Any, Callable, Dict, List, Set, Tuple
 
 from flask import g
 
 from nsj_rest_lib.dao.dao_base import DAOBase
+from nsj_rest_lib.descriptor import DTOAggregator
 from nsj_rest_lib.descriptor.dto_field import DTOFieldFilter
 from nsj_rest_lib.descriptor.dto_left_join_field import (
     DTOLeftJoinField,
@@ -142,6 +144,12 @@ class ServiceBase:
 
             dto = dto_list[0]
 
+        for k, v in self._dto_class.aggregator_fields_map.items():
+            if k not in fields['root']:
+                continue
+            setattr(dto, k, v.expected_type(entity, escape_validator=True))
+            pass
+
         # Tratando das propriedades de lista
         if len(self._dto_class.list_fields_map) > 0:
             self._retrieve_related_lists([dto], fields)
@@ -253,20 +261,23 @@ class ServiceBase:
         if dto_class is None:
             dto_class = self._dto_class
 
-        entity_fields = []
-        for field in fields:
-            # Skipping not DTO fields
-            if field not in dto_class.fields_map:
-                continue
+        acceptable_fields: ty.Set[str] = {
+            self._convert_to_entity_field(k, dto_class)
+            for k, v in dto_class.fields_map.items()
+            if k in fields
+        }
+        for v in dto_class.aggregator_fields_map.values():
+            acceptable_fields.update({
+                self._convert_to_entity_field(k1, v.expected_type)
+                for k1, v1 in v.expected_type.fields_map.items()
+                if k1 in fields
+            })
+            pass
 
-            entity_field_name = self._convert_to_entity_field(field, dto_class)
-            # Skipping not Entity fields
-            if entity_field_name not in entity.__dict__:
-                continue
+        # Removing all the fields not in the entity
+        acceptable_fields &= set(entity.__dict__)
 
-            entity_fields.append(entity_field_name)
-
-        return entity_fields
+        return list(acceptable_fields)
 
     def _convert_to_entity_field(
         self,
@@ -524,6 +535,15 @@ class ServiceBase:
             result = copy.deepcopy(fields)
             result["root"] = result["root"].union(self._dto_class.resume_fields)
 
+            for k, v in self._dto_class.aggregator_fields_map.items():
+                if k not in result['root']:
+                    continue
+
+                result['root'] |= v.expected_type.resume_fields
+
+                if k in result:
+                    result['root'] |= result.pop(k)
+
         return result
 
     def filter_list(self, filters: Dict[str, Any]):
@@ -688,10 +708,21 @@ class ServiceBase:
             joins_aux=joins_aux,
         )
 
+        agg_field_map: ty.Dict[str, DTOAggregator] = {
+            k: v
+            for k, v in self._dto_class.aggregator_fields_map.items()
+            if k in fields['root']
+        }
+
         # Convertendo para uma lista de DTOs
-        dto_list = [
-            self._dto_class(entity, escape_validator=True) for entity in entity_list
-        ]
+        dto_list = []
+        for entity in entity_list:
+            dto = self._dto_class(entity, escape_validator=True) # type: ignore
+            for k, v in agg_field_map.items():
+                setattr(dto, k, v.expected_type(entity, escape_validator=True))
+                pass
+            dto_list.append(dto)
+            pass
 
         # Agrupando o resultado, de acordo com o override de dados
         dto_list = self._group_by_override_data(dto_list)

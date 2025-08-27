@@ -7,6 +7,7 @@ import enum
 from typing import Any, Dict, List, Set, Union
 
 from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
+from nsj_rest_lib.descriptor import DTOAggregator
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField, DTOFieldFilter
 
@@ -23,6 +24,7 @@ class DTOBase(abc.ABC):
     sql_read_only_fields: list = []
     object_fields_map: list = []
     field_filters_map: Dict[str, DTOFieldFilter]
+    aggregator_fields_map: Dict[str, DTOAggregator] = {}
     # TODO Refatorar para suportar PK composto
     pk_field: str
     fixed_filters: Dict[str, Any]
@@ -173,6 +175,23 @@ class DTOBase(abc.ABC):
             else:
                 setattr(self, field, None)
 
+        for k, v in self.__class__.aggregator_fields_map.items():
+            if k not in kwargs \
+               or kwargs[k] is None:
+                setattr(self, k, None)
+                continue
+
+            if isinstance(kwargs[k], v.expected_type):
+                setattr(self, k, kwargs[k])
+                continue
+
+            if isinstance(kwargs[k], dict):
+                setattr(self, k, v.expected_type(**kwargs[k]))
+                continue
+
+            raise ValueError(f"O campo {k} deveria ser um dicionário com" \
+                             f" os campos da classe {v.expected_type}.")
+
         # Setando os campos registrados como fields de lista
         if entity is None:
             for field in self.__class__.list_fields_map:
@@ -299,6 +318,46 @@ class DTOBase(abc.ABC):
                 # Setando na entidade
                 setattr(entity, entity_field, value)
                 entity._sql_fields.append(entity_field)
+
+        for k, _ in self.__class__.aggregator_fields_map.items():
+            dto = getattr(self, k)
+            for agg_field, dto_field in dto.fields_map.items():
+                entity_field = dto_field.entity_field or agg_field
+
+                if hasattr(entity, entity_field) is False:
+                    continue
+
+                # pylint: disable-next=protected-access
+                if entity_field in entity._sql_fields:
+                    # NOTE: Skipping a field if it was already created
+                    #           previously. This means that the field in
+                    #           the base DTO is always.
+                    continue
+
+                value = getattr(dto, agg_field)
+                custom_value_converted = DTOBase.custom_convert_value_to_entity(
+                    value,
+                    dto_field,
+                    entity_field,
+                    none_as_empty,
+                    self.__dict__,
+                )
+                if len(custom_value_converted) > 0:
+                    for k1, v1 in custom_value_converted.items():
+                        setattr(entity, k1, v1)
+                        # pylint: disable-next=protected-access
+                        entity._sql_fields.append(k1)
+                else:
+                    val = DTOBase.convert_value_to_entity(
+                        value,
+                        dto_field,
+                        none_as_empty,
+                        entity_class,
+                    )
+
+                    setattr(entity, entity_field, val)
+                    # pylint: disable-next=protected-access
+                    entity._sql_fields.append(entity_field)
 
         return entity
 
@@ -476,6 +535,14 @@ class DTOBase(abc.ABC):
                 )
                 if getattr(self, field) is not None
                 else None
+            )
+
+        for k in self.aggregator_fields_map:
+            if k not in fields["root"]:
+                continue
+
+            result[k] = getattr(self, k).convert_to_dict(
+                {"root": fields[k]} if k in fields else None
             )
 
         # Converting list fields
