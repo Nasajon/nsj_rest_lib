@@ -530,14 +530,10 @@ class ServiceBase:
                 if k not in result['root']:
                     continue
 
-                # NOTE: Written this way to avoid evaluating
-                #           `set(v.expected_type.fields_map.keys())` when
-                #           `result` has the key.  Which would happen if
-                #           it's passed as the second arg of `pop`.
-                _r: ty.Optional[ty.Set[str]] = result.pop(k, None)
-                result['root'] |= _r or set(v.expected_type.fields_map.keys())
-                pass
-            pass
+                result['root'] |= v.expected_type.resume_fields
+
+                if k in result:
+                    result['root'] |= result.pop(k)
 
         return result
 
