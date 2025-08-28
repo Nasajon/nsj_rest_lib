@@ -1203,6 +1203,7 @@ class ServiceBase:
                     aditional_entity_filters,
                     partial_update,
                     dto.sql_read_only_fields,
+                    dto.sql_no_update_fields,
                     upsert,
                 )
 
