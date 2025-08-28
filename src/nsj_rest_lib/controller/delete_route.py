@@ -12,7 +12,7 @@ from nsj_rest_lib.settings import get_logger
 
 from nsj_gcf_utils.json_util import json_dumps
 from nsj_gcf_utils.pagination_util import PaginationException
-from nsj_gcf_utils.rest_error_util import format_json_error
+from nsj_gcf_utils.rest_error_util import format_json_error, format_error_body
 
 
 class DeleteRoute(RouteBase):
@@ -50,6 +50,49 @@ class DeleteRoute(RouteBase):
 
         return partition_filters
 
+
+    def _exception_to_http(self, exception: Exception):
+        if isinstance(exception, MissingParameterException):
+            return 400, exception
+
+        if isinstance(exception, NotFoundException):
+            return 404, exception
+
+        return 500, exception
+
+
+    def _multi_status_response(
+        self,
+        request_data: list,
+        delete_return: dict,
+    )-> dict:
+        """
+        Constrói a resposta para api multi-status
+        """
+        _return_mapping = {}
+        _global_status = "OK" if len(delete_return) == 0 else "ERROR" if len(delete_return) == len(request_data) else "MULTI-STATUS"
+        for _id in request_data:
+            if _id in delete_return:
+                _return_mapping[_id] = self._exception_to_http(delete_return[_id])
+            else:
+                _return_mapping[_id] = 204, None
+
+        _response = {
+            "global_status" : _global_status,
+            "response": [
+                    {
+                        "status": _http_code,
+                        "id": _id,
+                        "body": {},
+                        "error":
+                            next(iter(format_error_body(f'{_ex}')), {}) if _ex else {}
+
+                    } for  _id, (_http_code, _ex) in _return_mapping.items()
+            ]
+        }
+        return _response
+
+
     def handle_request(
         self,
         id: str = None,
@@ -86,14 +129,23 @@ class DeleteRoute(RouteBase):
                         partition_filters,
                         custom_before_delete=self.custom_before_delete,
                     )
+
+                    # Retornando a resposta da requisição
+                    return ("", 204, {**DEFAULT_RESP_HEADERS})
                 else:
-                    service.delete_list(
+
+                    request_data = list(map(lambda item: item["id"] if isinstance(item, dict) else item, request_data))
+
+                    _delete_return = service.delete_list(
                         request_data,
                         partition_filters
                     )
 
-                # Retornando a resposta da requuisição
-                return ("", 204, {**DEFAULT_RESP_HEADERS})
+                    _response = self._multi_status_response(request_data, _delete_return)
+
+                    return (json_dumps(_response), 207, {**DEFAULT_RESP_HEADERS})
+
+
             except MissingParameterException as e:
                 get_logger().warning(e)
                 if self._handle_exception is not None:
