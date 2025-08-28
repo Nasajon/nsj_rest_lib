@@ -129,7 +129,7 @@ class DTOField:
 
         - read_only: Permite declarar propriedades que estão disponíveis no GET (list ou unitário), mas que não poderão ser usadas para gravação (POST, PUT ou PATCH).
 
-        - no_update: Permite declarar propriedades que estão disponíveis no GET e POST, mas que não poderão ser usadas para atualização (PUT ou PATCH).
+        - no_update: Permite declarar propriedades que estão disponíveis no GET e POST, mas que não poderão ser usadas para atualização (PUT ou PATCH). Este campo é ignorado em upsert.
 
         - metric_label: Permite indicar quais campos serão enviados como métricas para o OpenTelemetry Collector.
 
