@@ -48,6 +48,13 @@ class DTOAggregator:
     description: str
 
     def __init__(self, description: str = '') -> None:
+        """
+        -----------
+        Parameters:
+        -----------
+
+        - description: Descrição deste campo na documentação.
+        """
         self.description = description
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"

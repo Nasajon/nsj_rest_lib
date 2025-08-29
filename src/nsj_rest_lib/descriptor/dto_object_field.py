@@ -42,6 +42,8 @@ class DTOObjectField:
 
         - validator: Função que recebe o valor (a ser atribuído), e retorna o mesmo valor após algum
             tipo de tratamento (como adição ou remoção, automática, de formatação).
+
+        - description: Descrição deste campo na documentação.
         """
         self.name = None
         self.description = description

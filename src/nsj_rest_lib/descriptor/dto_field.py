@@ -160,6 +160,7 @@ class DTOField:
                 - "start_value": Valor inicial da sequência de auto incremento (opcional, default 1).
                 - "db_managed": Flag que indica se o auto incremento é gerenciado pelo banco de dados (default False, ou seja, o auto incremento é gerenciado pelo código).
                     Se for True, todas as outras propriedades são ignoradas, porque o valor será gerencia pelo BD (só faz sentido para campos inteiros).
+        - description: Descrição deste campo na documentação.
         """
         self.name = None
         self.description = description

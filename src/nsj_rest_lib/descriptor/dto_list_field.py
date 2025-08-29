@@ -49,6 +49,8 @@ class DTOListField:
 
         - service_name: Nome do serviço customizado, caso se deseje que as operações sobre esse tipo de lista se façam
             de um modo customizado (e não usando o service_base do próprio RestLib).
+
+        - description: Descrição deste campo na documentação.
         """
         self.name = None
         self.description = description
