@@ -15,6 +15,8 @@ class EntityRelationOwner:
 class DTOLeftJoinField:
     _ref_counter = 0
 
+    description: str
+
     def __init__(
         self,
         resume: bool,
@@ -26,6 +28,7 @@ class DTOLeftJoinField:
         type: object = None,
         validator: typing.Callable = None,
         use_default_validator: bool = True,
+        description: str = '',
     ):
         """
         -----------
@@ -49,8 +52,10 @@ class DTOLeftJoinField:
         use_default_validator: Flag indicando se o validator padrão deve ser aplicado à propriedade
             (esse validator padrão verifica o tipo de dados passado, e as demais verificações
             recebidas no filed, como, por exemplo, valor máximo, mínio, not_null, etc).
+        description: Descrição deste campo na documentação.
         """
         self.name = None
+        self.description = description
         self.resume = resume
         self.expected_type = type
         self.dto_type = dto_type

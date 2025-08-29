@@ -8,6 +8,8 @@ from nsj_rest_lib.exception import DTOListFieldConfigException
 class DTOListField:
     _ref_counter = 0
 
+    description: str
+
     def __init__(
         self,
         dto_type: DTOBase,
@@ -20,6 +22,7 @@ class DTOListField:
         dto_post_response_type: DTOBase = None,
         relation_key_field: str = None,
         service_name: str = None,
+        description: str = '',
     ):
         """
         -----------
@@ -46,8 +49,11 @@ class DTOListField:
 
         - service_name: Nome do serviço customizado, caso se deseje que as operações sobre esse tipo de lista se façam
             de um modo customizado (e não usando o service_base do próprio RestLib).
+
+        - description: Descrição deste campo na documentação.
         """
         self.name = None
+        self.description = description
         self.dto_type = dto_type
         self.entity_type = entity_type
         self.related_entity_field = related_entity_field

@@ -56,6 +56,8 @@ class DTOAutoIncrementField:
 class DTOField:
     _ref_counter = 0
 
+    description: str
+
     def __init__(
         self,
         type: object = None,
@@ -79,6 +81,7 @@ class DTOField:
         read_only: bool = False,
         metric_label: bool = False,
         auto_increment: dict[str, any] = {},
+        description: str = '',
     ):
         """
         -----------
@@ -157,8 +160,10 @@ class DTOField:
                 - "start_value": Valor inicial da sequência de auto incremento (opcional, default 1).
                 - "db_managed": Flag que indica se o auto incremento é gerenciado pelo banco de dados (default False, ou seja, o auto incremento é gerenciado pelo código).
                     Se for True, todas as outras propriedades são ignoradas, porque o valor será gerencia pelo BD (só faz sentido para campos inteiros).
+        - description: Descrição deste campo na documentação.
         """
         self.name = None
+        self.description = description
         self.expected_type = type
         self.not_null = not_null
         self.resume = resume
