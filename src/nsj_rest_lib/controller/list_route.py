@@ -13,6 +13,7 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger, DEFAULT_PAGE_SIZE
+from nsj_rest_lib.util.log_time import log_time
 
 from nsj_gcf_utils.json_util import json_dumps
 from nsj_gcf_utils.pagination_util import page_body, PaginationException
@@ -41,6 +42,7 @@ class ListRoute(RouteBase):
             handle_exception=handle_exception,
         )
 
+    @log_time
     def handle_request(
         self,
         query_args: dict[str, any] = None,

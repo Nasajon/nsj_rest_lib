@@ -28,10 +28,10 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.validator.validate_data import validate_uuid
+from nsj_rest_lib.util.db_adapter2 import DBAdapter2
 from nsj_rest_lib.util.join_aux import JoinAux
+from nsj_rest_lib.util.log_time import log_time, log_time_context
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
-
-from nsj_gcf_utils.db_adapter2 import DBAdapter2
 
 
 class ServiceBase:
@@ -145,7 +145,7 @@ class ServiceBase:
             dto = dto_list[0]
 
         for k, v in self._dto_class.aggregator_fields_map.items():
-            if k not in fields['root']:
+            if k not in fields["root"]:
                 continue
             setattr(dto, k, v.expected_type(entity, escape_validator=True))
             pass
@@ -267,11 +267,13 @@ class ServiceBase:
             if k in fields
         }
         for v in dto_class.aggregator_fields_map.values():
-            acceptable_fields.update({
-                self._convert_to_entity_field(k1, v.expected_type)
-                for k1, v1 in v.expected_type.fields_map.items()
-                if k1 in fields
-            })
+            acceptable_fields.update(
+                {
+                    self._convert_to_entity_field(k1, v.expected_type)
+                    for k1, v1 in v.expected_type.fields_map.items()
+                    if k1 in fields
+                }
+            )
             pass
 
         # Removing all the fields not in the entity
@@ -536,13 +538,13 @@ class ServiceBase:
             result["root"] = result["root"].union(self._dto_class.resume_fields)
 
             for k, v in self._dto_class.aggregator_fields_map.items():
-                if k not in result['root']:
+                if k not in result["root"]:
                     continue
 
-                result['root'] |= v.expected_type.resume_fields
+                result["root"] |= v.expected_type.resume_fields
 
                 if k in result:
-                    result['root'] |= result.pop(k)
+                    result["root"] |= result.pop(k)
 
         return result
 
@@ -630,6 +632,7 @@ class ServiceBase:
 
         return joins_aux
 
+    @log_time
     def list(
         self,
         after: uuid.UUID,
@@ -711,18 +714,22 @@ class ServiceBase:
         agg_field_map: ty.Dict[str, DTOAggregator] = {
             k: v
             for k, v in self._dto_class.aggregator_fields_map.items()
-            if k in fields['root']
+            if k in fields["root"]
         }
 
         # Convertendo para uma lista de DTOs
-        dto_list = []
-        for entity in entity_list:
-            dto = self._dto_class(entity, escape_validator=True) # type: ignore
-            for k, v in agg_field_map.items():
-                setattr(dto, k, v.expected_type(entity, escape_validator=True))
+        with log_time_context(
+            f"Convertendo entities para lista de DTOs {self._dto_class}"
+        ):
+            dto_list = []
+            for entity in entity_list:
+                with log_time_context(f"Convertendo um único DTO"):
+                    dto = self._dto_class(entity, escape_validator=True)  # type: ignore
+                for k, v in agg_field_map.items():
+                    setattr(dto, k, v.expected_type(entity, escape_validator=True))
+                    pass
+                dto_list.append(dto)
                 pass
-            dto_list.append(dto)
-            pass
 
         # Agrupando o resultado, de acordo com o override de dados
         dto_list = self._group_by_override_data(dto_list)

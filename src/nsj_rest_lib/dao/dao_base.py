@@ -16,14 +16,16 @@ from nsj_rest_lib.exception import (
     NotFoundException,
     AfterRecordNotFoundException,
 )
+from nsj_rest_lib.util.db_adapter2 import DBAdapter2
 from nsj_rest_lib.util.join_aux import JoinAux
+from nsj_rest_lib.util.log_time import log_time
 
-from nsj_gcf_utils.db_adapter2 import DBAdapter2
 from nsj_gcf_utils.json_util import convert_to_dumps
 
 from nsj_rest_lib.settings import (
     USE_SQL_RETURNING_CLAUSE,
     REST_LIB_AUTO_INCREMENT_TABLE,
+    get_logger,
 )
 
 
@@ -306,6 +308,7 @@ class DAOBase:
 
         return (filters_where, filter_values_map)
 
+    @log_time
     def list(
         self,
         after: uuid.UUID,
@@ -455,6 +458,8 @@ class DAOBase:
         kwargs = {**order_map, **filter_values_map, **conjunto_map, **search_map}
 
         # Running the SQL query
+        get_logger().debug(f"[RestLib Debug] List SQL: {sql}")
+        get_logger().debug(f"[RestLib Debug] List Parameters: {kwargs}")
         resp = self._db.execute_query_to_model(sql, self._entity_class, **kwargs)
 
         return resp
