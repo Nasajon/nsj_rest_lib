@@ -914,14 +914,25 @@ class ServiceBase:
                 fields_to_list["root"] = set()
 
             # Busca todos os relacionados de uma vez
-            related_dto_list = service.list(None, None, fields_to_list, None, filters)
+            related_dto_list = service.list(
+                None,
+                None,
+                fields_to_list,
+                None,
+                filters,
+                return_hidden_fields=set([list_field.related_entity_field]),
+            )
 
             # Agrupa os relacionados por chave
             related_map = {}
             for related_dto in related_dto_list:
-                key = getattr(related_dto, list_field.related_entity_field, None)
-                if key is not None:
-                    related_map.setdefault(key, []).append(related_dto)
+                relation_key = str(
+                    related_dto.return_hidden_fields.get(
+                        list_field.related_entity_field, None
+                    )
+                )
+                if relation_key is not None:
+                    related_map.setdefault(relation_key, []).append(related_dto)
 
             # Seta nos DTOs principais
             for key, dtos in key_to_dtos.items():
@@ -2110,7 +2121,9 @@ class ServiceBase:
                 related_map = {}
                 for related_dto in related_dto_list:
                     relation_key = str(
-                        related_dto.return_hidden_fields[object_field.relation_field]
+                        related_dto.return_hidden_fields.get(
+                            object_field.relation_field, None
+                        )
                     )
                     if relation_key is not None:
                         related_map[relation_key] = related_dto
