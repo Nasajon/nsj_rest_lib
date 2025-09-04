@@ -28,11 +28,12 @@ from nsj_rest_lib.exception import (
     NotFoundException,
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
-from nsj_rest_lib.validator.validate_data import validate_uuid
+from nsj_rest_lib.settings import get_logger
 from nsj_rest_lib.util.db_adapter2 import DBAdapter2
 from nsj_rest_lib.util.join_aux import JoinAux
 from nsj_rest_lib.util.log_time import log_time, log_time_context
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
+from nsj_rest_lib.validator.validate_data import validate_uuid
 
 
 class ServiceBase:
@@ -243,6 +244,7 @@ class ServiceBase:
         fields: Set[str],
         dto_class=None,
         entity_class=None,
+        return_hidden_fields: set[str] = None,
     ) -> List[str]:
         """
         Convert a list of fields names to a list of entity fields names.
@@ -264,7 +266,7 @@ class ServiceBase:
 
         acceptable_fields: ty.Set[str] = {
             self._convert_to_entity_field(k, dto_class)
-            for k, v in dto_class.fields_map.items()
+            for k, _ in dto_class.fields_map.items()
             if k in fields
         }
         for v in dto_class.aggregator_fields_map.values():
@@ -276,6 +278,10 @@ class ServiceBase:
                 }
             )
             pass
+
+        # Adding hidden fields
+        if return_hidden_fields is not None:
+            acceptable_fields |= return_hidden_fields
 
         # Removing all the fields not in the entity
         acceptable_fields &= set(entity.__dict__)
@@ -642,12 +648,15 @@ class ServiceBase:
         order_fields: List[str],
         filters: Dict[str, Any],
         search_query: str = None,
+        return_hidden_fields: set[str] = None,
     ) -> List[DTOBase]:
         # Resolving fields
         fields = self._resolving_fields(fields)
 
         # Handling the fields to retrieve
-        entity_fields = self._convert_to_entity_fields(fields["root"])
+        entity_fields = self._convert_to_entity_fields(
+            fields["root"], return_hidden_fields=return_hidden_fields
+        )
 
         # Handling order fields
         asc_set = set()
@@ -726,6 +735,19 @@ class ServiceBase:
             for entity in entity_list:
                 with log_time_context(f"Convertendo um único DTO"):
                     dto = self._dto_class(entity, escape_validator=True)  # type: ignore
+
+                    # FIXME GAMBIARRA! A ideia aqui foi recuperar propriedades diretamente da Entity
+                    # para o DTO, pois os PropertiesDescriptors de Relacionamento estavam usando, erradamente,
+                    # o nome da Entity, e não do DTO.
+                    # A solução retrocompatível foi levar essas informações para o DTO.
+                    # Próximo passo é criar novos descritores e depreciar os antigos.
+                    result_hf: dict[str, any] = {}
+                    if return_hidden_fields:
+                        for hf in return_hidden_fields:
+                            value = getattr(entity, hf)
+                            result_hf[hf] = value
+                    setattr(dto, "return_hidden_fields", result_hf)
+
                 for k, v in agg_field_map.items():
                     setattr(dto, k, v.expected_type(entity, escape_validator=True))
                     pass
@@ -2081,26 +2103,47 @@ class ServiceBase:
                     {"root": fields[key]} if key in fields else None,
                     None,
                     related_filters,
+                    return_hidden_fields=set([object_field.relation_field]),
                 )
 
                 # Criando mapa de chave -> DTO relacionado
                 related_map = {}
                 for related_dto in related_dto_list:
-                    relation_key = getattr(related_dto, object_field.relation_field)
+                    relation_key = str(
+                        related_dto.return_hidden_fields[object_field.relation_field]
+                    )
                     if relation_key is not None:
                         related_map[relation_key] = related_dto
 
                 # Atribuindo os objetos relacionados nos DTOs originais
                 for dto in dto_list:
-                    pk_value = getattr(dto, self._dto_class.pk_field)
+                    pk_value = str(getattr(dto, self._dto_class.pk_field))
                     related_dto = related_map.get(pk_value)
                     setattr(dto, key, related_dto)
 
             elif object_field.entity_relation_owner == EntityRelationOwner.SELF:
+                # FIXME A recuperação do nome do field do DTO só é necessária,
+                # porque o relcionamento aponta para o nome da entity (isso deve ser mudado no futuro)
+                dto_field_name = None
+                for field, dto_field in self._dto_class.fields_map.items():
+                    dto_entity_field_name = None
+                    if dto_field.entity_field:
+                        dto_entity_field_name = dto_field.entity_field
+
+                    if object_field.relation_field in [field, dto_entity_field_name]:
+                        dto_field_name = field
+                        break
+
+                if not dto_field_name:
+                    get_logger().warning(
+                        f"Campo de relacionamento do tipo DTOObjectField.SELF ({object_field.relation_field}) não encontrado do DTO: {self._dto_class}"
+                    )
+                    continue
+
                 # Coletando todas as chaves de relacionamento para buscar de uma vez
                 keys_to_fetch = set()
                 for dto in dto_list:
-                    relation_value = getattr(dto, object_field.relation_field)
+                    relation_value = getattr(dto, dto_field_name)
                     if relation_value is not None:
                         keys_to_fetch.add(relation_value)
 
@@ -2127,12 +2170,12 @@ class ServiceBase:
                 related_map = {}
                 for related_dto in related_dto_list:
                     pk_field = getattr(related_dto.__class__, "pk_field")
-                    pk_value = getattr(related_dto, pk_field)
+                    pk_value = str(getattr(related_dto, pk_field))
                     if pk_value is not None:
                         related_map[pk_value] = related_dto
 
                 # Atribuindo os objetos relacionados nos DTOs originais
                 for dto in dto_list:
-                    relation_value = getattr(dto, object_field.relation_field)
+                    relation_value = str(getattr(dto, dto_field_name))
                     related_dto = related_map.get(relation_value)
                     setattr(dto, key, related_dto)

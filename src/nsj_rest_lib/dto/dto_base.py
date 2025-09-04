@@ -36,6 +36,7 @@ class DTOBase(abc.ABC):
     search_fields: Set[str]
     data_override_group: list[str]
     data_override_fields: list[str]
+    return_hidden_fields: dict[str, any] = {}
 
     def __init__(
         self,
@@ -176,8 +177,7 @@ class DTOBase(abc.ABC):
                 setattr(self, field, None)
 
         for k, v in self.__class__.aggregator_fields_map.items():
-            if k not in kwargs \
-               or kwargs[k] is None:
+            if k not in kwargs or kwargs[k] is None:
                 setattr(self, k, None)
                 continue
 
@@ -189,8 +189,10 @@ class DTOBase(abc.ABC):
                 setattr(self, k, v.expected_type(**kwargs[k]))
                 continue
 
-            raise ValueError(f"O campo {k} deveria ser um dicionário com" \
-                             f" os campos da classe {v.expected_type}.")
+            raise ValueError(
+                f"O campo {k} deveria ser um dicionário com"
+                f" os campos da classe {v.expected_type}."
+            )
 
         # Setando os campos registrados como fields de lista
         if entity is None:
