@@ -10,6 +10,7 @@ from nsj_rest_lib.controller.delete_route import DeleteRoute
 
 LIST_POST_ROUTE = f'/{APP_NAME}/{MOPE_CODE}/clientes'
 GET_PUT_ROUTE = f'/{APP_NAME}/{MOPE_CODE}/clientes/<id>'
+LIST_BULK_ROUTE = f'/{APP_NAME}/{MOPE_CODE}/clientes/bulk'
 
 
 @application.route(LIST_POST_ROUTE, methods=['GET'])
@@ -63,4 +64,27 @@ def put_cliente(request, response):
     entity_class=ClienteEntity
 )
 def delete_cliente(request, response):
+    return response
+
+
+@application.route(LIST_POST_ROUTE, methods=['DELETE'])
+@DeleteRoute(
+    url=LIST_POST_ROUTE,
+    http_method='DELETE',
+    dto_class=ClienteDTO,
+    entity_class=ClienteEntity
+)
+def delete_cliente_list(request, response):
+    return response
+
+
+
+@application.route(LIST_BULK_ROUTE, methods=['DELETE'])
+@DeleteRoute(
+    url=LIST_BULK_ROUTE,
+    http_method='DELETE',
+    dto_class=ClienteDTO,
+    entity_class=ClienteEntity
+)
+def delete_cliente_bulk(request, response):
     return response
