@@ -17,7 +17,7 @@ services:
         image: arquiteturansj/flask:2.2
         restart: always
         ports:
-            - "5000:80"
+            - "80:80"
             - "5678:5678"
         volumes:
             - $PWD:/var/www/html
@@ -39,3 +39,4 @@ services:
         command: sh -c "python3 -m pip install -r /var/www/html/requirements.txt --no-cache-dir && python3 -m pip install -r /var/www/html/requirements-dev.txt --no-cache-dir && pytest -s tests/api/casos_de_teste"
         depends_on:
             - postgres
+            - api-test

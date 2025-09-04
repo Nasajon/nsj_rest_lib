@@ -70,22 +70,40 @@ A grande diferença, na filosofia de desenvolvimento, é que se prioriza um esfo
 
 Há dois conjuntos distintos de teste:
 
-1. Testes utilizando a biblioteca nsj-rest-test-util
-   1. Precisa ser instalada por meio do arquivo requirements-dev.txt
-   2. Consiste em testes mais completos, rodando de fato chamadas à APIs fake
-   3. Dependem de BD e API em execução
+### Testes com BD e API
+1. Precisa ser instalada por meio do arquivo requirements-dev.txt
 
 ```sh
-docker compose up -d postgres
-docker compose up -d api-test
+pip install -r requirements-dev.txt
+```
+
+2. Consiste em testes mais completos, rodando de fato chamadas à APIs fake
+3. Dependem de BD e API em execução (o comando abaixo também inicializa BD e API)
+
+```sh
 docker compose up test
 ```
 
-2. Testes apenas de código fonte
-   1. Utiliza apenas o pytest
-   2. Equivalem ao que é popularmente chamado de testes unitários
-   3. Rodar sem dependências de processos em execução
+4. Por fim, deburre o ambiente:
+```sh
+docker compose stop
+docker compose rm
+```
+
+Observações:
+* Estes testes estão totalmente paramentrizados para funcionar por dentro do docker (e não pela aplicação local).
+* As configurações usadas nos testes consideram o arquivo `.env.dist`(e não o `.env`).
+* A porta usada nos testes, depende do construtor da classe `TCaseUtil` (superclasse dos casos de teste).
+
+### Testes somente código
+
+1. Utiliza apenas o pytest
+2. Equivalem ao que é popularmente chamado de testes unitários
+3. Rodar sem dependências de processos em execução
 
 ```sh
 make code_tests
 ```
+
+Obsevações:
+* Este tipo de teste faz mock de BD e etc.
