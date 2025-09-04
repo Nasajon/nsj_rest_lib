@@ -2107,19 +2107,21 @@ class ServiceBase:
                 if not keys_to_fetch:
                     continue
 
-                # Buscando todos os objetos relacionados de uma vez
-                related_dto_list = []
-                for relation_key in keys_to_fetch:
-                    try:
-                        related_dto = service.get(
-                            relation_key,
-                            partition_fields,
-                            {"root": fields[key]} if key in fields else None,
-                        )
-                        related_dto_list.append(related_dto)
-                    except NotFoundException:
-                        # Objeto não encontrado, será tratado como None
-                        pass
+                # Montando filtro para buscar todos os objetos relacionados de uma vez
+                related_filters = {
+                    object_field.expected_type.pk_field: ",".join(
+                        str(k) for k in keys_to_fetch
+                    )
+                }
+
+                # Recuperando todos os DTOs relacionados de uma vez
+                related_dto_list = service.list(
+                    None,
+                    None,
+                    {"root": fields[key]} if key in fields else None,
+                    None,
+                    related_filters,
+                )
 
                 # Criando mapa de chave -> DTO relacionado
                 related_map = {}
