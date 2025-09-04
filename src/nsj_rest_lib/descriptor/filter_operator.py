@@ -13,3 +13,4 @@ class FilterOperator(enum.Enum):
     NOT_NULL = "not_null"
     LENGTH_GREATER_OR_EQUAL_THAN = "length_greater_or_equal_than"
     LENGTH_LESS_OR_EQUAL_THAN = "length_less_or_equal_than"
+    IN = "in"

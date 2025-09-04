@@ -2,6 +2,7 @@ import copy
 import re
 import uuid
 import typing as ty
+import warnings
 
 from typing import Any, Callable, Dict, List, Set, Tuple
 
@@ -71,7 +72,7 @@ class ServiceBase:
         """
 
         class FakeInjectorFactory:
-            def db_adapter():
+            def db_adapter(self):
                 return db_adapter
 
         return ServiceBase(
@@ -1516,7 +1517,7 @@ class ServiceBase:
 
             for _id in ids:
                 self._delete(
-                    _id, manage_transaction=True, additional_filters=additional_filters
+                    _id, manage_transaction=False, additional_filters=additional_filters
                 )
 
         except:
@@ -1663,7 +1664,67 @@ class ServiceBase:
             if manage_transaction:
                 self._dao.commit()
 
-    def _delete_related_lists(self, id, additional_filters: Dict[str, Any] = None):
+    def _delete_list(
+        self,
+        ids: List[str],
+        manage_transaction: bool,
+        additional_filters: Dict[str, Any] = None,
+        custom_before_delete=None,
+    ) -> DTOBase:
+
+        if not ids:
+            return
+
+        try:
+            if manage_transaction:
+                self._dao.begin()
+
+            # Convertendo os filtros para os filtros de entidade
+            entity_filters = {}
+            if additional_filters is not None:
+                entity_filters = self._create_entity_filters(additional_filters)
+
+            entity_id_values = []
+            for _id in ids:
+                # Função para validar ou fazer outras consultas antes de deletar
+                if custom_before_delete is not None:
+                    dto = self.get(_id, additional_filters, None)
+                    custom_before_delete(self._dao._db, dto)
+
+                # Resolve o campo de chave sendo utilizado
+                entity_key_field, entity_id_value = self._resolve_field_key(
+                    _id,
+                    additional_filters,
+                )
+
+                entity_id_values.append(entity_id_value)
+
+                # Tratando das propriedades de lista
+                if len(self._dto_class.list_fields_map) > 0:
+                    self._delete_related_lists(_id, additional_filters)
+
+            # Adicionando o ID nos filtros
+            id_condiction = Filter(FilterOperator.IN, entity_id_values)
+
+            entity_filters[entity_key_field] = [id_condiction]
+
+            # Excluindo os conjuntos (se necessário)
+            if self._dto_class.conjunto_type is not None:
+                self._dao.delete_relacionamentos_conjunto(
+                    ids, self._dto_class.conjunto_type
+                )
+
+            # Excluindo a entity principal
+            self._dao.delete(entity_filters)
+        except:
+            if manage_transaction:
+                self._dao.rollback()
+            raise
+        finally:
+            if manage_transaction:
+                self._dao.commit()
+
+    def _delete_related_lists_old(self, id, additional_filters: Dict[str, Any] = None):
         # Handling each related list
         for _, list_field in self._dto_class.list_fields_map.items():
             # Getting service instance
@@ -1713,12 +1774,67 @@ class ServiceBase:
                     additional_filters=additional_filters,
                 )
 
+    def _delete_related_lists(self, id, additional_filters: Dict[str, Any] = None):
+        # Handling each related list
+        for _, list_field in self._dto_class.list_fields_map.items():
+            # Getting service instance
+            if list_field.service_name is not None:
+                service = self._injector_factory.get_service_by_name(
+                    list_field.service_name
+                )
+            else:
+                service = ServiceBase(
+                    self._injector_factory,
+                    DAOBase(
+                        self._injector_factory.db_adapter(), list_field.entity_type
+                    ),
+                    list_field.dto_type,
+                    list_field.entity_type,
+                )
+
+            # Making filter to relation
+            filters = {
+                # TODO Adicionar os campos de particionamento de dados
+                list_field.related_entity_field: id
+            }
+
+            # Getting related data
+            related_dto_list = service.list(None, None, {"root": set()}, None, filters)
+
+            # Excluindo cada entidade detalhe
+            related_ids = []
+            for related_dto in related_dto_list:
+                # Checking if pk_field exists
+                if list_field.dto_type.pk_field is None:
+                    raise DTOListFieldConfigException(
+                        f"PK field not found in class: {self._dto_class}"
+                    )
+
+                if list_field.dto_type.pk_field not in related_dto.__dict__:
+                    raise DTOListFieldConfigException(
+                        f"PK field not found in DTO: {self._dto_class}"
+                    )
+
+                # Recuperando o ID da entidade detalhe
+                related_ids.append(getattr(related_dto, list_field.dto_type.pk_field))
+
+            # Chamando a exclusão
+            service._delete_list(
+                related_ids,
+                manage_transaction=False,
+                additional_filters=additional_filters,
+            )
+
     def _retrieve_left_join_fields(
         self,
         dto_list: List[DTOBase],
         fields: Dict[str, Set[str]],
         partition_fields: Dict[str, Any],
     ):
+        warnings.warn(
+            "DTOLeftJoinField está depreciado e será removido em breve.",
+            DeprecationWarning,
+        )
         # Tratando cada dto recebido
         for dto in dto_list:
             # Tratando cada tipo de entidade relacionada
@@ -1831,7 +1947,7 @@ class ServiceBase:
                         # Gravando o valor no DTO de interesse
                         setattr(dto, field, field_value)
 
-    def _retrieve_object_fields(
+    def _retrieve_object_fields_old(
         self,
         dto_list: List[DTOBase],
         fields: Dict[str, Set[str]],
@@ -1900,3 +2016,123 @@ class ServiceBase:
                             field = None
 
                         setattr(dto, key, field)
+
+    def _retrieve_object_fields(
+        self,
+        dto_list: List[DTOBase],
+        fields: Dict[str, Set[str]],
+        partition_fields: Dict[str, Any],
+    ):
+        """
+        Versão otimizada do _retrieve_object_fields_keyson que faz buscas em lote
+        ao invés de consultas individuais para cada DTO.
+        """
+        if not dto_list:
+            return
+
+        # Processando cada tipo de campo de objeto
+        for key in self._dto_class.object_fields_map:
+            # Verificando se o campo está no retorno
+            if key not in fields["root"]:
+                continue
+
+            object_field: DTOObjectField = self._dto_class.object_fields_map[key]
+
+            if object_field.entity_type is None:
+                continue
+
+            # Instanciando o service uma vez só para este tipo de campo
+            service = ServiceBase(
+                self._injector_factory,
+                DAOBase(
+                    self._injector_factory.db_adapter(),
+                    object_field.entity_type,
+                ),
+                object_field.expected_type,
+                object_field.entity_type,
+            )
+
+            if object_field.entity_relation_owner == EntityRelationOwner.OTHER:
+                # Checking if pk_field exists
+                if self._dto_class.pk_field is None:
+                    raise DTOListFieldConfigException(
+                        f"PK field not found in class: {self._dto_class}"
+                    )
+
+                # Coletando todas as chaves primárias dos DTOs para buscar de uma vez
+                keys_to_fetch = set()
+                for dto in dto_list:
+                    pk_value = getattr(dto, self._dto_class.pk_field)
+                    if pk_value is not None:
+                        keys_to_fetch.add(pk_value)
+
+                if not keys_to_fetch:
+                    continue
+
+                # Montando filtro para buscar todos os objetos relacionados de uma vez
+                related_filters = {
+                    object_field.relation_field: ",".join(str(k) for k in keys_to_fetch)
+                }
+
+                # Recuperando todos os DTOs relacionados de uma vez
+                related_dto_list = service.list(
+                    None,
+                    None,
+                    {"root": fields[key]} if key in fields else None,
+                    None,
+                    related_filters,
+                )
+
+                # Criando mapa de chave -> DTO relacionado
+                related_map = {}
+                for related_dto in related_dto_list:
+                    relation_key = getattr(related_dto, object_field.relation_field)
+                    if relation_key is not None:
+                        related_map[relation_key] = related_dto
+
+                # Atribuindo os objetos relacionados nos DTOs originais
+                for dto in dto_list:
+                    pk_value = getattr(dto, self._dto_class.pk_field)
+                    related_dto = related_map.get(pk_value)
+                    setattr(dto, key, related_dto)
+
+            elif object_field.entity_relation_owner == EntityRelationOwner.SELF:
+                # Coletando todas as chaves de relacionamento para buscar de uma vez
+                keys_to_fetch = set()
+                for dto in dto_list:
+                    relation_value = getattr(dto, object_field.relation_field)
+                    if relation_value is not None:
+                        keys_to_fetch.add(relation_value)
+
+                if not keys_to_fetch:
+                    continue
+
+                # Montando filtro para buscar todos os objetos relacionados de uma vez
+                related_filters = {
+                    object_field.expected_type.pk_field: ",".join(
+                        str(k) for k in keys_to_fetch
+                    )
+                }
+
+                # Recuperando todos os DTOs relacionados de uma vez
+                related_dto_list = service.list(
+                    None,
+                    None,
+                    {"root": fields[key]} if key in fields else None,
+                    None,
+                    related_filters,
+                )
+
+                # Criando mapa de chave -> DTO relacionado
+                related_map = {}
+                for related_dto in related_dto_list:
+                    pk_field = getattr(related_dto.__class__, "pk_field")
+                    pk_value = getattr(related_dto, pk_field)
+                    if pk_value is not None:
+                        related_map[pk_value] = related_dto
+
+                # Atribuindo os objetos relacionados nos DTOs originais
+                for dto in dto_list:
+                    relation_value = getattr(dto, object_field.relation_field)
+                    related_dto = related_map.get(relation_value)
+                    setattr(dto, key, related_dto)

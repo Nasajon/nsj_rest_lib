@@ -22,6 +22,17 @@
             "atualizado_por": "teste@teste.com",
             "grupo_empresarial": "8e92ae13-992b-437d-b006-90da41999b04",
             "tenant": 99999
+		},
+		{
+            "id": "361ce9d9-ce5f-47bb-bbad-f162c2eaa3f3",
+            "estabelecimento": "27915735000100",
+            "cliente": "27915735000102",
+            "criado_em": "2023-08-12T00:00:00",
+            "criado_por": "teste@teste.com",
+            "atualizado_em": "2023-08-12T00:00:00",
+            "atualizado_por": "teste@teste.com",
+            "grupo_empresarial": "8e92ae13-992b-437d-b006-90da41999b04",
+            "tenant": 99999
 		}
 	]
 }
