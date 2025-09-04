@@ -936,7 +936,7 @@ class ServiceBase:
 
             # Seta nos DTOs principais
             for key, dtos in key_to_dtos.items():
-                related = related_map.get(key, [])
+                related = related_map.get(str(key), [])
                 for dto in dtos:
                     setattr(dto, master_dto_attr, related)
 
