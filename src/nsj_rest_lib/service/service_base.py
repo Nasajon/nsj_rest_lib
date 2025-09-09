@@ -1544,20 +1544,17 @@ class ServiceBase:
             custom_before_delete=custom_before_delete,
         )
 
-    def delete_list(self, ids: list, additional_filters: Dict[str, Any] = None):
-        try:
-            self._dao.begin()
 
-            for _id in ids:
-                self._delete(
-                    _id, manage_transaction=False, additional_filters=additional_filters
-                )
+    def delete_list(self,ids: list, additional_filters: Dict[str, Any] = None):
+        _returns = {}
+        for _id in ids:
+            try:
+                self._delete(_id, manage_transaction=True, additional_filters=additional_filters)
+            except Exception as e:
+                _returns[_id] = e
 
-        except:
-            self._dao.rollback()
-            raise
-        finally:
-            self._dao.commit()
+        return _returns
+
 
     def entity_exists(
         self,
