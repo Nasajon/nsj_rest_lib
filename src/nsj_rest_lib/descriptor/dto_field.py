@@ -43,6 +43,7 @@ class DTOField:
         candidate_key: bool = False,
         search: bool = True,
         read_only: bool = False,
+        use_integrity_check: bool = True
     ):
         """
         -----------
@@ -72,6 +73,7 @@ class DTOField:
         candidate_key: Permite indicar que este campo se trata de uma chave candidata (útil para operações unitárias, como GTE e DELETE, pois estas irão verificar se o tipo do dado recebido bate com a PK, ou com as chaves candidatas, para resolver como fará a query).
         search: Indica que esse campo é passível de busca, por meio do argumento "search" passado num GET List, como query string (por hora, apenas pesquisas simples, por meio de operador like, estão implementadas).
         read_only: Permite declarar propriedades que estão disponíveis no GET (list ou unitário), mas que não poderão ser usadas para gravação (POST, PUT ou PATCH).
+        use_integrity_check: Se o campo deve ser usado na geração de hash de registro para a api de verificação de integridade (ver IntegrityCheckRoute).
         """
         self.name = None
         self.expected_type = type
@@ -93,6 +95,7 @@ class DTOField:
         self.candidate_key = candidate_key
         self.search = search
         self.read_only = read_only
+        self.use_integrity_check = use_integrity_check
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -129,7 +132,7 @@ class DTOField:
         # Checking not null constraint
         if (
             self.not_null
-            and (value is None or (isinstance(value, str) and len(value.strip()) <= 0))
+            and (value is None or (isinstance(value, str) and len(value.strip() if dto_field.strip else value) <= 0))
             and (
                 not dto_field.pk
                 or (

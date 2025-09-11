@@ -20,6 +20,7 @@ class DTOListField:
         dto_post_response_type: DTOBase = None,
         relation_key_field: str = None,
         service_name: str = None,
+        use_integrity_check: bool = True
     ):
         """
         -----------
@@ -37,6 +38,7 @@ class DTOListField:
             (isso é, campo para o qual a entidade, do lado N, aponta via FK).
         service_name: Nome do serviço customizado, caso se deseje que as operações sobre esse tipo de lista se façam
             de um modo customizado (e não usando o service_base do próprio RestLib).
+        use_integrity_check: Se o campo deve ser usado na geração de hash de registro para a api de verificação de integridade (ver IntegrityCheckRoute).
         """
         self.name = None
         self.dto_type = dto_type
@@ -49,6 +51,7 @@ class DTOListField:
         self.dto_post_response_type = dto_post_response_type
         self.relation_key_field = relation_key_field
         self.service_name = service_name
+        self.use_integrity_check = use_integrity_check
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1

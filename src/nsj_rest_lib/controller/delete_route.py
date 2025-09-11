@@ -12,7 +12,7 @@ from nsj_rest_lib.settings import get_logger
 
 from nsj_gcf_utils.json_util import json_dumps
 from nsj_gcf_utils.pagination_util import PaginationException
-from nsj_gcf_utils.rest_error_util import format_json_error
+from nsj_gcf_utils.rest_error_util import format_json_error, format_error_body
 
 
 class DeleteRoute(RouteBase):
@@ -67,9 +67,9 @@ class DeleteRoute(RouteBase):
                     args = query_args
 
                 # Recuperando os dados do corpo da requisição
-                request_data = request.json
+                if request.data:
+                    request_data = request.json
 
-                if request_data is not None:
                     if not isinstance(request_data, list):
                         request_data = [request_data]
 
@@ -82,14 +82,48 @@ class DeleteRoute(RouteBase):
                     # Chamando o service (método get)
                     # TODO Rever parametro order_fields abaixo
                     service.delete(id, partition_filters)
+
+                    # Retornando a resposta da requisição
+                    return ("", 204, {**DEFAULT_RESP_HEADERS})
                 else:
-                    service.delete_list(
+
+                    request_data = list(map(lambda item: item["id"] if isinstance(item, dict) else item, request_data))
+
+                    _delete_return = service.delete_list(
                         request_data,
                         partition_filters
                     )
 
-                # Retornando a resposta da requuisição
-                return ("", 204, {**DEFAULT_RESP_HEADERS})
+                    def _exception_to_http(exception):
+                        if isinstance(exception, NotFoundException):
+                            return 404, None
+                        else:
+                            return 500, exception
+
+                    _return_mapping = {}
+                    _global_status = "OK" if len(_delete_return) == 0 else "ERROR" if len(_delete_return) == len(request_data) else "MULTI-STATUS"
+                    for _id in request_data:
+                        if _id in _delete_return:
+                            _return_mapping[_id] = _exception_to_http(_delete_return[_id])
+                        else:
+                            _return_mapping[_id] = 204, None
+
+                    _response = {
+                        "global_status" : _global_status,
+                        "response": [
+                                {
+                                    "status": _http_code,
+                                    "id": _id,
+                                    "body": {},
+                                    "error":
+                                        next(iter(format_error_body(f'Erro desconhecido: {_ex}')), {}) if _http_code == 500 else {}
+
+                                } for  _id, (_http_code, _ex) in _return_mapping.items()
+                        ]
+                    }
+                    return (json_dumps(_response), 207, {**DEFAULT_RESP_HEADERS})
+
+
             except MissingParameterException as e:
                 get_logger().warning(e)
                 if self._handle_exception is not None:

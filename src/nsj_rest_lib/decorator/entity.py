@@ -22,6 +22,9 @@ class Entity:
         self.pk_field = pk_field
         self.default_order_fields = default_order_fields
 
+        if not pk_field in default_order_fields:
+            default_order_fields.append(pk_field)
+
     def __call__(self, cls: object):
         """
         Tratando dos tipos de dados dos atributos, e criando os getters necessários.

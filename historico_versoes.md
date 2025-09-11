@@ -1,5 +1,15 @@
 # Histórico de Versões
 
+## 2.13.0
+
+Novas features:
+
+ * Implementação da rota de verificação de integridade
+
+Correções:
+
+ * Correção na geração da url de "after" da paginação da api de list que não era sujeita ao filtro passado
+
 ## 2.12.1
 
 Novas features:

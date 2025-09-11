@@ -52,6 +52,9 @@ def DTO(
                 # Creating list_fields_map in cls, if needed
                 self._check_class_attribute(cls, "list_fields_map", {})
 
+                # Creating integrity_check_fields_map in cls, if needed
+                self._check_class_attribute(cls, "integrity_check_fields_map", {})
+
                 # Creating left_join_fields_map in cls, if needed
                 self._check_class_attribute(cls, "left_join_fields_map", {})
 
@@ -140,9 +143,11 @@ def DTO(
 
                         # Verifica se um campo é somente para leitura
                         if attr.read_only:
-                            getattr(cls, "sql_read_only_fields").append(
-                                attr.entity_field or key
-                            )
+                            getattr(cls, "sql_read_only_fields")[key] = attr
+
+                        # Verifica se um campo é usado para verificação de integridade
+                        if attr.use_integrity_check:
+                            getattr(cls, "integrity_check_fields_map")[key] = attr
 
                     elif isinstance(attr, DTOListField):
                         # Storing field in fields_map
@@ -151,6 +156,10 @@ def DTO(
                         # Setting a better name to storage_name
                         attr.storage_name = f"{key}"
                         attr.name = f"{key}"
+
+                        # Verifica se um campo é usado para verificação de integridade
+                        if attr.use_integrity_check:
+                            getattr(cls, "integrity_check_fields_map")[key] = attr
 
                     elif isinstance(attr, DTOLeftJoinField):
                         # Storing field in fields_map

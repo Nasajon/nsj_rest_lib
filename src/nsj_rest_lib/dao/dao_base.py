@@ -330,9 +330,9 @@ class DAOBase:
         if after is not None:
             try:
                 if entity_key_field is None:
-                    after_obj = self.get(entity.get_pk_field(), after, fields)
+                    after_obj = self.get(entity.get_pk_field(), after, fields, filters)
                 else:
-                    after_obj = self.get(entity_key_field, entity_id_value, fields)
+                    after_obj = self.get(entity_key_field, entity_id_value, fields, filters)
             except NotFoundException as e:
                 raise AfterRecordNotFoundException(
                     f"Identificador recebido no parâmetro after {id}, não encontrado para a entidade {self._entity_class.__name__}."
@@ -821,7 +821,6 @@ class DAOBase:
             for k in entity.__dict__
             if not callable(getattr(entity, k, None))
             and not k.startswith("_")
-            and getattr(entity, k) is not None
             and (ignore_nones and getattr(entity, k) is not None or not ignore_nones)
             and k not in entity.get_const_fields()
             and (k != entity.get_pk_field() ) #or getattr(entity, k) is not None)
@@ -937,7 +936,7 @@ class DAOBase:
 
             # Montando a query principal
             sql = f"""
-            update {entity.get_table_name()} set
+            update {entity.get_table_name()} as t0 set
 
                 {sql_fields}
 
