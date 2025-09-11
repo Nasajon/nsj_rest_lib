@@ -23,6 +23,7 @@ class DTOListField:
         relation_key_field: str = None,
         service_name: str = None,
         description: str = '',
+        use_integrity_check: bool = True,
     ):
         """
         -----------
@@ -51,6 +52,8 @@ class DTOListField:
             de um modo customizado (e não usando o service_base do próprio RestLib).
 
         - description: Descrição deste campo na documentação.
+
+        - use_integrity_check: Se o campo deve ser usado na geração de hash de registro para a api de verificação de integridade (ver IntegrityCheckRoute).
         """
         self.name = None
         self.description = description
@@ -64,6 +67,7 @@ class DTOListField:
         self.dto_post_response_type = dto_post_response_type
         self.relation_key_field = relation_key_field
         self.service_name = service_name
+        self.use_integrity_check = use_integrity_check
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1

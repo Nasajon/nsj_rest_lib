@@ -82,6 +82,7 @@ class DTOField:
         metric_label: bool = False,
         auto_increment: dict[str, any] = {},
         description: str = '',
+        use_integrity_check: bool = True,
     ):
         """
         -----------
@@ -161,6 +162,8 @@ class DTOField:
                 - "db_managed": Flag que indica se o auto incremento é gerenciado pelo banco de dados (default False, ou seja, o auto incremento é gerenciado pelo código).
                     Se for True, todas as outras propriedades são ignoradas, porque o valor será gerencia pelo BD (só faz sentido para campos inteiros).
         - description: Descrição deste campo na documentação.
+
+        - use_integrity_check: Se o campo deve ser usado na geração de hash de registro para a api de verificação de integridade (ver IntegrityCheckRoute).
         """
         self.name = None
         self.description = description
@@ -195,6 +198,8 @@ class DTOField:
                 start_value=start_value,
                 db_managed=auto_increment.get("db_managed", False),
             )
+
+        self.use_integrity_check = use_integrity_check
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -231,7 +236,7 @@ class DTOField:
         # Checking not null constraint
         if (
             self.not_null
-            and (value is None or (isinstance(value, str) and len(value.strip()) <= 0))
+            and (value is None or (isinstance(value, str) and len(value.strip() if dto_field.strip else value) <= 0))
             and (
                 not dto_field.pk
                 or (

@@ -340,7 +340,7 @@ class DAOBase:
         filters_where = "\n and ".join(filters_where)
 
         if filters_where.strip() != "" and with_and:
-            filters_where = f"and {filters_where}"        
+            filters_where = f"and {filters_where}"
 
         return (filters_where, filter_values_map)
 
@@ -383,10 +383,10 @@ class DAOBase:
         if after is not None:
             try:
                 if entity_key_field is None:
-                    after_obj = self.get(entity.get_pk_field(), after, fields)
+                    after_obj = self.get(entity.get_pk_field(), after, fields, filters)
                 else:
-                    after_obj = self.get(entity_key_field, entity_id_value, fields)
-            except NotFoundException:
+                    after_obj = self.get(entity_key_field, entity_id_value, fields, filters)
+            except NotFoundException as e:
                 raise AfterRecordNotFoundException(
                     f"Identificador recebido no parâmetro after {id}, não encontrado para a entidade {self._entity_class.__name__}."
                 )
@@ -903,8 +903,10 @@ class DAOBase:
         # Building SQL fields
         fields = [
             f"{k} = excluded.{k}"
-            for k in sql_fields
-            if (ignore_nones and getattr(entity, k) is not None or not ignore_nones)
+            for k in entity.__dict__
+            if not callable(getattr(entity, k, None))
+            and not k.startswith("_")
+            and (ignore_nones and getattr(entity, k) is not None or not ignore_nones)
             and k not in entity.get_const_fields()
             and k != entity.get_pk_field()
             and k not in sql_read_only_fields

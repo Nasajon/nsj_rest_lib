@@ -17,6 +17,7 @@ class DTOBase(abc.ABC):
     partition_fields: Set[str] = set()
     fields_map: Dict[str, DTOField] = {}
     list_fields_map: dict = {}
+    integrity_check_fields_map: dict = {}
     left_join_fields_map: dict = {}
     left_join_fields_map_to_query: dict = {}
     sql_join_fields_map: dict = {}
