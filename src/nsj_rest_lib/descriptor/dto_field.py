@@ -79,6 +79,7 @@ class DTOField:
         candidate_key: bool = False,
         search: bool = True,
         read_only: bool = False,
+        no_update: bool = False,
         metric_label: bool = False,
         auto_increment: dict[str, any] = {},
         description: str = '',
@@ -130,6 +131,8 @@ class DTOField:
         - search: Indica que esse campo é passível de busca, por meio do argumento "search" passado num GET List, como query string (por hora, apenas pesquisas simples, por meio de operador like, estão implementadas).
 
         - read_only: Permite declarar propriedades que estão disponíveis no GET (list ou unitário), mas que não poderão ser usadas para gravação (POST, PUT ou PATCH).
+
+        - no_update: Permite declarar propriedades que estão disponíveis no GET e POST, mas que não poderão ser usadas para atualização (PUT ou PATCH). Este campo é ignorado em upsert.
 
         - metric_label: Permite indicar quais campos serão enviados como métricas para o OpenTelemetry Collector.
 
@@ -183,6 +186,7 @@ class DTOField:
         self.candidate_key = candidate_key
         self.search = search
         self.read_only = read_only
+        self.no_update = no_update
         self.metric_label = metric_label
 
         self.auto_increment = None
