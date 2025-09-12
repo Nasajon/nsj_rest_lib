@@ -29,6 +29,6 @@ def log_time_context(name: str):
         yield
     finally:
         fim = time.perf_counter()
-        print(
+        get_logger().debug(
             f"[RestLib LogTime Context] Tempo de execução do contexto '{name}': {fim - inicio:.4f} segundos"
         )
