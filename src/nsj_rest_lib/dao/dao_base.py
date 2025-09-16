@@ -188,6 +188,8 @@ class DAOBase:
             field_filter_where_in = []
             field_filter_where_not_in = []
             field_filter_where_native_in: str = None
+            field_filter_where = []
+            field_filter_where_null = None
             table_alias = "t0"
 
             # Iterating condictions
@@ -222,9 +224,14 @@ class DAOBase:
                     operator = "<="
                 elif condiction.operator == FilterOperator.IN:
                     operator = "in"
+                elif condiction.operator == FilterOperator.NULL:
+                    operator = "is null"
 
                 # Making condiction alias
-                if not (condiction.operator == FilterOperator.NOT_NULL):
+                if not (
+                    condiction.operator == FilterOperator.NOT_NULL
+                    or condiction.operator == FilterOperator.NULL
+                ):
                     condiction_alias = (
                         f"ft_{condiction.operator.value}_{filter_field}_{idx}"
                     )
@@ -260,6 +267,8 @@ class DAOBase:
                     field_filter_where_or.append(condiction_buffer)
                 elif operator == "in":
                     field_filter_where_native_in = condiction_alias_subtituir
+                elif operator == "is null":
+                    field_filter_where_null = condiction_buffer
                 else:
                     field_filter_where_and.append(condiction_buffer)
 
@@ -298,30 +307,40 @@ class DAOBase:
 
             if field_filter_where_in:
                 field_filter_where_in = f"{table_alias}.{filter_field} in ({', '.join(field_filter_where_in)})"
-                filters_where.append(field_filter_where_in)
+                field_filter_where.append(field_filter_where_in)
 
             if field_filter_where_native_in:
                 field_filter_where_native_in = (
                     f"{table_alias}.{filter_field} in {field_filter_where_native_in}"
                 )
-                filters_where.append(field_filter_where_native_in)
+                field_filter_where.append(field_filter_where_native_in)
 
             if field_filter_where_not_in:
                 field_filter_where_not_in = f"{table_alias}.{filter_field} not in ({', '.join(field_filter_where_not_in)})"
-                filters_where.append(field_filter_where_not_in)
+                field_filter_where.append(field_filter_where_not_in)
 
             if field_filter_where_or.strip() != "":
                 field_filter_where_or = f"({field_filter_where_or})"
-                filters_where.append(field_filter_where_or)
+                field_filter_where.append(field_filter_where_or)
 
             if field_filter_where_and.strip() != "":
                 field_filter_where_and = f"({field_filter_where_and})"
-                filters_where.append(field_filter_where_and)
+                field_filter_where.append(field_filter_where_and)
+
+            if field_filter_where_null is not None:
+                field_filter_where = "\n and ".join(field_filter_where)
+                if field_filter_where.strip() != "":
+                    filters_where.append(f"({field_filter_where} or {field_filter_where_null})")
+                else:
+                    filters_where.append(field_filter_where_null)
+            else:
+                filters_where.extend(field_filter_where)
 
         # Formating all filters (with AND)
         filters_where = "\n and ".join(filters_where)
+
         if filters_where.strip() != "" and with_and:
-            filters_where = f"and {filters_where}"
+            filters_where = f"and {filters_where}"        
 
         return (filters_where, filter_values_map)
 
