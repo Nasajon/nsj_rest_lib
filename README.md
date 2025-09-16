@@ -107,3 +107,17 @@ make code_tests
 
 Obsevações:
 * Este tipo de teste faz mock de BD e etc.
+  
+## Histórico de versões
+
+### 4.11.0
+
+- Suporte a filtro do tipo is null:
+
+```python
+    email: str = DTOField(
+        filters=[
+            DTOFieldFilter("email_vazio", FilterOperator.NULL),
+        ],
+    )
+```
