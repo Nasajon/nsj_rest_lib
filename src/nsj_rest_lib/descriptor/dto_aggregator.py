@@ -44,6 +44,7 @@ class DTOAggregator:
     name: str
     storage_name: str
     expected_type: ty.Any
+    not_null: bool
 
     description: str
 

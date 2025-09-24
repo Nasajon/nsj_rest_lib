@@ -178,6 +178,8 @@ class DTOBase(abc.ABC):
 
         for k, v in self.__class__.aggregator_fields_map.items():
             if k not in kwargs or kwargs[k] is None:
+                if v.not_null is True:
+                    raise ValueError(f"O campo {k} deve estar preenchido.")
                 setattr(self, k, None)
                 continue
 
@@ -323,6 +325,10 @@ class DTOBase(abc.ABC):
 
         for k, _ in self.__class__.aggregator_fields_map.items():
             dto = getattr(self, k)
+            if dto is None:
+                # NOTE: Skipping if the field was not given
+                continue
+
             for agg_field, dto_field in dto.fields_map.items():
                 entity_field = dto_field.entity_field or agg_field
 

@@ -279,6 +279,13 @@ class DTO:
                     attr.expected_type = cls.__annotations__[key]
                     pass
 
+                attr.not_null = False
+                for _, field in attr.expected_type.fields_map.items():
+                    if field.pk is True or field.not_null is True:
+                        attr.not_null = True
+                        break
+                    pass
+
                 cls.aggregator_fields_map[key] = attr
             elif isinstance(attr, DTOListField):
                 # Storing field in fields_map
