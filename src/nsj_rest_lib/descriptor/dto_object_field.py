@@ -1,4 +1,4 @@
-import typing
+import typing as ty
 
 from nsj_rest_lib.descriptor.dto_left_join_field import EntityRelationOwner
 from nsj_rest_lib.entity.entity_base import EntityBase
@@ -16,7 +16,7 @@ class DTOObjectField:
         entity_relation_owner: EntityRelationOwner = EntityRelationOwner.SELF,
         not_null: bool = False,
         resume: bool = False,
-        validator: typing.Callable = None,
+        validator: ty.Optional[ty.Callable[..., ty.Any]] = None,
         description: str = '',
     ):
         """
