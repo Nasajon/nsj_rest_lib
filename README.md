@@ -110,6 +110,11 @@ Obsevações:
   
 ## Histórico de versões
 
+### 4.12.0
+
+- Suporte a campos, DTOField, marcados com flag ```no_update```, a qual faz com que um campo possa ser gravado, mas nunca atualizado.
+- Ajustes na funcionalidade DTOAggregator
+
 ### 4.11.0
 
 - Suporte a filtro do tipo is null:
