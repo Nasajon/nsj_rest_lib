@@ -11,8 +11,8 @@ class DTOObjectField:
 
     def __init__(
         self,
-        entity_type: EntityBase = None,
-        relation_field: str = None,
+        entity_type: EntityBase,
+        relation_field: str,
         entity_relation_owner: EntityRelationOwner = EntityRelationOwner.SELF,
         not_null: bool = False,
         resume: bool = False,
