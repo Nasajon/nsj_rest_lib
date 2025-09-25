@@ -5,7 +5,7 @@ import uuid
 import re
 import unidecode
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Set
 
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
@@ -917,6 +917,7 @@ class DAOBase:
         entity: EntityBase,
         ignore_nones: bool = False,
         sql_read_only_fields: List[str] = [],
+        sql_no_update_fields: Set[str] = [],
     ) -> str:
         """
         Retorna lista com os campos para update, no padrão "field = :field"
@@ -940,6 +941,7 @@ class DAOBase:
                 if k not in entity.get_const_fields()
                 and k != entity.get_pk_field()
                 and k not in sql_read_only_fields
+                and k not in sql_no_update_fields
                 and getattr(entity, k) is not EMPTY
             ]
         else:
@@ -949,6 +951,7 @@ class DAOBase:
                 if k not in entity.get_const_fields()
                 and k != entity.get_pk_field()
                 and k not in sql_read_only_fields
+                and k not in sql_no_update_fields
             ]
 
         return ", ".join(fields)
@@ -961,6 +964,7 @@ class DAOBase:
         filters: Dict[str, List[Filter]],
         partial_update: bool = False,
         sql_read_only_fields: List[str] = [],
+        sql_no_update_fields: Set[str] = [],
         upsert: bool = False,
     ):
         """
@@ -978,6 +982,7 @@ class DAOBase:
 
         # Montando cláusula upsert
         if upsert:
+            # NOTE: Does not support sql_no_update_fields.
 
             # Montando as cláusulas dos campos
             sql_fields, sql_ref_values = self._sql_insert_fields(
@@ -1019,7 +1024,8 @@ class DAOBase:
 
             # Montando a cláusula dos campos
             sql_fields = self._sql_update_fields(
-                entity, partial_update, sql_read_only_fields
+                entity, partial_update, sql_read_only_fields,
+                sql_no_update_fields
             )
 
             # Montando a query principal
