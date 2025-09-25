@@ -1284,15 +1284,34 @@ class ServiceBase:
             after_data.received_dto = received_dto
 
             # Invocando os códigos customizados do tipo after insert ou update
+            custom_data = None
             if insert:
                 if custom_after_insert is not None:
-                    custom_after_insert(self._dao._db, new_dto, after_data)
+                    custom_data = custom_after_insert(
+                        self._dao._db, new_dto, after_data
+                    )
             else:
                 if custom_after_update is not None:
-                    custom_after_update(self._dao._db, old_dto, new_dto, after_data)
+                    custom_data = custom_after_update(
+                        self._dao._db, old_dto, new_dto, after_data
+                    )
 
             if retrieve_after_insert:
                 response_dto = self.get(id, aditional_filters, None)
+
+            if custom_data is not None:
+                if isinstance(custom_data, dict):
+                    if response_dto is not None:
+                        for key in custom_data:
+                            setattr(response_dto, key, custom_data[key])
+                    else:
+                        response_dto = custom_data
+                else:
+                    if response_dto is not None:
+                        # Ignora o retorno, e prevalece ou o DTO de resposta, ou o retrieve configurado
+                        pass
+                    else:
+                        response_dto = custom_data
 
             # Retornando o DTO de resposta
             return response_dto
@@ -1545,17 +1564,17 @@ class ServiceBase:
             custom_before_delete=custom_before_delete,
         )
 
-
-    def delete_list(self,ids: list, additional_filters: Dict[str, Any] = None):
+    def delete_list(self, ids: list, additional_filters: Dict[str, Any] = None):
         _returns = {}
         for _id in ids:
             try:
-                self._delete(_id, manage_transaction=True, additional_filters=additional_filters)
+                self._delete(
+                    _id, manage_transaction=True, additional_filters=additional_filters
+                )
             except Exception as e:
                 _returns[_id] = e
 
         return _returns
-
 
     def entity_exists(
         self,

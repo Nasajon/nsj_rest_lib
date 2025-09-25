@@ -6,6 +6,7 @@ from typing import Callable
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.dto.queued_data_dto import QueuedDataDTO
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import (
     MissingParameterException,
@@ -80,7 +81,6 @@ class PostRoute(RouteBase):
                 if not isinstance(request_data, list):
                     request_data = [request_data]
 
-
                 data_pack = []
                 lst_data = []
                 partition_filters = None
@@ -95,11 +95,10 @@ class PostRoute(RouteBase):
 
                     data_pack.append(data)
 
-
                 # Construindo os objetos
                 service = self._get_service(factory)
 
-                if len(data_pack)==1:
+                if len(data_pack) == 1:
                     # Chamando o service (método insert)
                     data = service.insert(
                         dto=data,
@@ -110,6 +109,15 @@ class PostRoute(RouteBase):
                     )
 
                     if data is not None:
+                        # Verificando se houve um enfileiramento (pelo custom_after_insert)
+                        if isinstance(data, QueuedDataDTO):
+                            queued_data: QueuedDataDTO = data
+                            resp_headers = {
+                                **DEFAULT_RESP_HEADERS,
+                                "Location": queued_data.status_url,
+                            }
+                            return ("", 202, resp_headers)
+
                         # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
                         lst_data.append(data.convert_to_dict())
                 else:
@@ -121,15 +129,15 @@ class PostRoute(RouteBase):
                         retrieve_after_insert=self.retrieve_after_insert,
                     )
 
-                    if data is not None or not len(data)>0:
+                    if data is not None or not len(data) > 0:
                         # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
                         lst_data = [item.convert_to_dict() for item in data]
 
-                if len(lst_data)==1:
+                if len(lst_data) == 1:
                     # Retornando a resposta da requisição
                     return (json_dumps(lst_data[0]), 200, {**DEFAULT_RESP_HEADERS})
 
-                if len(lst_data)>1:
+                if len(lst_data) > 1:
                     # Retornando a resposta da requisição
                     return (json_dumps(lst_data), 200, {**DEFAULT_RESP_HEADERS})
 

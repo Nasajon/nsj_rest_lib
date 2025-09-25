@@ -6,6 +6,7 @@ from typing import Callable
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.dto.queued_data_dto import QueuedDataDTO
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import MissingParameterException, NotFoundException
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
@@ -86,6 +87,15 @@ class PatchRoute(RouteBase):
                 )
 
                 if data is not None:
+                    # Verificando se houve um enfileiramento (pelo custom_after_update)
+                    if isinstance(data, QueuedDataDTO):
+                        queued_data: QueuedDataDTO = data
+                        resp_headers = {
+                            **DEFAULT_RESP_HEADERS,
+                            "Location": queued_data.status_url,
+                        }
+                        return ("", 202, resp_headers)
+
                     # Convertendo para o formato de dicionário
                     dict_data = data.convert_to_dict()
 

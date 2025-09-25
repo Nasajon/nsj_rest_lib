@@ -5,6 +5,7 @@ from typing import Callable
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.dto.queued_data_dto import QueuedDataDTO
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import (
     MissingParameterException,
@@ -58,10 +59,9 @@ class PutRoute(RouteBase):
 
         return partition_filters
 
-
     def handle_request(
         self,
-        id: str = None, 
+        id: str = None,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
     ):
@@ -71,7 +71,7 @@ class PutRoute(RouteBase):
 
         with self._injector_factory() as factory:
             try:
-                 # Recuperando os dados do corpo da requisição
+                # Recuperando os dados do corpo da requisição
                 if os.getenv("ENV", "").lower() != "erp_sql":
                     request_data = request.json
                     args = request.args
@@ -80,7 +80,9 @@ class PutRoute(RouteBase):
                     args = query_args
 
                 # Parâmetros da requisição
-                is_upsert = args.get('upsert', False, type=lambda value: value.lower() == 'true')
+                is_upsert = args.get(
+                    "upsert", False, type=lambda value: value.lower() == "true"
+                )
 
                 if not isinstance(request_data, list):
                     request_data = [request_data]
@@ -104,7 +106,7 @@ class PutRoute(RouteBase):
                 # Construindo os objetos
                 service = self._get_service(factory)
 
-                if len(data_pack)==1:
+                if len(data_pack) == 1:
                     # Chamando o service (método insert)
                     data = service.update(
                         dto=data,
@@ -112,10 +114,19 @@ class PutRoute(RouteBase):
                         aditional_filters=partition_filters,
                         custom_before_update=self.custom_before_update,
                         custom_after_update=self.custom_after_update,
-                        upsert=is_upsert
+                        upsert=is_upsert,
                     )
 
                     if data is not None:
+                        # Verificando se houve um enfileiramento (pelo custom_after_update)
+                        if isinstance(data, QueuedDataDTO):
+                            queued_data: QueuedDataDTO = data
+                            resp_headers = {
+                                **DEFAULT_RESP_HEADERS,
+                                "Location": queued_data.status_url,
+                            }
+                            return ("", 202, resp_headers)
+
                         # Convertendo para o formato de dicionário
                         lst_data.append(data.convert_to_dict())
                 else:
@@ -124,18 +135,18 @@ class PutRoute(RouteBase):
                         aditional_filters=partition_filters,
                         custom_before_update=self.custom_before_update,
                         custom_after_update=self.custom_after_update,
-                        upsert=is_upsert
+                        upsert=is_upsert,
                     )
 
-                    if data is not None or not len(data)>0:
+                    if data is not None or not len(data) > 0:
                         # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
                         lst_data = [item.convert_to_dict() for item in data]
 
-                if len(lst_data)==1:
+                if len(lst_data) == 1:
                     # Retornando a resposta da requisição
                     return (json_dumps(lst_data[0]), 200, {**DEFAULT_RESP_HEADERS})
 
-                if len(lst_data)>1:
+                if len(lst_data) > 1:
                     # Retornando a resposta da requisição
                     return (json_dumps(lst_data), 200, {**DEFAULT_RESP_HEADERS})
 

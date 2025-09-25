@@ -110,6 +110,18 @@ Obsevações:
   
 ## Histórico de versões
 
+## 4.13.0
+
+- Suporte a retorno no custom_after_insert ou custom_after_update
+  - Se o retorno for um dict
+    - Se houver um DTO de retorno, ele tentará adicionar propriedades ao mesmo DTO.
+    - Se não , ele retorna apenas o dict
+  - Se não
+    - Se houver um DTO de retorno, então o retorno do custom_after é ignorado.
+    - Se não, o retorno do custom_after é retornado como recebido.
+- Suporte a notificações de enfileiramento a partir do custom_after_insert ou custom_after_update
+  - Se o retorno de um desses métodos for um objeto do tipo nsj_rest_lib.dto.queued_data_dto.QueuedDataDTO, a requisição de POST, PUT ou PATCH irá retornar um HTTP 202, com um location (de acordo com a URL escrita no objeto), para notificar como acompanhar o resultado do enfileiramento.
+
 ### 4.12.0
 
 - Suporte a campos, DTOField, marcados com flag ```no_update```, a qual faz com que um campo possa ser gravado, mas nunca atualizado.
