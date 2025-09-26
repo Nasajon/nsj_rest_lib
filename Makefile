@@ -22,11 +22,6 @@ publish_pkg: build_pkg upload_pkg
 run: env_setup
 	flask --app=src/nsj_rest_lib/wsgi.py run
 
-publish_pkg: build_pkg upload_pkg
-
-run: env_setup
-	flask --app=src/nsj_rest_lib/wsgi.py run
-
 tests: env_setup
 	docker compose up test
 
