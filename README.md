@@ -110,6 +110,12 @@ Obsevações:
   
 ## Histórico de versões
 
+## 4.14.0
+
+- Possibilidade de marcar um campo do tipo SQLJoinFiel como partition-field.
+- Possibilidade de marcar um campo como parte de uma rota de verificação de integridade.
+- Ajustes diversos
+
 ## 4.13.0
 
 - Suporte a retorno no custom_after_insert ou custom_after_update
