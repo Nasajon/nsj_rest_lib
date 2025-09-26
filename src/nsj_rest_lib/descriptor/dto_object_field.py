@@ -11,7 +11,7 @@ class DTOObjectField:
 
     def __init__(
         self,
-        entity_type: EntityBase,
+        entity_type: ty.Type[EntityBase],
         relation_field: str,
         entity_relation_owner: EntityRelationOwner = EntityRelationOwner.SELF,
         not_null: bool = False,
@@ -57,6 +57,14 @@ class DTOObjectField:
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
+
+        assert issubclass(self.entity_type, EntityBase), \
+            f"Argument `entity_type` of `DTOObjectField` HAS to be" \
+            f" a `EntityBase`. Is {repr(self.entity_type)}."
+
+        assert isinstance(self.relation_field, str), \
+            f"Argument `entity_type` of `DTOObjectField` HAS to be" \
+            f" a `str`. Is {repr(self.entity_type)}."
 
     def __get__(self, instance, owner):
         if instance is None:
