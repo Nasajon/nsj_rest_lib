@@ -199,6 +199,12 @@ class ServiceBase:
 
             if isinstance(id_value, candidate_key_field.expected_type):
                 retornar = True
+            elif (
+                candidate_key_field.expected_type in [int]
+                and isinstance(id_value, str)
+            ):
+                id_value = candidate_key_field.expected_type(id_value)
+                retornar = True
             elif candidate_key_field.expected_type == uuid.UUID and validate_uuid(
                 id_value
             ):
@@ -1039,7 +1045,7 @@ class ServiceBase:
                 _return_object = self._save(
                     insert=False,
                     dto=dto,
-                    manage_transaction=True,
+                    manage_transaction=False,
                     partial_update=False,
                     id=getattr(dto, dto.pk_field),
                     aditional_filters=aditional_filters,
@@ -1080,6 +1086,44 @@ class ServiceBase:
             custom_before_update=custom_before_update,
             custom_after_update=custom_after_update,
         )
+
+
+    def partial_update_list(
+        self,
+        dtos: List[DTOBase],
+        aditional_filters: Dict[str, Any] = None,
+        custom_before_update: Callable = None,
+        custom_after_update: Callable = None,
+        upsert: bool = False
+    ) -> List[DTOBase]:
+
+        _lst_return = []
+        try:
+            self._dao.begin()
+
+            for dto in dtos:
+                _return_object = self._save(
+                    insert=False,
+                    dto=dto,
+                    manage_transaction=False,
+                    partial_update=True,
+                    id=getattr(dto, dto.pk_field),
+                    aditional_filters=aditional_filters,
+                    custom_before_update=custom_before_update,
+                    custom_after_update=custom_after_update,
+                )
+
+                if _return_object is not None:
+                    _lst_return.append(_return_object)
+
+        except:
+            self._dao.rollback()
+            raise
+        finally:
+            self._dao.commit()
+
+        return _lst_return
+
 
     def _make_fields_from_dto(self, dto: DTOBase, root_name: str = "root"):
         # Adicionando os campos normais do DTO
