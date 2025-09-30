@@ -5,6 +5,9 @@ from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import DTOListFieldConfigException
 
 
+# TODO Validar preenchimento da propriedade related_entity_field
+
+
 class DTOListField:
     _ref_counter = 0
 
@@ -22,7 +25,7 @@ class DTOListField:
         dto_post_response_type: DTOBase = None,
         relation_key_field: str = None,
         service_name: str = None,
-        description: str = '',
+        description: str = "",
         use_integrity_check: bool = True,
     ):
         """
