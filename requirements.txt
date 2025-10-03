@@ -5,4 +5,5 @@ nsj_gcf_utils>=1.0.22,<2.0.0
 PyMySQL>=1.0.2,<2.0.0
 py-healthcheck>=1.10.1,<2.0.0
 unidecode>=1.0.22,<2.0.0
-opentelemetry-exporter-otlp==1.32.1
+opentelemetry-exporter-otlp>=1.32.1,<2.0.0
+pyyaml>=6.0.3,>7.0.0

@@ -1,9 +1,11 @@
 import datetime
 import enum
+import json
 import re
 import uuid
+import yaml
 
-from  dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta
 
 from decimal import Decimal
 from typing import Any
@@ -28,18 +30,18 @@ class TypeValidatorUtil:
         matcher_date = re.compile("^(\d\d\d\d)-(\d\d)-(\d\d)$")
 
         matcher_time = re.compile("^(\d\d):(\d\d):(\d\d)$")
-        
+
         matcher_duration = re.compile(
-                                        r'^P'                       
-                                        r'(?:(\d+)Y)?'              # anos
-                                        r'(?:(\d+)M)?'              # meses
-                                        r'(?:(\d+)D)?'              # dias
-                                        r'(?:T'                     # parte de tempo começa com T
-                                        r'(?:(\d+)H)?'              # horas
-                                        r'(?:(\d+)M)?'              # minutos
-                                        r'(?:(\d+(?:\.\d+)?)S)?'    # segundos (aceita fração)
-                                        r')?$'
-                                    )
+            r"^P"
+            r"(?:(\d+)Y)?"  # anos
+            r"(?:(\d+)M)?"  # meses
+            r"(?:(\d+)D)?"  # dias
+            r"(?:T"  # parte de tempo começa com T
+            r"(?:(\d+)H)?"  # horas
+            r"(?:(\d+)M)?"  # minutos
+            r"(?:(\d+(?:\.\d+)?)S)?"  # segundos (aceita fração)
+            r")?$"
+        )
 
         # Validação direta de tipos
         erro_tipo = False
@@ -98,33 +100,36 @@ class TypeValidatorUtil:
             match_time = matcher_duration.search(value)
             if match_time:
                 day, mon, yea, hor, min, sec = match_time.groups()
-                value = relativedelta(days=int(day) if day else 0, 
-                              months=int(mon)  if mon else 0, 
-                              years=int(yea)  if yea else 0, 
-                              hours=int(hor)  if hor else 0, 
-                              minutes=int(min)  if min else 0, 
-                              seconds=int(sec)  if sec else 0,
-                              )
+                value = relativedelta(
+                    days=int(day) if day else 0,
+                    months=int(mon) if mon else 0,
+                    years=int(yea) if yea else 0,
+                    hours=int(hor) if hor else 0,
+                    minutes=int(min) if min else 0,
+                    seconds=int(sec) if sec else 0,
+                )
             else:
                 erro_tipo = True
         elif obj.expected_type is relativedelta and isinstance(value, PGInterval):
-                
-                value = relativedelta(days=int(value.days) if value.days else 0, 
-                              months=int(value.months)  if value.months else 0, 
-                              years=int(value.years)  if value.years else 0, 
-                              hours=int(value.hours)  if value.hours else 0, 
-                              minutes=int(value.minutes)  if value.minutes else 0, 
-                              seconds=int(value.seconds)  if value.seconds else 0
-                              )
-        elif obj.expected_type is relativedelta and isinstance(value, datetime.timedelta):
-                total_seconds = int(value.total_seconds())
-                hours = total_seconds // 3600
-                minutes = (total_seconds % 3600) // 60
-                seconds = total_seconds % 60
-                value = relativedelta(hours=int(hours) ,
-                              minutes=int(minutes) ,
-                              seconds=int(seconds)  
-                              )
+
+            value = relativedelta(
+                days=int(value.days) if value.days else 0,
+                months=int(value.months) if value.months else 0,
+                years=int(value.years) if value.years else 0,
+                hours=int(value.hours) if value.hours else 0,
+                minutes=int(value.minutes) if value.minutes else 0,
+                seconds=int(value.seconds) if value.seconds else 0,
+            )
+        elif obj.expected_type is relativedelta and isinstance(
+            value, datetime.timedelta
+        ):
+            total_seconds = int(value.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            value = relativedelta(
+                hours=int(hours), minutes=int(minutes), seconds=int(seconds)
+            )
         elif isinstance(obj.expected_type, enum.EnumMeta):
             # Enumerados
             try:
@@ -187,6 +192,15 @@ class TypeValidatorUtil:
                     value = str(value)
                 except:
                     erro_tipo = True
+        elif obj.expected_type is dict and isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except:
+                try:
+                    value = yaml.safe_load(value)
+                except:
+                    erro_tipo = True
+
         else:
             erro_tipo = True
 
