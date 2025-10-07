@@ -4,7 +4,7 @@ import enum
 
 # import uuid
 
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Dict, List, Set, Union, Optional
 
 from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
 from nsj_rest_lib.descriptor import DTOAggregator
@@ -495,7 +495,7 @@ class DTOBase(abc.ABC):
                 return dto_field.expected_type(value)
 
     def convert_to_dict(
-        self, fields: Dict[str, List[str]] = None, just_resume: bool = False
+        self, fields: Optional[Dict[str, Set[str]]] = None, just_resume: bool = False
     ):
         """
         Converte DTO para dict
