@@ -173,7 +173,12 @@ class DTOBase(abc.ABC):
                         f"O campo {field} deveria ser um dicionário com os campos da classe {aux_dto_field.dto_type}."
                     )
                 else:
-                    setattr(self, field, aux_dto_field.expected_type(**kwargs[field]))
+                    setattr(self, field,
+                            aux_dto_field.expected_type(
+                                **kwargs[field],
+                                escape_validator=self.escape_validator
+                            )
+                    )
             else:
                 setattr(self, field, None)
 
