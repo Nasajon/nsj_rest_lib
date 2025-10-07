@@ -4,7 +4,7 @@ import enum
 
 # import uuid
 
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Dict, List, Set, Union, Optional
 
 from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
 from nsj_rest_lib.descriptor import DTOAggregator
@@ -536,7 +536,9 @@ class DTOBase(abc.ABC):
 
         return tree
 
-    def convert_to_dict(self, fields: FieldsTree = None, just_resume: bool = False):
+    def convert_to_dict(
+        self, fields: Optional[FieldsTree] = None, just_resume: bool = False
+    ):
         """
         Converte DTO para dict
         """
