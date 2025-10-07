@@ -87,7 +87,12 @@ class ServiceBase:
         id: str,
         partition_fields: Dict[str, Any],
         fields: Dict[str, Set[str]],
+        expands: ty.Optional[Dict[str, Set[str]]] = None,
     ) -> DTOBase:
+
+        if expands is None:
+            expands = {'root': set()}
+
         # Resolving fields
         fields = self._resolving_fields(fields)
 
@@ -135,6 +140,7 @@ class ServiceBase:
             self._retrieve_self_related_object_fields(
                 ent_list=[entity],
                 fields=fields,
+                expands=expands,
                 partition_fields=fields,
             )
             pass
@@ -659,9 +665,13 @@ class ServiceBase:
         filters: Dict[str, Any],
         search_query: str = None,
         return_hidden_fields: set[str] = None,
+        expands: ty.Optional[Dict[str, Set[str]]] = None,
     ) -> List[DTOBase]:
         # Resolving fields
         fields = self._resolving_fields(fields)
+
+        if expands is None:
+            expands = {'root': set()}
 
         # Handling the fields to retrieve
         entity_fields = self._convert_to_entity_fields(
@@ -741,6 +751,7 @@ class ServiceBase:
             self._retrieve_self_related_object_fields(
                 ent_list=entity_list,
                 fields=fields,
+                expands=expands,
                 partition_fields=filters,
             )
             pass
@@ -2218,6 +2229,7 @@ class ServiceBase:
         self,
         ent_list: ty.List[EntityBase],
         fields: ty.Dict[str, ty.Set[str]],
+        expands: ty.Dict[str, ty.Set[str]],
         partition_fields: ty.Dict[str, ty.Any],
     ) -> None:
         if len(ent_list) == 0:
@@ -2226,6 +2238,7 @@ class ServiceBase:
         obj_field: DTOObjectField
         for key, obj_field in self._dto_class.object_fields_map.items():
             if key not in fields["root"] \
+               or key not in expands['root'] \
                or obj_field.is_self_related is False \
                or obj_field.entity_relation_owner != EntityRelationOwner.SELF:
                 continue
@@ -2263,17 +2276,25 @@ class ServiceBase:
                 )
             }
 
+            local_expands: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
+            if key in expands:
+                local_expands = {"root": expands[key]}
+                pass
+
             local_fields: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
             if key in fields:
                 local_fields = {"root": fields[key]}
                 pass
 
             related_dto_list: ty.List[DTOBase] = service.list(
-                None,
-                None,
-                local_fields,
-                None,
-                related_filters,
+                after=None,
+                limit=None,
+                fields=local_fields,
+                order_fields=None,
+                filters=related_filters,
+                search_query=None,
+                return_hidden_fields=None,
+                expands=local_expands,
             )
 
             related_map: ty.Dict[str, ty.Dict[str, ty.Any]] = {
