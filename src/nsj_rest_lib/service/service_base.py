@@ -38,14 +38,14 @@ from nsj_rest_lib.validator.validate_data import validate_uuid
 
 class ServiceBase:
     _dao: DAOBase
-    _dto_class: DTOBase
+    _dto_class: ty.Type[DTOBase]
 
     def __init__(
         self,
         injector_factory: NsjInjectorFactoryBase,
         dao: DAOBase,
-        dto_class: DTOBase,
-        entity_class: EntityBase,
+        dto_class: ty.Type[DTOBase],
+        entity_class: ty.Type[EntityBase],
         dto_post_response_class: DTOBase = None,
     ):
         self._injector_factory = injector_factory
@@ -60,8 +60,8 @@ class ServiceBase:
     def construtor1(
         db_adapter: DBAdapter2,
         dao: DAOBase,
-        dto_class: DTOBase,
-        entity_class: EntityBase,
+        dto_class: ty.Type[DTOBase],
+        entity_class: ty.Type[EntityBase],
         dto_post_response_class: DTOBase = None,
     ):
         """
