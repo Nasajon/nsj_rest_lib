@@ -199,9 +199,8 @@ class ServiceBase:
 
             if isinstance(id_value, candidate_key_field.expected_type):
                 retornar = True
-            elif (
-                candidate_key_field.expected_type in [int]
-                and isinstance(id_value, str)
+            elif candidate_key_field.expected_type in [int] and isinstance(
+                id_value, str
             ):
                 id_value = candidate_key_field.expected_type(id_value)
                 retornar = True
@@ -1087,14 +1086,13 @@ class ServiceBase:
             custom_after_update=custom_after_update,
         )
 
-
     def partial_update_list(
         self,
         dtos: List[DTOBase],
         aditional_filters: Dict[str, Any] = None,
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
-        upsert: bool = False
+        upsert: bool = False,
     ) -> List[DTOBase]:
 
         _lst_return = []
@@ -1123,7 +1121,6 @@ class ServiceBase:
             self._dao.commit()
 
         return _lst_return
-
 
     def _make_fields_from_dto(self, dto: DTOBase, root_name: str = "root"):
         # Adicionando os campos normais do DTO
@@ -2200,11 +2197,11 @@ class ServiceBase:
                 # porque o relcionamento aponta para o nome da entity (isso deve ser mudado no futuro)
                 dto_field_name = None
                 for field, dto_field in self._dto_class.fields_map.items():
-                    dto_entity_field_name = None
+                    dto_entity_field_name = field
                     if dto_field.entity_field:
                         dto_entity_field_name = dto_field.entity_field
 
-                    if object_field.relation_field in [field, dto_entity_field_name]:
+                    if object_field.relation_field == dto_entity_field_name:
                         dto_field_name = field
                         break
 
