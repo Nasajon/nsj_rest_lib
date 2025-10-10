@@ -1,23 +1,34 @@
-import typing
+import enum
+import typing as ty
 
 from nsj_rest_lib.descriptor.dto_left_join_field import EntityRelationOwner
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.dto.dto_base import DTOBase
 
+from .dto_field import DTOField
+
+class EntityRelationField(enum.IntEnum):
+    SELF = 0
+    pass
 
 class DTOObjectField:
     _ref_counter = 0
 
+    expected_type: ty.Type[DTOBase]
     description: str
+    field: ty.Optional[DTOField]
+    is_self_related: bool
 
     def __init__(
         self,
-        entity_type: EntityBase = None,
-        relation_field: str = None,
-        entity_relation_owner: EntityRelationOwner = EntityRelationOwner.SELF,
+        entity_type: ty.Type[EntityBase],
+        relation_field: ty.Union[str, EntityRelationField],
+        entity_relation_owner: EntityRelationOwner = EntityRelationOwner.SELF, # type: ignore
         not_null: bool = False,
         resume: bool = False,
-        validator: typing.Callable = None,
+        validator: ty.Optional[ty.Callable[..., ty.Any]] = None,
         description: str = '',
+        field: ty.Optional[DTOField] = None,
     ):
         """
         -----------
@@ -27,7 +38,7 @@ class DTOObjectField:
         - entity_type: Expected entity type for the related DTO (must be subclasse from EntityBase).
 
         - relation_field: Nome do campo, usado na query, para correlacionar as entidades (correspondete
-            ao campo usado no "on" de um "join").
+            ao campo usado no "on" de um "join"). Se for EntityRelationField.SELF usara o nome do field.
 
         - entity_relation_owner: Indica qual entidade contém o campo que aponta o relacionamento (
             se for EntityRelationField.OTHER, implica que a entidade apontada pela classe de DTO
@@ -54,9 +65,32 @@ class DTOObjectField:
         self.not_null = not_null
         self.resume = resume
         self.validator = validator
+        self.field = field
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
+
+        assert issubclass(self.entity_type, EntityBase), \
+            f"Argument `entity_type` of `DTOObjectField` HAS to be" \
+            f" a `EntityBase`. Is {repr(self.entity_type)}."
+
+        assert isinstance(self.relation_field, (str, EntityRelationField)), \
+            f"Argument `entity_type` of `DTOObjectField` HAS to be" \
+            f" a `str` or `EntityRelationField`. Is {repr(self.entity_type)}."
+
+        self.is_self_related = False
+        if self.relation_field == EntityRelationField.SELF:
+            assert self.entity_relation_owner == EntityRelationOwner.SELF, \
+                "Self related `DTOObjectField` only support" \
+                " `EntityRelationOwner.SELF` for now."
+            # NOTE: The functions that need to be modified to support relation
+            #           owner other than self is:
+            #           - _retrieve_self_related_object_fields in ServiceBase;
+
+            self.is_self_related = True
+            assert isinstance(self.field, DTOField), \
+                f"Argument `field` of `DTOObjectField` HAS to be" \
+                f" a `DTOField`. Is {repr(self.field)}."
 
     def __get__(self, instance, owner):
         if instance is None:

@@ -2,13 +2,16 @@ import functools
 from typing import Any, Dict
 
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
-from nsj_rest_lib.descriptor import DTOAggregator
+from nsj_rest_lib.descriptor import (
+    DTOAggregator,
+    DTOObjectField, EntityRelationField,
+)
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_left_join_field import DTOLeftJoinField, LeftJoinQuery
-from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
 from nsj_rest_lib.descriptor.dto_sql_join_field import DTOSQLJoinField, SQLJoinQuery
 
+from nsj_rest_lib.dto.dto_base import DTOBase
 
 class DTO:
     def __init__(
@@ -367,9 +370,19 @@ class DTO:
                 attr.storage_name = f"{key}"
                 attr.name = f"{key}"
 
-                # Copying type from annotation (if exists)
-                if key in cls.__annotations__:
-                    attr.expected_type = cls.__annotations__[key]
+                assert key in cls.__annotations__, \
+                    f"field {key} of type `DTOObjectField` HAS to have" \
+                    f" a annotation of type `DTOBase`."
+
+                # Copying type from annotation
+                attr.expected_type = cls.__annotations__[key]
+                assert issubclass(attr.expected_type, DTOBase), \
+                    f"Annotation/Expected Type of {key} HAS to be `DTOBase`." \
+                    f" Is {repr(attr.expected_type)}."
+
+                if attr.relation_field is EntityRelationField.SELF:
+                    attr.relation_field = key
+                    cls.fields_map[key] = attr.field
 
                 # Checking if it is a resume field (to store)
                 if attr.resume:

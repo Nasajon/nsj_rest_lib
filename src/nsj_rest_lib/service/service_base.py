@@ -9,14 +9,16 @@ from typing import Any, Callable, Dict, List, Set, Tuple
 from flask import g
 
 from nsj_rest_lib.dao.dao_base import DAOBase
-from nsj_rest_lib.descriptor import DTOAggregator
+from nsj_rest_lib.descriptor import (
+    DTOAggregator,
+    DTOObjectField, EntityRelationField
+)
 from nsj_rest_lib.descriptor.dto_field import DTOFieldFilter
 from nsj_rest_lib.descriptor.dto_left_join_field import (
     DTOLeftJoinField,
     EntityRelationOwner,
     LeftJoinQuery,
 )
-from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.dto.after_insert_update_data import AfterInsertUpdateData
@@ -38,14 +40,14 @@ from nsj_rest_lib.validator.validate_data import validate_uuid
 
 class ServiceBase:
     _dao: DAOBase
-    _dto_class: DTOBase
+    _dto_class: ty.Type[DTOBase]
 
     def __init__(
         self,
         injector_factory: NsjInjectorFactoryBase,
         dao: DAOBase,
-        dto_class: DTOBase,
-        entity_class: EntityBase,
+        dto_class: ty.Type[DTOBase],
+        entity_class: ty.Type[EntityBase],
         dto_post_response_class: DTOBase = None,
     ):
         self._injector_factory = injector_factory
@@ -60,8 +62,8 @@ class ServiceBase:
     def construtor1(
         db_adapter: DBAdapter2,
         dao: DAOBase,
-        dto_class: DTOBase,
-        entity_class: EntityBase,
+        dto_class: ty.Type[DTOBase],
+        entity_class: ty.Type[EntityBase],
         dto_post_response_class: DTOBase = None,
     ):
         """
@@ -85,7 +87,12 @@ class ServiceBase:
         id: str,
         partition_fields: Dict[str, Any],
         fields: Dict[str, Set[str]],
+        expands: ty.Optional[Dict[str, Set[str]]] = None,
     ) -> DTOBase:
+
+        if expands is None:
+            expands = {'root': set()}
+
         # Resolving fields
         fields = self._resolving_fields(fields)
 
@@ -128,6 +135,15 @@ class ServiceBase:
             joins_aux=joins_aux,
             override_data=override_data,
         )
+
+        if len(self._dto_class.object_fields_map) > 0:
+            self._retrieve_self_related_object_fields(
+                ent_list=[entity],
+                fields=fields,
+                expands=expands,
+                partition_fields=fields,
+            )
+            pass
 
         # Convertendo para DTO
         if not override_data:
@@ -654,9 +670,13 @@ class ServiceBase:
         filters: Dict[str, Any],
         search_query: str = None,
         return_hidden_fields: set[str] = None,
+        expands: ty.Optional[Dict[str, Set[str]]] = None,
     ) -> List[DTOBase]:
         # Resolving fields
         fields = self._resolving_fields(fields)
+
+        if expands is None:
+            expands = {'root': set()}
 
         # Handling the fields to retrieve
         entity_fields = self._convert_to_entity_fields(
@@ -731,6 +751,15 @@ class ServiceBase:
             for k, v in self._dto_class.aggregator_fields_map.items()
             if k in fields["root"]
         }
+
+        if len(self._dto_class.object_fields_map) > 0:
+            self._retrieve_self_related_object_fields(
+                ent_list=entity_list,
+                fields=fields,
+                expands=expands,
+                partition_fields=filters,
+            )
+            pass
 
         # Convertendo para uma lista de DTOs
         with log_time_context(
@@ -2129,6 +2158,11 @@ class ServiceBase:
 
             object_field: DTOObjectField = self._dto_class.object_fields_map[key]
 
+            if object_field.is_self_related is True:
+                # NOTE: Skipping self related DTOObjectField because there should
+                #           Already been filled before the conversion to DTO
+                continue
+
             if object_field.entity_type is None:
                 continue
 
@@ -2250,3 +2284,98 @@ class ServiceBase:
                     relation_value = str(getattr(dto, dto_field_name))
                     related_dto = related_map.get(relation_value)
                     setattr(dto, key, related_dto)
+
+    def _retrieve_self_related_object_fields(
+        self,
+        ent_list: ty.List[EntityBase],
+        fields: ty.Dict[str, ty.Set[str]],
+        expands: ty.Dict[str, ty.Set[str]],
+        partition_fields: ty.Dict[str, ty.Any],
+    ) -> None:
+        if len(ent_list) == 0:
+            return
+
+        obj_field: DTOObjectField
+        for key, obj_field in self._dto_class.object_fields_map.items():
+            if key not in fields["root"] \
+               or key not in expands['root'] \
+               or obj_field.is_self_related is False \
+               or obj_field.entity_relation_owner != EntityRelationOwner.SELF:
+                continue
+
+            # NOTE: This checks are here only for type masturbation
+            if obj_field.field is None:
+                continue
+
+            service = ServiceBase(
+                self._injector_factory,
+                DAOBase(
+                    self._injector_factory.db_adapter(),
+                    obj_field.entity_type,
+                ),
+                obj_field.expected_type,
+                obj_field.entity_type,
+            )
+
+            field_name: str = obj_field.field.entity_field or key
+
+            keys_to_fetch: ty.Set[str] = {
+                getattr(ent, field_name)
+                for ent in ent_list
+                if getattr(ent, field_name) is not None
+            }
+
+            if len(keys_to_fetch) == 0:
+                continue
+
+            pk_field: str = obj_field.expected_type.pk_field
+
+            related_filters: ty.Dict[str, str] = {
+                pk_field: ','.join(
+                    str(k) for k in keys_to_fetch
+                )
+            }
+
+            local_expands: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
+            if key in expands:
+                local_expands = {"root": expands[key]}
+                pass
+
+            local_fields: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
+            if key in fields:
+                local_fields = {"root": fields[key]}
+                pass
+
+            related_dto_list: ty.List[DTOBase] = service.list(
+                after=None,
+                limit=None,
+                fields=local_fields,
+                order_fields=None,
+                filters=related_filters,
+                search_query=None,
+                return_hidden_fields=None,
+                expands=local_expands,
+            )
+
+            related_map: ty.Dict[str, ty.Dict[str, ty.Any]] = {
+                str(getattr(x, pk_field)): x.convert_to_dict(local_fields)
+                for x in related_dto_list
+            }
+            # NOTE: I'm assuming pk_field of x will never be NULL, because
+            #           to be NULL would mean to not have a PK.
+
+            for ent in ent_list:
+                orig_val: str = str(getattr(ent, field_name))
+                if orig_val is None:
+                    setattr(ent, field_name, None)
+                    continue
+
+                if orig_val not in related_map:
+                    # NOTE: Separating from when orig_val is None because it
+                    #           probably should be an error when the field has
+                    #           a value but said value does not exist on the
+                    #           related table.
+                    setattr(ent, field_name, None)
+                    continue
+
+                setattr(ent, field_name, related_map[orig_val])
