@@ -32,6 +32,7 @@ class DTOBase(abc.ABC):
     sql_read_only_fields: list = []
     sql_no_update_fields: Set[str] = set()
     object_fields_map: Dict[str, Any] = {}
+    one_to_one_fields_map: Dict[str, Any] = {}
     field_filters_map: Dict[str, DTOFieldFilter]
     aggregator_fields_map: Dict[str, DTOAggregator] = {}
     # TODO Refatorar para suportar PK composto
@@ -69,39 +70,38 @@ class DTOBase(abc.ABC):
                 else copy.deepcopy(entity.__dict__)
             )
 
-        # Setando os campos registrados como fields simples
-        for field in self.__class__.fields_map:
-            # Recuperando a configuração do campo
-            aux_dto_field = self.__class__.fields_map[field]
-
+        # NOTE: Creating this function as it will be used again when parsing
+        #           DTOOneToOneField
+        def set_field(dto_field: DTOField, field: str) -> None:
             if (
                 validate_read_only
-                and aux_dto_field.read_only
+                and dto_field.read_only
                 and kwargs.get(field, None) is not None
             ):
                 raise ValueError(f"O campo {field} não pode ser preenchido.")
 
             # Tratando do valor default
             if (
-                aux_dto_field.default_value is not None
+                dto_field.default_value is not None
                 and kwargs.get(field, None) is None
-                and (not aux_dto_field.pk or generate_default_pk_value)
+                and (not dto_field.pk or self.generate_default_pk_value)
             ):
-                default_value = aux_dto_field.default_value
-                if callable(aux_dto_field.default_value):
-                    default_value = aux_dto_field.default_value()
+                default_value = dto_field.default_value
+                if callable(dto_field.default_value):
+                    default_value = dto_field.default_value()
                 kwargs[field] = default_value
 
-            # Verificando se é preciso converter o nome do field para o nome correspondente no Entity
-            # E, se será preciso aplicar alguma conversão customizada (para trazer o valor do entity para o DTO)
+            # Verificando se é preciso converter o nome do field para o nome
+            #   correspondente no Entity. E, se será preciso aplicar alguma
+            #   conversão customizada (para trazer o valor do entity para o DTO)
             entity_field = field
             if entity is not None or kwargs_as_entity:
-                if aux_dto_field.entity_field is not None:
-                    entity_field = aux_dto_field.entity_field
+                if dto_field.entity_field is not None:
+                    entity_field = dto_field.entity_field
 
                 # Verificando se o campo carece de conversão customizada
-                if aux_dto_field.convert_from_entity is not None:
-                    fields_converted = aux_dto_field.convert_from_entity(
+                if dto_field.convert_from_entity is not None:
+                    fields_converted = dto_field.convert_from_entity(
                         kwargs[entity_field], kwargs
                     )
                     if field not in fields_converted:
@@ -110,13 +110,21 @@ class DTOBase(abc.ABC):
                     for converted_key in fields_converted:
                         setattr(self, converted_key, fields_converted[converted_key])
 
-                    continue
+                    return
 
             # Atribuindo o valor à propriedade do DTO
             if entity_field in kwargs:
                 setattr(self, field, kwargs[entity_field])
             else:
                 setattr(self, field, None)
+            return
+
+        # Setando os campos registrados como fields simples
+        for field in self.__class__.fields_map:
+            # Recuperando a configuração do campo
+            aux_dto_field = self.__class__.fields_map[field]
+
+            set_field(aux_dto_field, field)
 
         # Setando os campos registrados como fields de join por meio da consulta SQL
         for field in self.__class__.sql_join_fields_map:
@@ -184,6 +192,17 @@ class DTOBase(abc.ABC):
                     setattr(self, field, aux_dto_field.expected_type(**kwargs[field]))
             else:
                 setattr(self, field, None)
+
+        for field, oto_field in self.__class__.one_to_one_fields_map.items():
+            if field not in kwargs or kwargs[field] is None:
+                setattr(self, field, None)
+                continue
+            if not isinstance(kwargs[field], (dict, oto_field.expected_type)):
+                set_field(oto_field.field, field)
+                continue
+
+            setattr(self, field, kwargs[field])
+            pass
 
         for k, v in self.__class__.aggregator_fields_map.items():
             if k not in kwargs or kwargs[k] is None:
@@ -537,7 +556,10 @@ class DTOBase(abc.ABC):
         return tree
 
     def convert_to_dict(
-        self, fields: Optional[FieldsTree] = None, just_resume: bool = False
+        self,
+        fields: Optional[FieldsTree] = None,
+        expands: Optional[Dict[str, Set[str]]] = None,
+        just_resume: bool = False
     ):
         """
         Converte DTO para dict
@@ -555,6 +577,9 @@ class DTOBase(abc.ABC):
                     fields_tree,
                     self.__class__._build_default_fields_tree(),
                 )
+
+        if expands is None:
+            expands = {"root": set()}
 
         # Making result maps
         result = {}
@@ -591,6 +616,22 @@ class DTOBase(abc.ABC):
                 if getattr(self, field) is not None
                 else None
             )
+
+        for field, oto_field in self.one_to_one_fields_map.items():
+            if field not in fields['root'] \
+               or field not in expands['root']:
+                continue
+
+            if getattr(self, field) is None:
+                result[field] = None
+            else:
+                if isinstance(getattr(self, field), oto_field.expected_type):
+                    result[field] = getattr(self, field).convert_to_dict(
+                        {"root": fields[field]} if field in fields else None
+                    )
+                    pass
+                pass
+            pass
 
         for k in self.aggregator_fields_map:
             if k not in fields_tree["root"]:

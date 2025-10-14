@@ -80,6 +80,8 @@ class ListRoute(RouteBase):
                     )
                 )
 
+                expands = RouteBase.parse_expands(args.get('expand'))
+
                 # Tratando dos filters e search_query
                 filters = {}
                 search_query = None
@@ -88,7 +90,7 @@ class ListRoute(RouteBase):
                         search_query = args.get(arg)
                         continue
 
-                    if arg in ["limit", "after", "offset", "fields"]:
+                    if arg in ["limit", "after", "offset", "fields", "expand"]:
                         continue
 
                     if arg in self._dto_class.partition_fields:
@@ -119,10 +121,14 @@ class ListRoute(RouteBase):
                     None,
                     filters,
                     search_query=search_query,
+                    expands=expands
                 )
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                dict_data = [dto.convert_to_dict(fields) for dto in data]
+                dict_data = [
+                    dto.convert_to_dict(fields, expands)
+                    for dto in data
+                ]
 
                 # Recuperando o campo referente à chave primária do DTO
                 pk_field = self._dto_class.pk_field

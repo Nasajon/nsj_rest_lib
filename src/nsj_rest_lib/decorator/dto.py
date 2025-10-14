@@ -3,8 +3,12 @@ import functools
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Set, Type
 
+from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.descriptor import (
+    DTOAggregator,
+    DTOOneToOneField, OTORelationType
+)
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
-from nsj_rest_lib.descriptor import DTOAggregator
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_left_join_field import DTOLeftJoinField, LeftJoinQuery
@@ -189,6 +193,8 @@ class DTO:
 
         # Creating object_fields_map in cls, if needed
         self._check_class_attribute(cls, "object_fields_map", {})
+
+        self._check_class_attribute(cls, 'one_to_one_fields_map', {})
 
         # Creating field_filters_map in cls, if needed
         self._check_class_attribute(cls, "field_filters_map", {})
@@ -464,6 +470,31 @@ class DTO:
                     resume_fields = getattr(cls, "resume_fields")
                     if key not in resume_fields:
                         resume_fields.add(key)
+
+            elif isinstance(attr, DTOOneToOneField):
+                cls.one_to_one_fields_map[key] = attr
+
+                attr.storage_name = str(key)
+                attr.name = str(key)
+
+                assert key in cls.__annotations__, \
+                    f"DTOOneToOneField with name {key} HAS to have an" \
+                    f" annotation."
+
+                assert issubclass(cls.__annotations__[key], DTOBase), \
+                    f"DTOOneToOneField with name {key} annotation MUST be a " \
+                    f" subclass of DTOBase."
+
+                attr.expected_type = cls.__annotations__[key]
+
+                if attr.resume:
+                    cls.resume_fields.add(key)
+                    pass
+
+                if attr.relation_type == OTORelationType.AGGREGATION:
+                    cls.fields_map[key] = attr.field
+                    pass
+                pass
 
         # Setting fixed filters
         setattr(cls, "fixed_filters", self._fixed_filters)
