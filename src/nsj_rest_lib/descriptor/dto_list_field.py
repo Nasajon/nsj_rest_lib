@@ -3,6 +3,7 @@ import typing
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import DTOListFieldConfigException
+from nsj_rest_lib.util.fields_util import FieldsTree, build_fields_tree
 
 
 # TODO Validar preenchimento da propriedade related_entity_field
@@ -27,6 +28,7 @@ class DTOListField:
         service_name: str = None,
         description: str = "",
         use_integrity_check: bool = True,
+        resume_fields: typing.Iterable[str] = None,
     ):
         """
         -----------
@@ -57,6 +59,9 @@ class DTOListField:
         - description: Descrição deste campo na documentação.
 
         - use_integrity_check: Se o campo deve ser usado na geração de hash de registro para a api de verificação de integridade (ver IntegrityCheckRoute).
+
+        - resume_fields: Lista de campos (usando a mesma sintaxe do parâmetro "fields" das chamadas GET)
+            pertencentes ao DTO relacionado que devem ser incluídos automaticamente nas respostas.
         """
         self.name = None
         self.description = description
@@ -71,6 +76,8 @@ class DTOListField:
         self.relation_key_field = relation_key_field
         self.service_name = service_name
         self.use_integrity_check = use_integrity_check
+        self.resume_fields = list(resume_fields or [])
+        self.resume_fields_tree: FieldsTree = build_fields_tree(self.resume_fields)
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1

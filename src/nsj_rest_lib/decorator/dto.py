@@ -313,6 +313,11 @@ class DTO:
                 if attr.use_integrity_check:
                     getattr(cls, "integrity_check_fields_map")[key] = attr
 
+                if len(attr.resume_fields_tree.get("root", set())) > 0:
+                    resume_fields = getattr(cls, "resume_fields")
+                    if key not in resume_fields:
+                        resume_fields.add(key)
+
             elif isinstance(attr, DTOLeftJoinField):
                 # Storing field in fields_map
                 getattr(cls, "left_join_fields_map")[key] = attr
@@ -372,7 +377,7 @@ class DTO:
                     attr.expected_type = cls.__annotations__[key]
 
                 # Checking if it is a resume field (to store)
-                if attr.resume:
+                if attr.resume or len(attr.resume_fields) > 0:
                     resume_fields = getattr(cls, "resume_fields")
                     if key not in resume_fields:
                         resume_fields.add(key)

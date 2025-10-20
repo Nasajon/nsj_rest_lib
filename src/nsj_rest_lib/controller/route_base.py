@@ -1,6 +1,4 @@
-import re
-
-from typing import Callable, Dict, List, Set
+from typing import Callable, List
 
 from nsj_rest_lib.controller.funtion_route_wrapper import FunctionRouteWrapper
 from nsj_rest_lib.dao.dao_base import DAOBase
@@ -9,6 +7,7 @@ from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import DataOverrideParameterException
 from nsj_rest_lib.service.service_base import ServiceBase
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
+from nsj_rest_lib.util.fields_util import FieldsTree, parse_fields_expression
 
 
 class RouteBase:
@@ -81,71 +80,16 @@ class RouteBase:
             )
 
     @staticmethod
-    def parse_fields(dto_class: DTOBase, fields: str) -> Dict[str, Set[str]]:
+    def parse_fields(dto_class: DTOBase, fields: str) -> FieldsTree:
         """
-        Trata a lista de fields recebida, construindo um dict, onde as chaves
-        serão os nomes das propriedades com objetos aninhados), ou o "root"
-        indicando os campos da entidade raíz; e, os valores são listas com os
-        nomes das propriedades recebidas.
+        Converte a expressão de fields recebida (query string) em uma estrutura
+        em árvore, garantindo que os campos de resumo do DTO sejam considerados.
         """
 
-        # TODO Refatorar para ser recursivo, e suportar qualquer nível de aninhamento de entidades
+        fields_tree = parse_fields_expression(fields)
+        fields_tree["root"] |= dto_class.resume_fields
 
-        if fields is None:
-            fields_map = {}
-            fields_map.setdefault("root", dto_class.resume_fields)
-            return fields_map
-
-        fields = fields.split(",")
-
-        matcher_dot = re.compile("(.+)\.(.+)")
-        matcher_par = re.compile("(.+)\((.+)\)")
-
-        # Construindo o mapa de retorno
-        fields_map = {}
-
-        # Iterando cada field recebido
-        for field in fields:
-            field = field.strip()
-
-            match_dot = matcher_dot.match(field)
-            match_par = matcher_par.match(field)
-
-            if match_dot is not None:
-                # Tratando fields=entidade_aninhada.propriedade
-                key = match_dot.group(1)
-                value = match_dot.group(2)
-
-                # Adicionando a propriedade do objeto interno as campos root
-                root_field_list = fields_map.setdefault("root", set())
-                if not key in root_field_list:
-                    root_field_list.add(key)
-
-                field_list = fields_map.setdefault(key, set())
-                field_list.add(value)
-            elif match_par is not None:
-                # Tratando fields=entidade_aninhada(propriedade1, propriedade2)
-                key = match_dot.group(1)
-                value = match_dot.group(2)
-
-                field_list = fields_map.setdefault(key, set())
-
-                # Adicionando a propriedade do objeto interno as campos root
-                root_field_list = fields_map.setdefault("root", set())
-                if not key in root_field_list:
-                    root_field_list.add(key)
-
-                # Tratando cada campo dentro do parêntese
-                for val in value.split(","):
-                    val = val.strip()
-
-                    field_list.add(val)
-            else:
-                # Tratando propriedade simples (sem entidade aninhada)
-                root_field_list = fields_map.setdefault("root", set())
-                root_field_list.add(field)
-
-        return fields_map
+        return fields_tree
 
     def _validade_data_override_parameters(self, args):
         """

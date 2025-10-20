@@ -2,6 +2,7 @@ import typing
 
 from nsj_rest_lib.descriptor.dto_left_join_field import EntityRelationOwner
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.util.fields_util import FieldsTree, build_fields_tree
 
 
 class DTOObjectField:
@@ -17,7 +18,8 @@ class DTOObjectField:
         not_null: bool = False,
         resume: bool = False,
         validator: typing.Callable = None,
-        description: str = '',
+        description: str = "",
+        resume_fields: typing.Iterable[str] = None,
     ):
         """
         -----------
@@ -40,6 +42,9 @@ class DTOObjectField:
 
         - resume: O campo será usado como resumo, isto é, será sempre rotornado num HTTP GET que liste os dados (mesmo que não seja solicitado por meio da query string "fields").
 
+        - resume_fields: Campos do DTO relacionado que devem ser incluídos automaticamente nas respostas,
+            seguindo a sintaxe do parâmetro "fields" (suporta aninhamentos com ".").
+
         - validator: Função que recebe o valor (a ser atribuído), e retorna o mesmo valor após algum
             tipo de tratamento (como adição ou remoção, automática, de formatação).
 
@@ -54,6 +59,8 @@ class DTOObjectField:
         self.not_null = not_null
         self.resume = resume
         self.validator = validator
+        self.resume_fields = list(resume_fields or [])
+        self.resume_fields_tree: FieldsTree = build_fields_tree(self.resume_fields)
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1

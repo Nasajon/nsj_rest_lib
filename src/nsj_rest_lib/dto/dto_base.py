@@ -10,6 +10,13 @@ from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
 from nsj_rest_lib.descriptor import DTOAggregator
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField, DTOFieldFilter
+from nsj_rest_lib.util.fields_util import (
+    FieldsTree,
+    clone_fields_tree,
+    extract_child_tree,
+    merge_fields_tree,
+    normalize_fields_tree,
+)
 
 
 class DTOBase(abc.ABC):
@@ -495,75 +502,109 @@ class DTOBase(abc.ABC):
             else:
                 return dto_field.expected_type(value)
 
-    def convert_to_dict(
-        self, fields: Dict[str, List[str]] = None, just_resume: bool = False
-    ):
+    @classmethod
+    def _build_default_fields_tree(cls) -> FieldsTree:
+        """
+        Constrói a estrutura de fields para o DTO, com base nos campos
+        configurados como resumo.
+
+        A estrutura de fields é uma árvore, onde cada chave é o nome do campo
+        e o valor é um conjunto de campos que são resumos.
+
+        :return: Uma estrutura de fields em formato de árvore.
+        :rtype: FieldsTree
+        """
+        tree: FieldsTree = {"root": set(cls.resume_fields)}
+
+        for field_name, descriptor in cls.list_fields_map.items():
+            if len(descriptor.resume_fields_tree.get("root", set())) <= 0:
+                continue
+
+            tree["root"].add(field_name)
+            tree[field_name] = clone_fields_tree(descriptor.resume_fields_tree)
+
+        for field_name, descriptor in cls.object_fields_map.items():
+            if descriptor.resume or len(descriptor.resume_fields) > 0:
+                tree["root"].add(field_name)
+
+                if len(descriptor.resume_fields_tree.get("root", set())) > 0:
+                    tree[field_name] = clone_fields_tree(descriptor.resume_fields_tree)
+
+        for field_name, descriptor in cls.aggregator_fields_map.items():
+            if field_name in tree["root"]:
+                tree["root"] |= descriptor.expected_type.resume_fields
+
+        return tree
+
+    def convert_to_dict(self, fields: FieldsTree = None, just_resume: bool = False):
         """
         Converte DTO para dict
         """
 
         # Resolving fields to use
-        if fields is None:
-            fields = {"root": self.resume_fields}
-
         if just_resume:
-            fields = {"root": self.resume_fields}
+            fields_tree = self.__class__._build_default_fields_tree()
         else:
-            fields["root"] = fields["root"].union(self.resume_fields)
+            if fields is None:
+                fields_tree = self.__class__._build_default_fields_tree()
+            else:
+                fields_tree = normalize_fields_tree(fields)
+                merge_fields_tree(
+                    fields_tree,
+                    self.__class__._build_default_fields_tree(),
+                )
 
         # Making result maps
         result = {}
 
         # Converting simple fields
         for field in self.fields_map:
-            if not field in fields["root"]:
+            if field not in fields_tree["root"]:
                 continue
 
             result[field] = getattr(self, field)
 
         # Converting sql join fields
         for field in self.sql_join_fields_map:
-            if not field in fields["root"]:
+            if field not in fields_tree["root"]:
                 continue
 
             result[field] = getattr(self, field)
 
         # Converting left join fields
         for field in self.left_join_fields_map:
-            if not field in fields["root"]:
+            if field not in fields_tree["root"]:
                 continue
 
             result[field] = getattr(self, field)
 
         for field in self.object_fields_map:
-            if not field in fields["root"]:
+            if field not in fields_tree["root"]:
                 continue
 
             result[field] = (
                 getattr(self, field).convert_to_dict(
-                    {"root": fields[field]} if field in fields else None
+                    extract_child_tree(fields_tree, field)
                 )
                 if getattr(self, field) is not None
                 else None
             )
 
         for k in self.aggregator_fields_map:
-            if k not in fields["root"]:
+            if k not in fields_tree["root"]:
                 continue
 
             result[k] = getattr(self, k).convert_to_dict(
-                {"root": fields[k]} if k in fields else None
+                extract_child_tree(fields_tree, k)
             )
 
         # Converting list fields
         for field in self.list_fields_map:
-            if not field in fields["root"]:
+            if field not in fields_tree["root"]:
                 continue
 
             # Criando o mapa de fields para a entidade aninhada
-            internal_fields = None
-            if field in fields:
-                internal_fields = {"root": fields[field]}
+            internal_fields = extract_child_tree(fields_tree, field)
 
             # Recuperando o valor do atributo
             value = getattr(self, field, None)
@@ -572,7 +613,8 @@ class DTOBase(abc.ABC):
 
             # Convetendo a lista de DTOs aninhados
             result[field] = [
-                item.convert_to_dict(internal_fields, just_resume) for item in value
+                item.convert_to_dict(clone_fields_tree(internal_fields), just_resume)
+                for item in value
             ]
 
         return result

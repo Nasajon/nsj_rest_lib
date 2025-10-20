@@ -30,6 +30,13 @@ from nsj_rest_lib.exception import (
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger
 from nsj_rest_lib.util.db_adapter2 import DBAdapter2
+from nsj_rest_lib.util.fields_util import (
+    FieldsTree,
+    clone_fields_tree,
+    extract_child_tree,
+    merge_fields_tree,
+    normalize_fields_tree,
+)
 from nsj_rest_lib.util.join_aux import JoinAux
 from nsj_rest_lib.util.log_time import log_time, log_time_context
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
@@ -84,7 +91,7 @@ class ServiceBase:
         self,
         id: str,
         partition_fields: Dict[str, Any],
-        fields: Dict[str, Set[str]],
+        fields: FieldsTree,
     ) -> DTOBase:
         # Resolving fields
         fields = self._resolving_fields(fields)
@@ -537,26 +544,38 @@ class ServiceBase:
 
         return entity_filters
 
-    def _resolving_fields(self, fields: Dict[str, Set[str]]) -> Dict[str, Set[str]]:
+    def _resolving_fields(self, fields: FieldsTree) -> FieldsTree:
         """
-        Verifica os fields recebidos, garantindo que os campos de resumo serão considerados.
+        Verifica os fields recebidos, garantindo que os campos de resumo (incluindo os
+        configurados nos relacionamentos) sejam considerados.
         """
 
-        # Resolving fields
-        if fields is None:
-            result = {"root": self._dto_class.resume_fields}
-        else:
-            result = copy.deepcopy(fields)
-            result["root"] = result["root"].union(self._dto_class.resume_fields)
+        result = normalize_fields_tree(fields)
+        merge_fields_tree(result, self._dto_class._build_default_fields_tree())
 
-            for k, v in self._dto_class.aggregator_fields_map.items():
-                if k not in result["root"]:
-                    continue
+        # Tratamento especial para campos agregadores
+        for field_name, descriptor in self._dto_class.aggregator_fields_map.items():
+            if field_name not in result["root"]:
+                continue
 
-                result["root"] |= v.expected_type.resume_fields
+            result["root"] |= descriptor.expected_type.resume_fields
 
-                if k in result:
-                    result["root"] |= result.pop(k)
+            if field_name not in result:
+                continue
+
+            child_tree = result.pop(field_name)
+            if isinstance(child_tree, dict):
+                result["root"] |= child_tree.get("root", set())
+
+                for nested_field, nested_tree in child_tree.items():
+                    if nested_field == "root":
+                        continue
+
+                    existing = result.get(nested_field)
+                    if not isinstance(existing, dict):
+                        result[nested_field] = clone_fields_tree(nested_tree)
+                    else:
+                        merge_fields_tree(existing, nested_tree)
 
         return result
 
@@ -649,7 +668,7 @@ class ServiceBase:
         self,
         after: uuid.UUID,
         limit: int,
-        fields: Dict[str, Set[str]],
+        fields: FieldsTree,
         order_fields: List[str],
         filters: Dict[str, Any],
         search_query: str = None,
@@ -846,7 +865,7 @@ class ServiceBase:
         return dto_list
 
     def _retrieve_related_lists(
-        self, dto_list: List[DTOBase], fields: Dict[str, Set[str]]
+        self, dto_list: List[DTOBase], fields: FieldsTree
     ):
 
         # TODO Controlar profundidade?!
@@ -911,12 +930,7 @@ class ServiceBase:
                     # Se houver mais de um valor, teria que quebrar em vários queries (não tratado aqui)
 
             # Resolvendo os fields da entidade aninhada
-            fields_to_list = copy.deepcopy(fields)
-            if master_dto_attr in fields:
-                fields_to_list["root"] = fields[master_dto_attr]
-                del fields_to_list[master_dto_attr]
-            else:
-                fields_to_list["root"] = set()
+            fields_to_list = extract_child_tree(fields, master_dto_attr)
 
             # Busca todos os relacionados de uma vez
             related_dto_list = service.list(
@@ -1122,25 +1136,25 @@ class ServiceBase:
 
         return _lst_return
 
-    def _make_fields_from_dto(self, dto: DTOBase, root_name: str = "root"):
-        # Adicionando os campos normais do DTO
-        fields = {root_name: set()}
+    def _make_fields_from_dto(self, dto: DTOBase) -> FieldsTree:
+        fields_tree: FieldsTree = {"root": set()}
+
         for field in dto.fields_map:
             if field in dto.__dict__:
-                fields[root_name].add(field)
+                fields_tree["root"].add(field)
 
-        # Adicionando os campos de lista, contidos no DTO
         for list_field in dto.list_fields_map:
-            if list_field in dto.__dict__:
-                list_dto = getattr(dto, list_field)
-                if not list_dto:
-                    continue
+            if list_field not in dto.__dict__:
+                continue
 
-                fields[root_name].add(list_field)
-                list_fields = self._make_fields_from_dto(list_dto[0], list_field)
-                fields = {**fields, **list_fields}
+            list_dto = getattr(dto, list_field)
+            if not list_dto:
+                continue
 
-        return fields
+            fields_tree["root"].add(list_field)
+            fields_tree[list_field] = self._make_fields_from_dto(list_dto[0])
+
+        return fields_tree
 
     def _save(
         self,
@@ -1919,7 +1933,7 @@ class ServiceBase:
     def _retrieve_left_join_fields(
         self,
         dto_list: List[DTOBase],
-        fields: Dict[str, Set[str]],
+        fields: FieldsTree,
         partition_fields: Dict[str, Any],
     ):
         warnings.warn(
@@ -2041,7 +2055,7 @@ class ServiceBase:
     def _retrieve_object_fields_old(
         self,
         dto_list: List[DTOBase],
-        fields: Dict[str, Set[str]],
+        fields: FieldsTree,
         partition_fields: Dict[str, Any],
     ):
         # Tratando cada dto recebido
@@ -2084,7 +2098,7 @@ class ServiceBase:
                     related_dto = service.list(
                         None,
                         1,
-                        {"root": fields[key]} if key in fields else None,
+                        extract_child_tree(fields, key),
                         None,
                         related_filters,
                     )
@@ -2101,7 +2115,7 @@ class ServiceBase:
                             field = service.get(
                                 getattr(dto, object_field.relation_field),
                                 partition_fields,
-                                {"root": fields[key]} if key in fields else None,
+                                extract_child_tree(fields, key),
                             )
                         except NotFoundException:
                             field = None
@@ -2111,7 +2125,7 @@ class ServiceBase:
     def _retrieve_object_fields(
         self,
         dto_list: List[DTOBase],
-        fields: Dict[str, Set[str]],
+        fields: FieldsTree,
         partition_fields: Dict[str, Any],
     ):
         """
@@ -2169,7 +2183,7 @@ class ServiceBase:
                 related_dto_list = service.list(
                     None,
                     None,
-                    {"root": fields[key]} if key in fields else None,
+                    extract_child_tree(fields, key),
                     None,
                     related_filters,
                     return_hidden_fields=set([object_field.relation_field]),
@@ -2232,7 +2246,7 @@ class ServiceBase:
                 related_dto_list = service.list(
                     None,
                     None,
-                    {"root": fields[key]} if key in fields else None,
+                    extract_child_tree(fields, key),
                     None,
                     related_filters,
                 )
