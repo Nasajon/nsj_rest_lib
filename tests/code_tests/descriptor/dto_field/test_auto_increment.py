@@ -16,7 +16,7 @@ from nsj_rest_lib.util.join_aux import JoinAux
 
 
 @DTO()
-class TesteDTO(DTOBase):
+class DTOTeste(DTOBase):
 
     num: int = DTOField(
         auto_increment={
@@ -39,12 +39,12 @@ class TesteDTO(DTOBase):
 
 
 @Entity(table_name="teste_entity", pk_field="num", default_order_fields=["num"])
-class TesteEntity(EntityBase):
+class EntityTeste(EntityBase):
     num: int = None
     num2: int = None
 
 
-class TestDAO(DAOBase):
+class DAOTest(DAOBase):
     def __init__(self, da, entity_class):
         super().__init__(db=da, entity_class=entity_class)
         self.count = 10
@@ -90,7 +90,7 @@ class TestDAO(DAOBase):
 
 class TestAutoIncrement:
     def test_auto_increment_normal_configure(self):
-        field = TesteDTO.fields_map["num"]
+        field = DTOTeste.fields_map["num"]
         assert field.auto_increment is not None
         assert field.auto_increment.sequence_name == "NOME_DA_SEQUENCIA"
         assert field.auto_increment.template == "{seq}"
@@ -99,7 +99,7 @@ class TestAutoIncrement:
         assert field.auto_increment.db_managed is False
 
     def test_auto_increment_db_managed_configure(self):
-        field = TesteDTO.fields_map["num2"]
+        field = DTOTeste.fields_map["num2"]
         assert field.auto_increment is not None
         assert field.auto_increment.sequence_name is None
         assert field.auto_increment.template is None
@@ -108,13 +108,13 @@ class TestAutoIncrement:
         assert field.auto_increment.db_managed is True
 
     def test_fulfilment(self):
-        dto = TesteDTO()
+        dto = DTOTeste()
         service = ServiceBase(
             injector_factory=None,
-            dao=TestDAO(da=None, entity_class=TesteEntity),
-            dto_class=TesteDTO,
-            entity_class=TesteEntity,
-            dto_post_response_class=TesteDTO,
+            dao=DAOTest(da=None, entity_class=EntityTeste),
+            dto_class=DTOTeste,
+            entity_class=EntityTeste,
+            dto_post_response_class=DTOTeste,
         )
         dto_response = service.insert(dto)
         assert dto_response.num == 11
