@@ -96,8 +96,19 @@ class ServiceBase:
         # Resolving fields
         fields = self._resolving_fields(fields)
 
+        if self._has_partial_support():
+            base_root_fields, partial_root_fields = self._split_partial_fields(
+                fields["root"]
+            )
+        else:
+            base_root_fields = set(fields["root"])
+            partial_root_fields = set()
+
         # Handling the fields to retrieve
-        entity_fields = self._convert_to_entity_fields(fields["root"])
+        entity_fields = self._convert_to_entity_fields(base_root_fields)
+        partial_join_fields = self._convert_partial_fields_to_entity(
+            partial_root_fields
+        )
 
         # Tratando dos filtros
         all_filters = {}
@@ -118,7 +129,11 @@ class ServiceBase:
         )
 
         # Resolvendo os joins
-        joins_aux = self._resolve_sql_join_fields(fields["root"], entity_filters)
+        joins_aux = self._resolve_sql_join_fields(
+            fields["root"], entity_filters, partial_join_fields
+        )
+
+        partial_exists_clause = self._build_partial_exists_clause(joins_aux)
 
         # Recuperando a entity
         override_data = (
@@ -133,6 +148,7 @@ class ServiceBase:
             conjunto_type=self._dto_class.conjunto_type,
             conjunto_field=self._dto_class.conjunto_field,
             joins_aux=joins_aux,
+            partial_exists_clause=partial_exists_clause,
             override_data=override_data,
         )
 
@@ -251,6 +267,99 @@ class ServiceBase:
             f"Não foi possível identificar o ID recebido com qualquer das chaves candidatas reconhecidas. Valor recebido: {id_value}."
         )
 
+    def _has_partial_support(self) -> bool:
+        return (
+            getattr(self._dto_class, "partial_dto_config", None) is not None
+            and getattr(self._entity_class, "partial_entity_config", None) is not None
+        )
+
+    def _get_partial_join_alias(self) -> str:
+        return "partial_join"
+
+    def _split_partial_fields(
+        self,
+        fields: Set[str],
+        dto_class=None,
+    ) -> Tuple[Set[str], Set[str]]:
+        if fields is None:
+            return (set(), set())
+
+        if dto_class is None:
+            dto_class = self._dto_class
+
+        partial_config = getattr(dto_class, "partial_dto_config", None)
+        if partial_config is None:
+            return (set(fields), set())
+
+        base_fields: Set[str] = set()
+        extension_fields: Set[str] = set()
+
+        for field in fields:
+            if field in partial_config.extension_fields:
+                extension_fields.add(field)
+            else:
+                base_fields.add(field)
+
+        return (base_fields, extension_fields)
+
+    def _convert_partial_fields_to_entity(
+        self,
+        fields: Set[str],
+        dto_class=None,
+    ) -> Set[str]:
+        if not fields:
+            return set()
+
+        if dto_class is None:
+            dto_class = self._dto_class
+
+        entity_fields: Set[str] = set()
+        for field in fields:
+            try:
+                entity_field = self._convert_to_entity_field(field, dto_class)
+            except KeyError:
+                entity_field = field
+            entity_fields.add(entity_field)
+
+        return entity_fields
+
+    def _build_partial_exists_clause(
+        self,
+        joins_aux: List[JoinAux],
+    ) -> Tuple[str, str, str] | None:
+        if not self._has_partial_support():
+            return None
+
+        alias = self._get_partial_join_alias()
+        if joins_aux is not None:
+            for join_aux in joins_aux:
+                if join_aux.alias == alias:
+                    return None
+
+        partial_config = getattr(self._dto_class, "partial_dto_config", None)
+        partial_entity_config = getattr(
+            self._entity_class, "partial_entity_config", None
+        )
+
+        if partial_config is None or partial_entity_config is None:
+            return None
+
+        try:
+            base_field = self._convert_to_entity_field(
+                partial_config.related_entity_field,
+                dto_class=partial_config.parent_dto,
+            )
+        except KeyError:
+            base_field = partial_config.related_entity_field
+
+        relation_field = partial_config.relation_field
+        table_name = partial_entity_config.extension_table_name
+
+        if table_name is None or base_field is None or relation_field is None:
+            return None
+
+        return (table_name, base_field, relation_field)
+
     def _convert_to_entity_fields(
         self,
         fields: Set[str],
@@ -336,6 +445,10 @@ class ServiceBase:
 
         # Dicionário para guardar os filtros convertidos
         entity_filters = {}
+        partial_config = getattr(self._dto_class, "partial_dto_config", None)
+        partial_join_alias = (
+            self._get_partial_join_alias() if partial_config is not None else None
+        )
 
         # Iterando enquanto houver filtros recebidos, ou derivalos a partir dos filter_aliases
         while len(aux_filters) > 0:
@@ -349,6 +462,7 @@ class ServiceBase:
                 dto_field = None
                 dto_sql_join_field = None
                 table_alias = None
+                is_partial_extension_field = False
 
                 # Recuperando os valores passados nos filtros
                 if isinstance(aux_filters[filter], str):
@@ -414,6 +528,12 @@ class ServiceBase:
                     field_filter = self._dto_class.field_filters_map[filter]
                     aux = self._dto_class.field_filters_map[filter].field_name
                     dto_field = self._dto_class.fields_map[aux]
+                    if (
+                        partial_config is not None
+                        and getattr(dto_field, "name", aux)
+                        in partial_config.extension_fields
+                    ):
+                        is_partial_extension_field = True
                     is_length_filter = field_filter.operator in [
                         FilterOperator.LENGTH_GREATER_OR_EQUAL_THAN,
                         FilterOperator.LENGTH_LESS_OR_EQUAL_THAN,
@@ -430,6 +550,12 @@ class ServiceBase:
                     field_filter = DTOFieldFilter(filter)
                     field_filter.set_field_name(filter)
                     dto_field = self._dto_class.fields_map[filter]
+                    if (
+                        partial_config is not None
+                        and getattr(dto_field, "name", filter)
+                        in partial_config.extension_fields
+                    ):
+                        is_partial_extension_field = True
 
                 elif filter in self._dto_class.sql_join_fields_map:
                     # Creating filter config to a DTOSQLJoinField (equals operator)
@@ -521,8 +647,13 @@ class ServiceBase:
                             and not is_conjunto_filter
                             and not is_sql_join_filter
                         ):
+                            alias = None
+                            if is_partial_extension_field:
+                                alias = partial_join_alias
+                                if entity_field != entity_field_name:
+                                    alias = None
                             entity_filter = Filter(
-                                field_filter.operator, converted_value
+                                field_filter.operator, converted_value, alias
                             )
                         elif is_sql_join_filter:
                             entity_filter = Filter(
@@ -592,6 +723,7 @@ class ServiceBase:
         self,
         fields: Set[str],
         entity_filters: Dict[str, List[Filter]],
+        partial_join_fields: Set[str] = None,
     ) -> List[JoinAux]:
         """
         Analisa os campos de jooin solicitados, e monta uma lista de objetos
@@ -661,6 +793,43 @@ class ServiceBase:
 
             joins_aux.append(join_aux)
 
+        partial_config = getattr(self._dto_class, "partial_dto_config", None)
+        partial_entity_config = getattr(
+            self._entity_class, "partial_entity_config", None
+        )
+        if partial_config is not None and partial_entity_config is not None:
+            alias = self._get_partial_join_alias()
+            join_fields_needed: Set[str] = set(partial_join_fields or set())
+            join_required = len(join_fields_needed) > 0
+
+            if entity_filters is not None and not join_required:
+                for filter_list in entity_filters.values():
+                    for condiction in filter_list:
+                        if condiction.table_alias == alias:
+                            join_required = True
+                            break
+                    if join_required:
+                        break
+
+            if join_required:
+                join_aux = JoinAux()
+                join_aux.table = partial_entity_config.extension_table_name
+                join_aux.type = "inner"
+                join_aux.alias = alias
+                join_aux.fields = list(join_fields_needed) if join_fields_needed else []
+
+                try:
+                    join_aux.self_field = self._convert_to_entity_field(
+                        partial_config.related_entity_field,
+                        dto_class=partial_config.parent_dto,
+                    )
+                except KeyError:
+                    join_aux.self_field = partial_config.related_entity_field
+
+                join_aux.other_field = partial_config.relation_field
+
+                joins_aux.append(join_aux)
+
         return joins_aux
 
     @log_time
@@ -677,9 +846,44 @@ class ServiceBase:
         # Resolving fields
         fields = self._resolving_fields(fields)
 
-        # Handling the fields to retrieve
+        has_partial = self._has_partial_support()
+        partial_config = getattr(self._dto_class, "partial_dto_config", None)
+
+        base_root_fields: Set[str] = set(fields["root"])
+        partial_root_fields: Set[str] = set()
+        partial_join_fields_entity: Set[str] = set()
+        extension_entity_fields: Set[str] = set()
+
+        if has_partial and partial_config is not None:
+            base_root_fields, partial_root_fields = self._split_partial_fields(
+                fields["root"]
+            )
+            partial_join_fields_entity |= self._convert_partial_fields_to_entity(
+                partial_root_fields
+            )
+            extension_entity_fields = self._convert_partial_fields_to_entity(
+                partial_config.extension_fields
+            )
+
+        base_hidden_fields = None
+        if return_hidden_fields is not None:
+            hidden_base_candidates = set(return_hidden_fields)
+            if has_partial and extension_entity_fields:
+                partial_hidden_fields = {
+                    field
+                    for field in hidden_base_candidates
+                    if field in extension_entity_fields
+                }
+                if partial_hidden_fields:
+                    partial_join_fields_entity |= partial_hidden_fields
+                hidden_base_candidates -= partial_hidden_fields
+
+            base_hidden_fields = (
+                hidden_base_candidates if len(hidden_base_candidates) > 0 else None
+            )
+
         entity_fields = self._convert_to_entity_fields(
-            fields["root"], return_hidden_fields=return_hidden_fields
+            base_root_fields, return_hidden_fields=base_hidden_fields
         )
 
         # Handling order fields
@@ -688,6 +892,16 @@ class ServiceBase:
         if order_fields is not None:
             for field in order_fields:
                 aux = re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip()
+
+                if (
+                    has_partial
+                    and partial_config is not None
+                    and aux in (partial_config.extension_fields)
+                ):
+                    raise NotImplementedError(
+                        "Ordenação por campos de extensão ainda não é suportada."
+                    )
+
                 if re.search(r"\bdesc\b", field):
                     desc_set.add(aux)
                 else:
@@ -714,9 +928,11 @@ class ServiceBase:
         # Tratando dos campos a serem enviados ao DAO para uso do search (se necessário)
         search_fields = None
         if self._dto_class.search_fields is not None:
-            search_fields = self._convert_to_entity_fields(
+            base_search_fields, _ = self._split_partial_fields(
                 self._dto_class.search_fields
             )
+            if base_search_fields:
+                search_fields = self._convert_to_entity_fields(base_search_fields)
 
         # Resolve o campo de chave sendo utilizado
         entity_key_field, entity_id_value = (None, None)
@@ -727,7 +943,11 @@ class ServiceBase:
             )
 
         # Resolvendo os joins
-        joins_aux = self._resolve_sql_join_fields(fields["root"], entity_filters)
+        joins_aux = self._resolve_sql_join_fields(
+            fields["root"], entity_filters, partial_join_fields_entity
+        )
+
+        partial_exists_clause = self._build_partial_exists_clause(joins_aux)
 
         # Retrieving from DAO
         entity_list = self._dao.list(
@@ -743,6 +963,7 @@ class ServiceBase:
             search_query=search_query,
             search_fields=search_fields,
             joins_aux=joins_aux,
+            partial_exists_clause=partial_exists_clause,
         )
 
         agg_field_map: ty.Dict[str, DTOAggregator] = {
@@ -864,9 +1085,7 @@ class ServiceBase:
 
         return dto_list
 
-    def _retrieve_related_lists(
-        self, dto_list: List[DTOBase], fields: FieldsTree
-    ):
+    def _retrieve_related_lists(self, dto_list: List[DTOBase], fields: FieldsTree):
 
         # TODO Controlar profundidade?!
         if not dto_list:

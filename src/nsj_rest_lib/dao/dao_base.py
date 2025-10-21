@@ -95,6 +95,7 @@ class DAOBase:
         conjunto_field: str = None,
         joins_aux: List[JoinAux] = None,
         override_data: bool = False,
+        partial_exists_clause: Tuple[str, str, str] = None,
     ) -> EntityBase:
         """
         Returns an entity instance by its ID.
@@ -122,6 +123,21 @@ class DAOBase:
         # Montando a clausula dos fields vindos dos joins
         sql_join_fields, sql_join = self._make_joins_sql(joins_aux)
 
+        partial_exists_sql = ""
+        if partial_exists_clause is not None:
+            (
+                partial_table_name,
+                partial_base_field,
+                partial_relation_field,
+            ) = partial_exists_clause
+            partial_exists_sql = f"""
+            and exists (
+                select 1
+                from {partial_table_name} as partial_exists
+                where partial_exists.{partial_relation_field} = t0.{partial_base_field}
+            )
+            """
+
         # Building query
         sql = f"""
         {with_conjunto}
@@ -136,6 +152,7 @@ class DAOBase:
         where
             t0.{key_field} = :id
             {filters_where}
+            {partial_exists_sql}
         limit 10
         """
         values = {"id": id}
@@ -359,6 +376,7 @@ class DAOBase:
         search_query: str = None,
         search_fields: List[str] = None,
         joins_aux: List[JoinAux] = None,
+        partial_exists_clause: Tuple[str, str, str] = None,
     ) -> List[EntityBase]:
         """
         Returns a paginated entity list.
@@ -462,6 +480,21 @@ class DAOBase:
         # Montando a clausula dos fields vindos dos joins
         sql_join_fields, sql_join = self._make_joins_sql(joins_aux)
 
+        partial_exists_sql = ""
+        if partial_exists_clause is not None:
+            (
+                partial_table_name,
+                partial_base_field,
+                partial_relation_field,
+            ) = partial_exists_clause
+            partial_exists_sql = f"""
+            and exists (
+                select 1
+                from {partial_table_name} as partial_exists
+                where partial_exists.{partial_relation_field} = t0.{partial_base_field}
+            )
+            """
+
         # Montando a query em si
         sql = f"""
         {with_conjunto}
@@ -481,6 +514,7 @@ class DAOBase:
             {pagination_where}
             {filters_where}
             {search_where}
+            {partial_exists_sql}
 
         order by
             {order_by}
@@ -513,12 +547,13 @@ class DAOBase:
         sql_join = ""
         for join_aux in joins_aux:
             # Ajustando os fields
-            fields_sql = self._sql_fields(
-                fields=join_aux.fields, table_alias=join_aux.alias
-            )
+            if join_aux.fields:
+                fields_sql = self._sql_fields(
+                    fields=join_aux.fields, table_alias=join_aux.alias
+                )
 
-            # Adicionando os fields no SQL geral
-            sql_join_fields = f"{sql_join_fields},\n{fields_sql}"
+                # Adicionando os fields no SQL geral
+                sql_join_fields = f"{sql_join_fields},\n{fields_sql}"
 
             # Montando a clausula do join em si
             join_operator = f"{join_aux.type} join"

@@ -1,5 +1,7 @@
+import copy
 import functools
-from typing import Any, Dict
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, Set, Type
 
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor import DTOAggregator
@@ -8,6 +10,16 @@ from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_left_join_field import DTOLeftJoinField, LeftJoinQuery
 from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
 from nsj_rest_lib.descriptor.dto_sql_join_field import DTOSQLJoinField, SQLJoinQuery
+from nsj_rest_lib.dto.dto_base import DTOBase
+
+
+@dataclass
+class PartialDTOConfig:
+    parent_dto: Type[DTOBase]
+    relation_field: str
+    related_entity_field: str
+    parent_fields: Set[str]
+    extension_fields: Set[str]
 
 
 class DTO:
@@ -18,6 +30,7 @@ class DTO:
         conjunto_field: str = None,
         filter_aliases: Dict[str, Any] = None,
         data_override: dict[str, list[str]] = None,
+        partial_of: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         -----------
@@ -76,6 +89,7 @@ class DTO:
         self._conjunto_type = conjunto_type
         self._conjunto_field = conjunto_field
         self._filter_aliases = filter_aliases
+        self._partial_of_config = partial_of
 
         # Validando os parâmetros de data_override
         self._validate_data_override(data_override)
@@ -212,6 +226,75 @@ class DTO:
 
         # Criando a propriedade "auto_increment_fields"
         self._check_class_attribute(cls, "auto_increment_fields", set())
+
+        # Tratando das propriedades das extensões parciais
+        partial_parent_fields: Set[str] = set()
+        partial_extension_fields: Set[str] = set()
+        partial_parent_dto: Optional[Type[DTOBase]] = None
+        partial_relation_field: Optional[str] = None
+        partial_related_entity_field: Optional[str] = None
+
+        if self._partial_of_config is not None:
+            partial_parent_dto = self._partial_of_config.get("dto")
+            if partial_parent_dto is None or not isinstance(partial_parent_dto, type):
+                raise ValueError(
+                    "Configuração partial_of inválida: parâmetro 'dto' deve ser uma classe."
+                )
+            if not issubclass(partial_parent_dto, DTOBase):
+                raise ValueError(
+                    "Configuração partial_of inválida: parâmetro 'dto' deve ser subclasse de DTOBase."
+                )
+
+            partial_relation_field = self._partial_of_config.get("relation_field")
+            if partial_relation_field is None or not isinstance(
+                partial_relation_field, str
+            ):
+                raise ValueError(
+                    "Configuração partial_of inválida: parâmetro 'relation_field' deve ser informado e ser uma string."
+                )
+
+            partial_related_entity_field = self._partial_of_config.get(
+                "related_entity_field"
+            )
+            if partial_related_entity_field is not None and not isinstance(
+                partial_related_entity_field, str
+            ):
+                raise ValueError(
+                    "Configuração partial_of inválida: parâmetro 'related_entity_field' deve ser uma string."
+                )
+
+            if partial_related_entity_field is None:
+                partial_related_entity_field = getattr(
+                    partial_parent_dto, "pk_field", None
+                )
+
+            if partial_related_entity_field is None:
+                raise ValueError(
+                    "Não foi possível determinar o campo relacionado na entidade principal para a configuração partial_of."
+                )
+
+            partial_parent_fields = set(
+                getattr(partial_parent_dto, "fields_map", {}).keys()
+            )
+
+            for key, attr in partial_parent_dto.__dict__.items():
+                if key in cls.__dict__:
+                    continue
+
+                if isinstance(
+                    attr,
+                    (
+                        DTOField,
+                        DTOListField,
+                        DTOLeftJoinField,
+                        DTOSQLJoinField,
+                        DTOObjectField,
+                        DTOAggregator,
+                    ),
+                ):
+                    setattr(cls, key, copy.deepcopy(attr))
+                    if isinstance(attr, DTOField):
+                        partial_parent_fields.add(key)
 
         # Iterating for the class attributes
         for key, attr in cls.__dict__.items():
@@ -394,6 +477,27 @@ class DTO:
 
         # Checking data_override properties exists as DTOFields
         self._validate_data_override_properties(cls)
+
+        if partial_parent_dto is not None:
+            partial_extension_fields = {
+                field_name
+                for field_name in getattr(cls, "fields_map").keys()
+                if field_name not in partial_parent_fields
+            }
+
+            setattr(
+                cls,
+                "partial_dto_config",
+                PartialDTOConfig(
+                    parent_dto=partial_parent_dto,
+                    relation_field=partial_relation_field,
+                    related_entity_field=partial_related_entity_field,
+                    parent_fields=partial_parent_fields,
+                    extension_fields=partial_extension_fields,
+                ),
+            )
+        else:
+            setattr(cls, "partial_dto_config", None)
 
         return cls
 
