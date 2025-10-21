@@ -23,11 +23,11 @@ class DTOFieldFilter:
 class DTOAutoIncrementField:
     def __init__(
         self,
-        sequence_name: str | None,
-        template: str | None,
-        group: list[str] | None,
-        start_value: int | None = 1,
-        db_managed: bool | None = False,
+        sequence_name: typing.Union[str, None],
+        template: typing.Union[str, None],
+        group: typing.Union[typing.List[str], None],
+        start_value: typing.Union[int, None] = 1,
+        db_managed: typing.Union[bool, None] = False,
     ):
         self.sequence_name = sequence_name
         self.template = template
