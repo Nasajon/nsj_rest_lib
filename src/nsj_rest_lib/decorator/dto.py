@@ -478,12 +478,13 @@ class DTO:
                 attr.name = str(key)
 
                 assert key in cls.__annotations__, \
-                    f"DTOOneToOneField with name {key} HAS to have an" \
+                    f"`DTOOneToOneField` with name `{key}` HAS to have an" \
                     f" annotation."
 
                 assert issubclass(cls.__annotations__[key], DTOBase), \
-                    f"DTOOneToOneField with name {key} annotation MUST be a " \
-                    f" subclass of DTOBase."
+                    f"`DTOOneToOneField` with name `{key}` annotation's MUST" \
+                    f" be a subclass of `DTOBase`." \
+                    f" Is `{repr(cls.__annotations__[key])}`."
 
                 attr.expected_type = cls.__annotations__[key]
 
