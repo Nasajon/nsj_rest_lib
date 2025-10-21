@@ -1,11 +1,14 @@
 import enum
 import typing as ty
 
-from nsj_rest_lib.descriptor.dto_left_join_field import EntityRelationOwner
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.dto.dto_base import DTOBase
 
 from .dto_field import DTOField
+
+if ty.TYPE_CHECKING is True:
+    from nsj_rest_lib.dto.dto_base import DTOBase
+    from .dto_left_join_field import EntityRelationOwner
+    pass
 
 T = ty.TypeVar('T')
 
@@ -19,11 +22,11 @@ class OTORelationType(enum.IntEnum):
 class DTOOneToOneField:
     _ref_counter = 0
 
-    expected_type: ty.Type[DTOBase]
+    expected_type: ty.Type['DTOBase']
     relation_type: OTORelationType
     relation_field: ty.Optional[str]
     field: ty.Optional[DTOField]
-    entity_relation_owner: EntityRelationOwner
+    entity_relation_owner: 'EntityRelationOwner'
     not_null: bool
     resume: bool
     validator: ty.Optional[ty.Callable[..., ty.Any]]
@@ -36,7 +39,7 @@ class DTOOneToOneField:
         relation_type: OTORelationType,
         relation_field: ty.Optional[str] = None,
         field: ty.Optional[DTOField] = None,
-        entity_relation_owner: EntityRelationOwner = EntityRelationOwner.SELF, # type: ignore
+        entity_relation_owner: 'EntityRelationOwner' = 'self', # type: ignore
         not_null: bool = False,
         resume: bool = False,
         validator: ty.Optional[ty.Callable[['DTOOneToOneField', T], T]] = None,
@@ -123,7 +126,7 @@ class DTOOneToOneField:
         self.description = description
 
         self.name = None
-        self.expected_type = DTOBase
+        self.expected_type = ty.cast(ty.Type['DTOBase'], type)
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -131,7 +134,7 @@ class DTOOneToOneField:
         # NOTE: To support EntityRelationOwner.OTHER you will have to modify
         #           `_retrieve_one_to_one_fields in ServiceBase`. do NOT forget
         #           to change the documentation.
-        assert self.entity_relation_owner == EntityRelationOwner.SELF, \
+        assert self.entity_relation_owner == 'self', \
             "At the moment only `EntityRelationOwner.SELF` is supported."
 
         assert issubclass(self.entity_type, EntityBase), \
@@ -145,7 +148,7 @@ class DTOOneToOneField:
 
         self.is_self_related = False
         if self.relation_field is None:
-            assert self.entity_relation_owner == EntityRelationOwner.SELF, \
+            assert self.entity_relation_owner == 'self', \
                 "Self related `DTOOneToOneField` only support" \
                 " `EntityRelationOwner.SELF` for now."
             # NOTE: The functions that need to be modified to support relation
@@ -165,12 +168,12 @@ class DTOOneToOneField:
             pass
         pass
 
-    def __get__(self, instance: ty.Optional[DTOBase], owner: ty.Any):
+    def __get__(self, instance: ty.Optional['DTOBase'], owner: ty.Any):
         if instance is None:
             return self
         return instance.__dict__[self.storage_name]
 
-    def __set__(self, instance: ty.Optional[DTOBase]
+    def __set__(self, instance: ty.Optional['DTOBase']
                     , value: ty.Optional[ty.Any]) -> None:
         escape_validator: bool = False
         if 'escape_validator' in instance.__dict__ \

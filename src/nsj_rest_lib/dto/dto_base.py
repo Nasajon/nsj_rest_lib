@@ -7,7 +7,7 @@ import enum
 from typing import Any, Dict, List, Set, Union, Optional
 
 from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
-from nsj_rest_lib.descriptor import DTOAggregator
+from nsj_rest_lib.descriptor import DTOAggregator, DTOOneToOneField
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField, DTOFieldFilter
 from nsj_rest_lib.util.fields_util import (
@@ -32,7 +32,7 @@ class DTOBase(abc.ABC):
     sql_read_only_fields: list = []
     sql_no_update_fields: Set[str] = set()
     object_fields_map: Dict[str, Any] = {}
-    one_to_one_fields_map: Dict[str, Any] = {}
+    one_to_one_fields_map: Dict[str, DTOOneToOneField] = {}
     field_filters_map: Dict[str, DTOFieldFilter]
     aggregator_fields_map: Dict[str, DTOAggregator] = {}
     # TODO Refatorar para suportar PK composto
@@ -198,6 +198,9 @@ class DTOBase(abc.ABC):
                 setattr(self, field, None)
                 continue
             if not isinstance(kwargs[field], (dict, oto_field.expected_type)):
+                if oto_field.field is None:
+                    # NOTE: This is to make the typing check happy
+                    continue
                 set_field(oto_field.field, field)
                 continue
 
