@@ -487,6 +487,10 @@ class DTO:
 
                 attr.expected_type = cls.__annotations__[key]
 
+                if attr.relation_field is None:
+                    attr.relation_field = key
+                    pass
+
                 if attr.resume:
                     cls.resume_fields.add(key)
                     pass
