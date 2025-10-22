@@ -39,6 +39,11 @@ from nsj_rest_lib.util.fields_util import (
 )
 from nsj_rest_lib.util.join_aux import JoinAux
 from nsj_rest_lib.util.log_time import log_time, log_time_context
+from nsj_rest_lib.util.order_spec import (
+    OrderFieldSpec,
+    OrderFieldSource,
+    PARTIAL_JOIN_ALIAS,
+)
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
 from nsj_rest_lib.validator.validate_data import validate_uuid
 
@@ -287,7 +292,7 @@ class ServiceBase:
         )
 
     def _get_partial_join_alias(self) -> str:
-        return "partial_join"
+        return PARTIAL_JOIN_ALIAS
 
     def _split_partial_fields(
         self,
@@ -904,32 +909,34 @@ class ServiceBase:
         )
 
         # Handling order fields
+        order_field_specs: List[OrderFieldSpec] | None = None
         if order_fields is not None:
-            converted_order_fields: List[str] = []
+            order_field_specs = []
             for field in order_fields:
-                aux = re.sub(r"\basc\b|\bdesc\b", "", field, flags=re.IGNORECASE).strip()
+                aux = re.sub(
+                    r"\basc\b|\bdesc\b", "", field, flags=re.IGNORECASE
+                ).strip()
                 is_desc = bool(re.search(r"\bdesc\b", field, flags=re.IGNORECASE))
 
                 entity_field_name = self._convert_to_entity_field(aux)
-                alias = "t0"
+                source = OrderFieldSource.BASE
 
                 if (
                     has_partial
                     and partial_config is not None
                     and aux in partial_config.extension_fields
                 ):
-                    alias = self._get_partial_join_alias()
+                    source = OrderFieldSource.PARTIAL_EXTENSION
                     partial_join_fields_entity.add(entity_field_name)
 
-                clause_field = (
-                    entity_field_name if alias == "t0" else f"{alias}.{entity_field_name}"
+                order_field_specs.append(
+                    OrderFieldSpec(
+                        column=entity_field_name,
+                        is_desc=is_desc,
+                        source=source,
+                        alias=None,
+                    )
                 )
-                if is_desc:
-                    clause_field = f"{clause_field} desc"
-
-                converted_order_fields.append(clause_field)
-
-            order_fields = converted_order_fields
 
         # Tratando dos filtros
         all_filters = {}
@@ -972,7 +979,7 @@ class ServiceBase:
             after,
             limit,
             entity_fields,
-            order_fields,
+            order_field_specs,
             entity_filters,
             conjunto_type=self._dto_class.conjunto_type,
             conjunto_field=self._dto_class.conjunto_field,

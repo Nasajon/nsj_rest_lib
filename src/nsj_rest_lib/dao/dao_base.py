@@ -19,6 +19,11 @@ from nsj_rest_lib.exception import (
 from nsj_rest_lib.util.db_adapter2 import DBAdapter2
 from nsj_rest_lib.util.join_aux import JoinAux
 from nsj_rest_lib.util.log_time import log_time
+from nsj_rest_lib.util.order_spec import (
+    OrderFieldSource,
+    OrderFieldSpec,
+    PARTIAL_JOIN_ALIAS,
+)
 
 from nsj_gcf_utils.json_util import convert_to_dumps
 
@@ -84,6 +89,20 @@ class DAOBase:
 
         resp = f", {table_alias}.".join(fields)
         return f"{table_alias}.{resp}"
+
+    def _resolve_order_alias(self, spec: OrderFieldSpec) -> str:
+        if spec.alias:
+            return spec.alias
+        if spec.source == OrderFieldSource.PARTIAL_EXTENSION:
+            return PARTIAL_JOIN_ALIAS
+        return "t0"
+
+    def _build_order_param(self, alias: str, column: str) -> str:
+        safe_alias = re.sub(r"[^0-9a-zA-Z_]", "_", alias)
+        safe_column = re.sub(r"[^0-9a-zA-Z_]", "_", column)
+        if safe_alias:
+            return f"{safe_alias}_{safe_column}"
+        return safe_column
 
     def get(
         self,
@@ -367,7 +386,7 @@ class DAOBase:
         after: uuid.UUID,
         limit: int,
         fields: List[str],
-        order_fields: List[str],
+        order_fields: List[OrderFieldSpec] | List[str] | None,
         filters: Dict[str, List[Filter]],
         conjunto_type: ConjuntoType = None,
         conjunto_field: str = None,
@@ -385,33 +404,46 @@ class DAOBase:
         # Creating a entity instance
         entity = self._entity_class()
 
-        # Cheking should use default entity order
-        if order_fields is None:
-            order_fields = entity.get_default_order_fields()
+        raw_order_fields = order_fields
+        if raw_order_fields is None:
+            raw_order_fields = entity.get_default_order_fields()
 
-        order_specs: List[Tuple[str, str, bool]] = []
-        for field in order_fields:
-            field_clean = re.sub(
-                r"\basc\b|\bdesc\b", "", field, flags=re.IGNORECASE
-            ).strip()
-            alias = "t0"
-            if "." in field_clean:
-                alias_candidate, field_clean = field_clean.split(".", 1)
-                alias_candidate = alias_candidate.strip()
-                if alias_candidate != "":
-                    alias = alias_candidate
+        order_specs: List[OrderFieldSpec] = []
+        for field in raw_order_fields:
+            if isinstance(field, OrderFieldSpec):
+                order_specs.append(field)
+                continue
+
+            if not isinstance(field, str):
+                raise ValueError(
+                    "order_fields deve ser uma lista de strings ou OrderFieldSpec."
+                )
+
+            field_clean = re.sub(r"\basc\b|\bdesc\b", "", field, flags=re.IGNORECASE).strip()
             is_desc = bool(re.search(r"\bdesc\b", field, flags=re.IGNORECASE))
-            order_specs.append((alias, field_clean, is_desc))
+            order_specs.append(
+                OrderFieldSpec(
+                    column=field_clean,
+                    is_desc=is_desc,
+                    source=OrderFieldSource.BASE,
+                    alias=None,
+                )
+            )
 
+        sql_order_items: List[Tuple[str, str, bool, str]] = []
         order_fields_alias: List[str] = []
-        for alias, column, is_desc in order_specs:
-            clause = f"{alias}.{column}"
-            if is_desc:
+        for spec in order_specs:
+            alias_resolved = self._resolve_order_alias(spec)
+            param_name = self._build_order_param(alias_resolved, spec.column)
+            sql_order_items.append((alias_resolved, spec.column, spec.is_desc, param_name))
+
+            clause = f"{alias_resolved}.{spec.column}"
+            if spec.is_desc:
                 clause = f"{clause} desc"
             order_fields_alias.append(clause)
 
         # Resolving data to pagination
-        order_map = {column: None for _, column, _ in order_specs}
+        order_map = {param: None for _, _, _, param in sql_order_items}
 
         if after is not None:
             try:
@@ -443,8 +475,8 @@ class DAOBase:
                 )
 
             if after_obj is not None:
-                for _, column, _ in order_specs:
-                    order_map[column] = getattr(after_obj, column, None)
+                for _, column, _, param_name in sql_order_items:
+                    order_map[param_name] = getattr(after_obj, column, None)
 
         # Making default order by clause
         order_by = f"""
@@ -456,22 +488,22 @@ class DAOBase:
         if after is not None:
             # Making a list of pagination condictions
             list_page_where = []
-            old_specs: List[Tuple[str, str, bool]] = []
-            for alias, column, is_desc in order_specs:
+            old_specs: List[Tuple[str, str, bool, str]] = []
+            for alias, column, is_desc, param_name in sql_order_items:
                 # Making equals condictions
                 buffer_old_fields = "true"
-                for old_alias, old_column, _ in old_specs:
+                for old_alias, old_column, _, old_param in old_specs:
                     buffer_old_fields += (
-                        f" and {old_alias}.{old_column} = :{old_column}"
+                        f" and {old_alias}.{old_column} = :{old_param}"
                     )
 
                 # Making current more than condiction
                 list_page_where.append(
-                    f"({buffer_old_fields} and {alias}.{column} {'<' if is_desc else '>'} :{column})"
+                    f"({buffer_old_fields} and {alias}.{column} {'<' if is_desc else '>'} :{param_name})"
                 )
 
                 # Storing current field as old
-                old_specs.append((alias, column, is_desc))
+                old_specs.append((alias, column, is_desc, param_name))
 
             # Making SQL page condiction
             pagination_where = f"""
