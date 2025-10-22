@@ -556,6 +556,10 @@ class DTOBase(abc.ABC):
             if field_name in tree["root"]:
                 tree["root"] |= descriptor.expected_type.resume_fields
 
+        for field_name, descriptor in cls.one_to_one_fields_map.items():
+            if descriptor.resume:
+                tree["root"].add(field_name)
+
         return tree
 
     def convert_to_dict(
@@ -621,7 +625,7 @@ class DTOBase(abc.ABC):
             )
 
         for field, oto_field in self.one_to_one_fields_map.items():
-            if field not in fields['root'] \
+            if field not in fields_tree['root'] \
                or field not in expands['root']:
                 continue
 
@@ -630,7 +634,7 @@ class DTOBase(abc.ABC):
             else:
                 if isinstance(getattr(self, field), oto_field.expected_type):
                     result[field] = getattr(self, field).convert_to_dict(
-                        {"root": fields[field]} if field in fields else None
+                        {"root": fields_tree[field]} if field in fields_tree else None
                     )
                     pass
                 pass
