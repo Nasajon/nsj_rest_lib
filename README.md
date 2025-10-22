@@ -110,6 +110,14 @@ Obsevações:
   
 ## Histórico de versões
 
+## 4.16.0
+
+- Implementação de extensões parciais (de modo que um DTO e um Entity) "herdem" tudo de outra entidade, mas permita definir propriedades adicionais, que serão buscadas em outra tabela, por meio de JOIN. Essa alteração ainda não suporta escrita na tabela de extensão.
+
+## 4.15.0
+
+- Suporte a alteração dos campos resumo padrão na definição de relacionamentos, seja por DTOObject ou DTOListField.
+
 ## 4.14.0
 
 - Possibilidade de marcar um campo do tipo SQLJoinFiel como partition-field.
