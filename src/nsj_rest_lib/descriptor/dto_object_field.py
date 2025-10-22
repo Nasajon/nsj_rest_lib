@@ -22,6 +22,22 @@ class DTOObjectField:
         resume_fields: typing.Iterable[str] = None,
     ):
         """
+        DEPRECATED! Use DTOOneToOneField instead!
+
+        Ex:
+        @DTO()
+        class ADTO(DTOBase):
+            id: ...
+            b: BDTO = DTOObjectField(entity_type=BEntity, relation_field='id')
+
+        Becomes:
+        @DTO()
+        class ADTO(DTOBase):
+            id: ...
+            b: BDTO = DTOOneToOneField(entity_type=BEntity,
+                                       relation_type=OTORelationType.COMPOSITION,
+                                       relation_field='id')
+
         -----------
         Parameters:
         -----------

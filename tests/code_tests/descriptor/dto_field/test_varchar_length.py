@@ -12,7 +12,7 @@ from nsj_rest_lib.service.service_base import ServiceBase
 
 
 @DTO()
-class TesteDTO(DTOBase):
+class DTOTeste(DTOBase):
 
     valor: str = DTOField(
         resume=True,
@@ -30,16 +30,16 @@ class TesteDTO(DTOBase):
 
 
 @Entity(table_name="teste_entity", pk_field="num", default_order_fields=["num"])
-class TesteEntity(EntityBase):
+class EntityTeste(EntityBase):
     valor: str = None
 
 
-class TestDBAdapter:
+class DBAdapterTeste:
     last_sql: str = None
 
     def execute_query_to_model(self, sql: str, model_class: object, **kwargs) -> list:
         self.last_sql = sql
-        entity = TesteEntity()
+        entity = EntityTeste()
         entity.valor = "oi"
 
         return [entity]
@@ -50,13 +50,13 @@ class TestAutoIncrement:
     def test_length_maior_igual(self):
         matcher = re.compile(r"length\(.+\) >=")
 
-        dbadapter = TestDBAdapter()
+        dbadapter = DBAdapterTeste()
         service = ServiceBase(
             injector_factory=None,
-            dao=DAOBase(db=dbadapter, entity_class=TesteEntity),
-            dto_class=TesteDTO,
-            entity_class=TesteEntity,
-            dto_post_response_class=TesteDTO,
+            dao=DAOBase(db=dbadapter, entity_class=EntityTeste),
+            dto_class=DTOTeste,
+            entity_class=EntityTeste,
+            dto_post_response_class=DTOTeste,
         )
         service.list(
             after=None,
@@ -73,13 +73,13 @@ class TestAutoIncrement:
     def test_length_menor_igual(self):
         matcher = re.compile(r"length\(.+\) <=")
 
-        dbadapter = TestDBAdapter()
+        dbadapter = DBAdapterTeste()
         service = ServiceBase(
             injector_factory=None,
-            dao=DAOBase(db=dbadapter, entity_class=TesteEntity),
-            dto_class=TesteDTO,
-            entity_class=TesteEntity,
-            dto_post_response_class=TesteDTO,
+            dao=DAOBase(db=dbadapter, entity_class=EntityTeste),
+            dto_class=DTOTeste,
+            entity_class=EntityTeste,
+            dto_post_response_class=DTOTeste,
         )
         service.list(
             after=None,

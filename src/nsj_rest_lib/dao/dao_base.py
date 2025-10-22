@@ -5,7 +5,7 @@ import uuid
 import re
 import unidecode
 
-from typing import Any, Dict, List, Tuple, Set
+from typing import Any, Dict, List, Tuple, Set, Type
 
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
@@ -31,9 +31,9 @@ from nsj_rest_lib.settings import (
 
 class DAOBase:
     _db: DBAdapter2
-    _entity_class: EntityBase
+    _entity_class: Type[EntityBase]
 
-    def __init__(self, db: DBAdapter2, entity_class: EntityBase):
+    def __init__(self, db: DBAdapter2, entity_class: Type[EntityBase]):
         self._db = db
         self._entity_class = entity_class
 

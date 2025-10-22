@@ -64,6 +64,8 @@ class GetRoute(RouteBase):
                 fields = args.get("fields")
                 fields = RouteBase.parse_fields(self._dto_class, fields)
 
+                expands = RouteBase.parse_expands(args.get('expand'))
+
                 partition_fields = {}
                 # Tratando campos de particionamento
                 for field in self._dto_class.partition_fields:
@@ -89,7 +91,12 @@ class GetRoute(RouteBase):
 
                 # Chamando o service (método get)
                 # TODO Rever parametro order_fields abaixo
-                data = service.get(id, partition_fields, fields)
+                data = service.get(
+                    id,
+                    partition_fields,
+                    fields,
+                    expands=expands,
+                )
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
                 dict_data = data.convert_to_dict(fields)

@@ -1,4 +1,7 @@
-from typing import Callable, List
+import re
+import collections
+
+from typing import Callable, Dict, List, Set, Optional
 
 from nsj_rest_lib.controller.funtion_route_wrapper import FunctionRouteWrapper
 from nsj_rest_lib.dao.dao_base import DAOBase
@@ -90,6 +93,32 @@ class RouteBase:
         fields_tree["root"] |= dto_class.resume_fields
 
         return fields_tree
+
+    @staticmethod
+    def parse_expands(expands: Optional[str]) -> Dict[str, Set[str]]:
+        if expands is None:
+            return {'root': set()}
+
+        expands_map: Dict[str, Set[str]] = collections.defaultdict(set)
+
+        for field in expands.split(','):
+            field = field.strip()
+
+            if '.' in field:
+                key = field[:field.index('.')]
+                value = field[field.index('.')+1:]
+                expands_map['root'].add(key)
+                expands_map[key].add(value)
+            elif '(' in field and ')' in field:
+                key = field[:field.index('(')]
+                values = field[field.index('(')+1:field.index(')')]
+                expands_map['root'].add(key)
+                for value in values.split(','):
+                    expands_map[key].add(value.strip())
+            else:
+                expands_map['root'].add(field)
+
+        return expands_map
 
     def _validade_data_override_parameters(self, args):
         """
