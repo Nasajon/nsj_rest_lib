@@ -904,31 +904,32 @@ class ServiceBase:
         )
 
         # Handling order fields
-        asc_set = set()
-        desc_set = set()
         if order_fields is not None:
+            converted_order_fields: List[str] = []
             for field in order_fields:
-                aux = re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip()
+                aux = re.sub(r"\basc\b|\bdesc\b", "", field, flags=re.IGNORECASE).strip()
+                is_desc = bool(re.search(r"\bdesc\b", field, flags=re.IGNORECASE))
+
+                entity_field_name = self._convert_to_entity_field(aux)
+                alias = "t0"
 
                 if (
                     has_partial
                     and partial_config is not None
-                    and aux in (partial_config.extension_fields)
+                    and aux in partial_config.extension_fields
                 ):
-                    raise NotImplementedError(
-                        "Ordenação por campos de extensão ainda não é suportada."
-                    )
+                    alias = self._get_partial_join_alias()
+                    partial_join_fields_entity.add(entity_field_name)
 
-                if re.search(r"\bdesc\b", field):
-                    desc_set.add(aux)
-                else:
-                    asc_set.add(aux)
+                clause_field = (
+                    entity_field_name if alias == "t0" else f"{alias}.{entity_field_name}"
+                )
+                if is_desc:
+                    clause_field = f"{clause_field} desc"
 
-            order_fields = self._convert_to_entity_fields(asc_set)
-            desc_fields = self._convert_to_entity_fields(desc_set)
+                converted_order_fields.append(clause_field)
 
-            for field in desc_fields:
-                order_fields.append(f"{field} desc")
+            order_fields = converted_order_fields
 
         # Tratando dos filtros
         all_filters = {}

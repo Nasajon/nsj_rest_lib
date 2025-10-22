@@ -389,35 +389,62 @@ class DAOBase:
         if order_fields is None:
             order_fields = entity.get_default_order_fields()
 
-        # Making order fields with alias list
-        order_fields_alias = [f"t0.{i}" for i in order_fields]
+        order_specs: List[Tuple[str, str, bool]] = []
+        for field in order_fields:
+            field_clean = re.sub(
+                r"\basc\b|\bdesc\b", "", field, flags=re.IGNORECASE
+            ).strip()
+            alias = "t0"
+            if "." in field_clean:
+                alias_candidate, field_clean = field_clean.split(".", 1)
+                alias_candidate = alias_candidate.strip()
+                if alias_candidate != "":
+                    alias = alias_candidate
+            is_desc = bool(re.search(r"\bdesc\b", field, flags=re.IGNORECASE))
+            order_specs.append((alias, field_clean, is_desc))
+
+        order_fields_alias: List[str] = []
+        for alias, column, is_desc in order_specs:
+            clause = f"{alias}.{column}"
+            if is_desc:
+                clause = f"{clause} desc"
+            order_fields_alias.append(clause)
 
         # Resolving data to pagination
-        order_map = {
-            re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip(): None
-            for field in order_fields
-        }
+        order_map = {column: None for _, column, _ in order_specs}
 
         if after is not None:
             try:
                 if entity_key_field is None:
-                    after_obj = self.get(entity.get_pk_field(), after, fields, filters)
+                    after_obj = self.get(
+                        entity.get_pk_field(),
+                        after,
+                        fields,
+                        filters,
+                        conjunto_type=conjunto_type,
+                        conjunto_field=conjunto_field,
+                        joins_aux=joins_aux,
+                        partial_exists_clause=partial_exists_clause,
+                    )
                 else:
-                    after_obj = self.get(entity_key_field, entity_id_value, fields, filters)
+                    after_obj = self.get(
+                        entity_key_field,
+                        entity_id_value,
+                        fields,
+                        filters,
+                        conjunto_type=conjunto_type,
+                        conjunto_field=conjunto_field,
+                        joins_aux=joins_aux,
+                        partial_exists_clause=partial_exists_clause,
+                    )
             except NotFoundException as e:
                 raise AfterRecordNotFoundException(
                     f"Identificador recebido no parâmetro after {id}, não encontrado para a entidade {self._entity_class.__name__}."
                 )
 
             if after_obj is not None:
-                for field in order_fields:
-                    order_map[
-                        re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip()
-                    ] = getattr(
-                        after_obj,
-                        re.sub(r"\basc\b", "", re.sub(r"\bdesc\b", "", field)).strip(),
-                        None,
-                    )
+                for _, column, _ in order_specs:
+                    order_map[column] = getattr(after_obj, column, None)
 
         # Making default order by clause
         order_by = f"""
@@ -429,24 +456,22 @@ class DAOBase:
         if after is not None:
             # Making a list of pagination condictions
             list_page_where = []
-            old_fields = []
-            for field in order_fields:
+            old_specs: List[Tuple[str, str, bool]] = []
+            for alias, column, is_desc in order_specs:
                 # Making equals condictions
                 buffer_old_fields = "true"
-                for of in old_fields:
-                    buffer_old_fields += f" and t0.{of} = :{of}"
-
-                field_adjusted = re.sub(
-                    r"\basc\b", "", re.sub(r"\bdesc\b", "", field)
-                ).strip()
+                for old_alias, old_column, _ in old_specs:
+                    buffer_old_fields += (
+                        f" and {old_alias}.{old_column} = :{old_column}"
+                    )
 
                 # Making current more than condiction
                 list_page_where.append(
-                    f"({buffer_old_fields} and t0.{field_adjusted} {'<' if 'desc' in field else '>'} :{field_adjusted})"
+                    f"({buffer_old_fields} and {alias}.{column} {'<' if is_desc else '>'} :{column})"
                 )
 
                 # Storing current field as old
-                old_fields.append(field_adjusted)
+                old_specs.append((alias, column, is_desc))
 
             # Making SQL page condiction
             pagination_where = f"""

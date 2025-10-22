@@ -89,3 +89,24 @@ def test_partial_list_with_extension_field_triggers_join():
 
     entity_fields = args[2]
     assert "registro_anvisa" not in entity_fields
+
+
+def test_partial_order_field_triggers_join_and_alias():
+    service, dao = build_service_with_mock()
+
+    service.list(
+        after=None,
+        limit=None,
+        fields={"root": set()},
+        order_fields=["registro_anvisa desc"],
+        filters={},
+    )
+
+    args, kwargs = dao.list.call_args
+    joins_aux = kwargs.get("joins_aux")
+    assert joins_aux is not None
+    assert any(join.alias == "partial_join" for join in joins_aux)
+    assert kwargs.get("partial_exists_clause") is None
+
+    order_fields = args[3]
+    assert "partial_join.registro_anvisa desc" in order_fields
