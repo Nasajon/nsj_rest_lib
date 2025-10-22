@@ -339,7 +339,7 @@ class ServiceBase:
     def _build_partial_exists_clause(
         self,
         joins_aux: List[JoinAux],
-    ) -> Tuple[str, str, str] | None:
+    ) -> ty.Optional[Tuple[str, str, str]]:
         if not self._has_partial_support():
             return None
 
