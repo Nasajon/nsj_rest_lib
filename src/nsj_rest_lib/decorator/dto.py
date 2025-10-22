@@ -490,14 +490,11 @@ class DTO:
 
                 if attr.relation_field is None:
                     attr.relation_field = key
+                    cls.fields_map[key] = attr.field
                     pass
 
                 if attr.resume:
                     cls.resume_fields.add(key)
-                    pass
-
-                if attr.relation_type == OTORelationType.AGGREGATION:
-                    cls.fields_map[key] = attr.field
                     pass
                 pass
 
