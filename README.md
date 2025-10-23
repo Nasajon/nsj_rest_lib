@@ -110,6 +110,11 @@ Obsevações:
   
 ## Histórico de versões
 
+## 4.17.0
+
+- Gravação de classes com extensões parciais (POST, PUT e PATCH).
+- Novo descriptor de propriedades DTOOneToOneField, para substituir o antigo DTOObjectField (permitindo tanto agregação quanto composição, e evitando necessidade de duplicar a propriedade de FK nos DTOs).
+
 ## 4.16.0
 
 - Implementação de extensões parciais (de modo que um DTO e um Entity) "herdem" tudo de outra entidade, mas permita definir propriedades adicionais, que serão buscadas em outra tabela, por meio de JOIN. Essa alteração ainda não suporta escrita na tabela de extensão.
