@@ -448,6 +448,28 @@ class ServiceBase:
             elif field in dto.__dict__ and value is not EMPTY:
                 provided_columns.add(column_name)
 
+        # Garantindo que os campos de particionamento sejam persistidos na extensão
+        for partition_field in getattr(self._dto_class, "partition_fields", set()):
+            dto_field = self._dto_class.fields_map.get(partition_field)
+            if dto_field is None:
+                continue
+
+            column_name = dto_field.get_entity_field_name() or partition_field
+
+            if column_name == partial_config.relation_field:
+                continue
+
+            if partial_update and partition_field not in dto.__dict__:
+                continue
+
+            partition_value = getattr(base_entity, column_name, None)
+
+            if partition_value is EMPTY:
+                partition_value = None
+
+            all_values[column_name] = partition_value
+            provided_columns.add(column_name)
+
         relation_field = partial_config.relation_field
         if relation_field in all_values:
             all_values.pop(relation_field)
