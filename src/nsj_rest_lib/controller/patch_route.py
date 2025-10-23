@@ -62,7 +62,17 @@ class PatchRoute(RouteBase):
                     data = body
 
                 # Convertendo os dados para o DTO
-                data = self._dto_class(validate_read_only=True, **data)
+                data = self._dto_class(
+                    validate_read_only=True,
+                    escape_validator=True,
+                    **data,
+                )
+
+                # Reaplicando validação apenas nos campos enviados
+                data.escape_validator = False
+                for field_name in getattr(data, "_provided_fields", set()):
+                    if field_name in data.fields_map:
+                        setattr(data, field_name, getattr(data, field_name))
 
                 # Montando os filtros de particao de dados
                 partition_filters = {}
