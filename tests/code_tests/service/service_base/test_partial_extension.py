@@ -34,6 +34,7 @@ class ProdutoDTO(DTOBase):
 class FarmacoEntity(EntityBase):
     id_produto: int = None
     registro_anvisa: str = None
+    tenant: int = None
 
 
 @DTO(
@@ -115,8 +116,12 @@ def test_partial_order_field_triggers_join_and_alias():
     assert any(join.alias == "partial_join" for join in joins_aux)
     assert kwargs.get("partial_exists_clause") is None
 
-    order_fields = args[3]
-    assert "partial_join.registro_anvisa desc" in order_fields
+    order_specs = args[3]
+    assert len(order_specs) == 1
+    spec = order_specs[0]
+    assert spec.source.name == "PARTIAL_EXTENSION"
+    assert spec.column == "registro_anvisa"
+    assert spec.is_desc is True
 
 
 def test_partial_insert_saves_extension_record():
@@ -185,4 +190,4 @@ def test_partial_patch_updates_only_provided_extension_fields():
 
     dao.update_partial_extension_record.assert_called_once()
     args_call, _ = dao.update_partial_extension_record.call_args
-    assert args_call[3] == {"registro_anvisa": "PATCHED", "tenant": 42}
+    assert args_call[3] == {"registro_anvisa": "PATCHED"}

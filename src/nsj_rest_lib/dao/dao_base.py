@@ -100,7 +100,7 @@ class DAOBase:
     def _build_order_param(self, alias: str, column: str) -> str:
         safe_alias = re.sub(r"[^0-9a-zA-Z_]", "_", alias)
         safe_column = re.sub(r"[^0-9a-zA-Z_]", "_", column)
-        if safe_alias:
+        if safe_alias and safe_alias != "t0":
             return f"{safe_alias}_{safe_column}"
         return safe_column
 

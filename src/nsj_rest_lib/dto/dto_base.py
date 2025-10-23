@@ -62,6 +62,11 @@ class DTOBase(abc.ABC):
         self.escape_validator = escape_validator
         self.generate_default_pk_value = generate_default_pk_value
 
+        if entity is None and not kwargs_as_entity:
+            self._provided_fields = set(kwargs.keys())
+        else:
+            self._provided_fields = set()
+
         # Transformando a entity em dict (se houver uma entity)
         if entity is not None:
             kwargs = (

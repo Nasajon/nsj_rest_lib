@@ -427,6 +427,7 @@ class ServiceBase:
 
         all_values: Dict[str, Any] = {}
         provided_columns: Set[str] = set()
+        provided_fields = getattr(dto, "_provided_fields", set())
 
         for field in partial_config.extension_fields:
             if field not in self._dto_class.fields_map:
@@ -445,7 +446,7 @@ class ServiceBase:
 
             if not partial_update:
                 provided_columns.add(column_name)
-            elif field in dto.__dict__ and value is not EMPTY:
+            elif field in provided_fields and value is not EMPTY:
                 provided_columns.add(column_name)
 
         # Garantindo que os campos de particionamento sejam persistidos na extensão
@@ -459,7 +460,10 @@ class ServiceBase:
             if column_name == partial_config.relation_field:
                 continue
 
-            if partial_update and partition_field not in dto.__dict__:
+            if not hasattr(extension_entity, column_name):
+                continue
+
+            if partial_update and partition_field not in provided_fields:
                 continue
 
             partition_value = getattr(base_entity, column_name, None)
@@ -1908,7 +1912,11 @@ class ServiceBase:
 
     def _retrieve_old_dto(self, dto, id, aditional_filters):
         fields = self._make_fields_from_dto(dto)
-        get_filters = copy.deepcopy(aditional_filters)
+        get_filters = (
+            copy.deepcopy(aditional_filters)
+            if aditional_filters is not None
+            else {}
+        )
 
         # Adicionando filtro de conjunto
         if (
