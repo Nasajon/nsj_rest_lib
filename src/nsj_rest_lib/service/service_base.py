@@ -4,6 +4,7 @@ import uuid
 import typing as ty
 import warnings
 
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Set, Tuple
 
 from flask import g
@@ -20,7 +21,7 @@ from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.dto.after_insert_update_data import AfterInsertUpdateData
-from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.entity.entity_base import EntityBase, EMPTY
 from nsj_rest_lib.entity.filter import Filter
 from nsj_rest_lib.exception import (
     DTOListFieldConfigException,
@@ -44,6 +45,15 @@ from nsj_rest_lib.util.order_spec import (
     OrderFieldSource,
     PARTIAL_JOIN_ALIAS,
 )
+
+
+@dataclass
+class PartialExtensionWriteData:
+    table_name: str
+    relation_field: str
+    related_entity_attr: str
+    all_values: Dict[str, Any]
+    provided_columns: Set[str]
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
 from nsj_rest_lib.validator.validate_data import validate_uuid
 
@@ -377,6 +387,172 @@ class ServiceBase:
             return None
 
         return (table_name, base_field, relation_field)
+
+    def _prepare_partial_save_entities(
+        self,
+        dto: DTOBase,
+        partial_update: bool,
+        is_insert: bool,
+    ) -> Tuple[EntityBase | None, PartialExtensionWriteData | None]:
+        if not self._has_partial_support():
+            return (None, None)
+
+        partial_config = getattr(self._dto_class, "partial_dto_config", None)
+        partial_entity_config = getattr(
+            self._entity_class, "partial_entity_config", None
+        )
+
+        if partial_config is None or partial_entity_config is None:
+            return (None, None)
+
+        if partial_entity_config.extension_table_name is None:
+            raise ValueError(
+                "Extensão parcial configurada sem 'extension_table_name' definido na entity."
+            )
+
+        # Entity da tabela base
+        base_entity_class = partial_entity_config.parent_entity
+        base_entity = dto.convert_to_entity(
+            base_entity_class,
+            partial_update,
+            is_insert,
+        )
+
+        # Conversão para obter os valores da extensão
+        extension_entity = dto.convert_to_entity(
+            self._entity_class,
+            partial_update,
+            is_insert,
+        )
+
+        all_values: Dict[str, Any] = {}
+        provided_columns: Set[str] = set()
+
+        for field in partial_config.extension_fields:
+            if field not in self._dto_class.fields_map:
+                continue
+
+            dto_field = self._dto_class.fields_map[field]
+            column_name = dto_field.get_entity_field_name() or field
+            value = getattr(extension_entity, column_name, None)
+
+            if value is EMPTY:
+                converted_value = None
+            else:
+                converted_value = value
+
+            all_values[column_name] = converted_value
+
+            if not partial_update:
+                provided_columns.add(column_name)
+            elif field in dto.__dict__ and value is not EMPTY:
+                provided_columns.add(column_name)
+
+        relation_field = partial_config.relation_field
+        if relation_field in all_values:
+            all_values.pop(relation_field)
+            if relation_field in provided_columns:
+                provided_columns.remove(relation_field)
+
+        write_data = PartialExtensionWriteData(
+            table_name=partial_entity_config.extension_table_name,
+            relation_field=relation_field,
+            related_entity_attr=partial_config.related_entity_field,
+            all_values=all_values,
+            provided_columns=provided_columns,
+        )
+
+        return (base_entity, write_data)
+
+    def _resolve_partial_relation_value(
+        self,
+        entity: EntityBase,
+        write_data: PartialExtensionWriteData,
+    ) -> Any:
+        relation_attr = write_data.related_entity_attr
+        relation_value = None
+
+        if relation_attr and hasattr(entity, relation_attr):
+            relation_value = getattr(entity, relation_attr)
+
+        if relation_value is None:
+            relation_value = getattr(entity, entity.get_pk_field())
+
+        return relation_value
+
+    def _handle_partial_extension_insert(
+        self,
+        entity: EntityBase,
+        write_data: PartialExtensionWriteData,
+    ) -> None:
+        if write_data is None:
+            return
+
+        relation_value = self._resolve_partial_relation_value(entity, write_data)
+
+        extension_payload = dict(write_data.all_values)
+        extension_payload[write_data.relation_field] = relation_value
+
+        if self._dao.partial_extension_exists(
+            write_data.table_name,
+            write_data.relation_field,
+            relation_value,
+        ):
+            raise ConflictException(
+                "Já existe um registro de extensão parcial associado a este identificador."
+            )
+
+        self._dao.insert_partial_extension_record(
+            write_data.table_name,
+            extension_payload,
+        )
+
+    def _handle_partial_extension_update(
+        self,
+        entity: EntityBase,
+        write_data: PartialExtensionWriteData,
+        partial_update: bool,
+    ) -> None:
+        if write_data is None:
+            return
+
+        relation_value = self._resolve_partial_relation_value(entity, write_data)
+
+        update_payload = dict(write_data.all_values)
+
+        if partial_update:
+            update_payload = {
+                column: update_payload[column]
+                for column in write_data.provided_columns
+                if column in update_payload
+            }
+
+        exists = self._dao.partial_extension_exists(
+            write_data.table_name,
+            write_data.relation_field,
+            relation_value,
+        )
+
+        if not exists:
+            insert_payload = dict(write_data.all_values)
+            insert_payload[write_data.relation_field] = relation_value
+            if not insert_payload:
+                insert_payload = {write_data.relation_field: relation_value}
+            self._dao.insert_partial_extension_record(
+                write_data.table_name,
+                insert_payload,
+            )
+            return
+
+        if not update_payload:
+            return
+
+        self._dao.update_partial_extension_record(
+            write_data.table_name,
+            write_data.relation_field,
+            relation_value,
+            update_payload,
+        )
 
     def _convert_to_entity_fields(
         self,
@@ -1455,9 +1631,21 @@ class ServiceBase:
                     received_dto = copy.deepcopy(dto)
                 dto = custom_before_update(self._dao._db, old_dto, dto)
 
-            # Convertendo o DTO para a Entity
-            # TODO Refatorar para usar um construtor do EntityBase (ou algo assim, porque é preciso tratar das equivalências de nome dos campos)
-            entity = dto.convert_to_entity(self._entity_class, partial_update, insert)
+            # Preparando entidades/base e metadados para extensão parcial (se houver)
+            partial_write_data: PartialExtensionWriteData | None = None
+            if self._has_partial_support():
+                entity, partial_write_data = self._prepare_partial_save_entities(
+                    dto,
+                    partial_update,
+                    insert,
+                )
+            else:
+                # TODO Refatorar para usar um construtor do EntityBase (ou algo assim, porque é preciso tratar das equivalências de nome dos campos)
+                entity = dto.convert_to_entity(
+                    self._entity_class,
+                    partial_update,
+                    insert,
+                )
 
             # Resolvendo o id
             if id is None:
@@ -1533,6 +1721,10 @@ class ServiceBase:
                 # Inserindo o registro no banco
                 entity = self._dao.insert(entity, dto.sql_read_only_fields)
 
+                # Persistindo dados da extensão parcial (se houver)
+                if partial_write_data is not None:
+                    self._handle_partial_extension_insert(entity, partial_write_data)
+
                 # Inserindo os conjuntos (se necessário)
                 if self._dto_class.conjunto_type is not None:
                     conjunto_field_value = getattr(dto, self._dto_class.conjunto_field)
@@ -1556,6 +1748,13 @@ class ServiceBase:
                     dto.sql_no_update_fields,
                     upsert,
                 )
+
+                if partial_write_data is not None:
+                    self._handle_partial_extension_update(
+                        entity,
+                        partial_write_data,
+                        partial_update,
+                    )
 
             # Convertendo a entity para o DTO de resposta (se houver um)
             if self._dto_post_response_class is not None and not retrieve_after_insert:

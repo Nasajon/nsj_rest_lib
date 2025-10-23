@@ -6,6 +6,7 @@ from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.service.service_base import ServiceBase
+from nsj_rest_lib.exception import NotFoundException
 
 
 @Entity(
@@ -110,3 +111,67 @@ def test_partial_order_field_triggers_join_and_alias():
 
     order_fields = args[3]
     assert "partial_join.registro_anvisa desc" in order_fields
+
+
+def test_partial_insert_saves_extension_record():
+    service, dao = build_service_with_mock()
+
+    dao.get.side_effect = NotFoundException("not found")
+    dao.insert.side_effect = lambda entity, *_: entity
+    dao.partial_extension_exists.return_value = False
+
+    dto = FarmacoDTO(id=1, codigo="PROD-1", registro_anvisa="ABC123")
+
+    service.insert(dto)
+
+    dao.insert.assert_called_once()
+    dao.partial_extension_exists.assert_called_once_with(
+        "farmaco", "id_produto", 1
+    )
+    dao.insert_partial_extension_record.assert_called_once()
+
+    insert_args, _ = dao.insert_partial_extension_record.call_args
+    assert insert_args[0] == "farmaco"
+    payload = insert_args[1]
+    assert payload["id_produto"] == 1
+    assert payload["registro_anvisa"] == "ABC123"
+
+
+def test_partial_update_updates_extension_record():
+    service, dao = build_service_with_mock()
+
+    service.get = Mock(
+        return_value=FarmacoDTO(id=1, codigo="PROD-1", registro_anvisa="OLD")
+    )
+    dao.update.side_effect = lambda *args, **kwargs: args[2]
+    dao.partial_extension_exists.return_value = True
+
+    dto = FarmacoDTO(id=1, codigo="PROD-1", registro_anvisa="NEW")
+
+    service.update(dto, id=1)
+
+    dao.update.assert_called_once()
+    dao.update_partial_extension_record.assert_called_once()
+    args_call, _ = dao.update_partial_extension_record.call_args
+    assert args_call[0] == "farmaco"
+    assert args_call[1] == "id_produto"
+    assert args_call[2] == 1
+    assert args_call[3] == {"registro_anvisa": "NEW"}
+
+
+def test_partial_patch_updates_only_provided_extension_fields():
+    service, dao = build_service_with_mock()
+
+    service.get = Mock(
+        return_value=FarmacoDTO(id=1, codigo="PROD-1", registro_anvisa="OLD")
+    )
+    dao.update.side_effect = lambda *args, **kwargs: args[2]
+    dao.partial_extension_exists.return_value = True
+
+    dto = FarmacoDTO(id=1, registro_anvisa="PATCHED")
+
+    service.partial_update(dto, id=1)
+
+    dao.update_partial_extension_record.assert_called_once()
+    args_call, _ = dao.update_partial_extension_record.call_args
+    assert args_call[3] == {"registro_anvisa": "PATCHED"}
