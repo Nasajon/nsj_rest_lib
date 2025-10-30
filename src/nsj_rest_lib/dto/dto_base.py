@@ -198,7 +198,8 @@ class DTOBase(abc.ABC):
             else:
                 setattr(self, field, None)
 
-        for field, oto_field in self.__class__.one_to_one_fields_map.items():
+        for oto_field in self.__class__.one_to_one_fields_map.values():
+            field = oto_field.entity_field
             if field not in kwargs or kwargs[field] is None:
                 setattr(self, field, None)
                 continue
