@@ -110,26 +110,30 @@ Obsevações:
   
 ## Histórico de versões
 
-## 4.17.0
+### 4.17.1
+
+- Ajuste para o DTOOneToOneField suportar o parâmetro `entity_field`.
+
+### 4.17.0
 
 - Gravação de classes com extensões parciais (POST, PUT e PATCH).
 - Novo descriptor de propriedades DTOOneToOneField, para substituir o antigo DTOObjectField (permitindo tanto agregação quanto composição, e evitando necessidade de duplicar a propriedade de FK nos DTOs).
 
-## 4.16.0
+### 4.16.0
 
 - Implementação de extensões parciais (de modo que um DTO e um Entity) "herdem" tudo de outra entidade, mas permita definir propriedades adicionais, que serão buscadas em outra tabela, por meio de JOIN. Essa alteração ainda não suporta escrita na tabela de extensão.
 
-## 4.15.0
+### 4.15.0
 
 - Suporte a alteração dos campos resumo padrão na definição de relacionamentos, seja por DTOObject ou DTOListField.
 
-## 4.14.0
+### 4.14.0
 
 - Possibilidade de marcar um campo do tipo SQLJoinFiel como partition-field.
 - Possibilidade de marcar um campo como parte de uma rota de verificação de integridade.
 - Ajustes diversos
 
-## 4.13.0
+### 4.13.0
 
 - Suporte a retorno no custom_after_insert ou custom_after_update
   - Se o retorno for um dict
