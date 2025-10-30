@@ -32,6 +32,7 @@ class DTOOneToOneField:
     validator: ty.Optional[ty.Callable[..., ty.Any]]
     description: str
     is_self_related: bool
+    entity_field: str
 
     def __init__(
         self,
@@ -124,6 +125,7 @@ class DTOOneToOneField:
         self.resume = resume
         self.validator = validator
         self.description = description
+        self.entity_field = ''
 
         self.name = None
         self.expected_type = ty.cast(ty.Type['DTOBase'], type)

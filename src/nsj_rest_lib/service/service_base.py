@@ -172,6 +172,15 @@ class ServiceBase:
             override_data=override_data,
         )
 
+        # NOTE: This has to happens on the entity
+        if len(self._dto_class.one_to_one_fields_map) > 0:
+            self._retrieve_one_to_one_fields(
+                [entity],
+                fields,
+                expands,
+                partition_fields,
+            )
+
         # Convertendo para DTO
         if not override_data:
             dto = self._dto_class(entity, escape_validator=True)
@@ -211,14 +220,6 @@ class ServiceBase:
             self._retrieve_object_fields(
                 [dto],
                 fields,
-                partition_fields,
-            )
-
-        if len(self._dto_class.one_to_one_fields_map) > 0:
-            self._retrieve_one_to_one_fields(
-                [dto],
-                fields,
-                expands,
                 partition_fields,
             )
 
