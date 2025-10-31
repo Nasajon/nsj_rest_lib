@@ -99,7 +99,7 @@ class GetRoute(RouteBase):
                 )
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                dict_data = data.convert_to_dict(fields)
+                dict_data = data.convert_to_dict(fields, expands)
 
                 # Retornando a resposta da requuisição
                 return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})
