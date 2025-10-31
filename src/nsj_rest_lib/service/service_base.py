@@ -2815,7 +2815,7 @@ class ServiceBase:
 
             local_fields: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
             if key in fields:
-                local_fields = {"root": fields[key]}
+                local_fields = extract_child_tree(fields, key)
                 pass
 
             related_dto_list: ty.List[DTOBase] = service.list(
