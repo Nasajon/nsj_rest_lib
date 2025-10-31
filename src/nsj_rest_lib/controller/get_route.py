@@ -64,7 +64,7 @@ class GetRoute(RouteBase):
                 fields = args.get("fields")
                 fields = RouteBase.parse_fields(self._dto_class, fields)
 
-                expands = RouteBase.parse_expands(args.get('expand'))
+                expands = RouteBase.parse_expands(self._dto_class, args.get('expand'))
 
                 partition_fields = {}
                 # Tratando campos de particionamento
@@ -99,7 +99,7 @@ class GetRoute(RouteBase):
                 )
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                dict_data = data.convert_to_dict(fields)
+                dict_data = data.convert_to_dict(fields, expands)
 
                 # Retornando a resposta da requuisição
                 return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})

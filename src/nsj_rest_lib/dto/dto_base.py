@@ -21,6 +21,7 @@ from nsj_rest_lib.util.fields_util import (
 
 class DTOBase(abc.ABC):
     resume_fields: Set[str] = set()
+    resume_expands: Set[str] = set()
     partition_fields: Set[str] = set()
     fields_map: Dict[str, DTOField] = {}
     list_fields_map: dict = {}
@@ -640,7 +641,7 @@ class DTOBase(abc.ABC):
             else:
                 if isinstance(getattr(self, field), oto_field.expected_type):
                     result[field] = getattr(self, field).convert_to_dict(
-                        {"root": fields_tree[field]} if field in fields_tree else None
+                         fields_tree[field] if field in fields_tree else None
                     )
                     pass
                 pass

@@ -81,7 +81,7 @@ def test_configure() -> None:
     field: DTOField = ParentDTO.fields_map['child']
 
     assert oto_field.field is field
-    assert 'child' in ParentDTO.resume_fields
+    assert 'child' in ParentDTO.resume_expands
     assert oto_field.expected_type is ChildDTO
     assert oto_field.relation_field == 'child'
     pass
