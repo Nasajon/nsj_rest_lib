@@ -64,7 +64,7 @@ class GetRoute(RouteBase):
                 fields = args.get("fields")
                 fields = RouteBase.parse_fields(self._dto_class, fields)
 
-                expands = RouteBase.parse_expands(args.get('expand'))
+                expands = RouteBase.parse_expands(self._dto_class, args.get('expand'))
 
                 partition_fields = {}
                 # Tratando campos de particionamento

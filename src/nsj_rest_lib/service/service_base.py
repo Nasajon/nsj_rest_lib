@@ -107,7 +107,7 @@ class ServiceBase:
         id: str,
         partition_fields: Dict[str, Any],
         fields: FieldsTree,
-        expands: ty.Optional[Dict[str, Set[str]]] = None,
+        expands: ty.Optional[FieldsTree] = None,
     ) -> DTOBase:
 
         if expands is None:
@@ -1063,7 +1063,7 @@ class ServiceBase:
         filters: Dict[str, Any],
         search_query: str = None,
         return_hidden_fields: set[str] = None,
-        expands: ty.Optional[Dict[str, Set[str]]] = None,
+        expands: ty.Optional[FieldsTree] = None,
     ) -> List[DTOBase]:
         # Resolving fields
         fields = self._resolving_fields(fields)
@@ -2753,7 +2753,7 @@ class ServiceBase:
         self,
         dto_list: ty.List[ty.Union[DTOBase, EntityBase]],
         fields: ty.Dict[str, ty.Set[str]],
-        expands: ty.Dict[str, ty.Set[str]],
+        expands: FieldsTree,
         partition_fields: ty.Dict[str, ty.Any],
     ) -> None:
         if len(dto_list) == 0:
@@ -2808,12 +2808,12 @@ class ServiceBase:
                 )
             }
 
-            local_expands: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
+            local_expands: ty.Optional[FieldsTree] = None
             if key in expands:
-                local_expands = {"root": expands[key]}
+                local_expands = extract_child_tree(expands, key)
                 pass
 
-            local_fields: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
+            local_fields: ty.Optional[FieldsTree] = None
             if key in fields:
                 local_fields = extract_child_tree(fields, key)
                 pass

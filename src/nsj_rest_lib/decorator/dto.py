@@ -165,6 +165,8 @@ class DTO:
         # Creating resume_fields in cls, if needed
         self._check_class_attribute(cls, "resume_fields", set())
 
+        self._check_class_attribute(cls, "resume_expands", set())
+
         # Creating fields_map in cls, if needed
         self._check_class_attribute(cls, "fields_map", {})
 
@@ -495,10 +497,13 @@ class DTO:
                     if attr.field.entity_field is not None:
                         attr.entity_field = attr.field.entity_field
                         pass
+                    if attr.field.resume is True:
+                        cls.resume_fields.add(key)
+                        pass
                     pass
 
-                if attr.resume:
-                    cls.resume_fields.add(key)
+                if attr.resume is True:
+                    cls.resume_expands.add(key)
                     pass
                 pass
 
