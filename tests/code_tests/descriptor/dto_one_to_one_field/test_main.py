@@ -80,9 +80,7 @@ def test_configure() -> None:
     field: DTOField = ParentDTO.fields_map['child']
 
     assert oto_field.field is field
-    #assert 'child' in ParentDTO.resume_expands
     assert oto_field.expected_type is ChildDTO
-    assert oto_field.relation_field == 'child'
     pass
 
 
@@ -182,23 +180,6 @@ def test_entity_relation_owner_other() -> None:
                 relation_type=OTORelationType.AGGREGATION,
                 entity_relation_owner=EntityRelationOwner.OTHER,
                 field=DTOField()
-            )
-            pass
-    except AssertionError as err:
-        if err.args[0] != exp_msg:
-            raise err
-        pass
-    pass
-
-def test_self_related_no_field() -> None:
-    exp_msg: str = 'Argument `field` of `DTOOneToOneField` HAS to be a' \
-        ' `DTOField` when `relation_field` is `None`. Is None.'
-    try:
-        @DTO()
-        class _DTO(DTOBase):
-            child: ChildDTO = DTOOneToOneField(
-                entity_type=ChildEntity,
-                relation_type=OTORelationType.AGGREGATION,
             )
             pass
     except AssertionError as err:

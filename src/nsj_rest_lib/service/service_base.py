@@ -2761,15 +2761,11 @@ class ServiceBase:
 
         oto_field: DTOOneToOneField
         for key, oto_field in self._dto_class.one_to_one_fields_map.items():
-            if key not in fields['root']:
+            if key not in fields['root'] or key not in expands['root']:
                 continue
 
-            if oto_field.is_self_related is True:
-                if key not in expands['root']:
-                    continue
-                if oto_field.entity_relation_owner != EntityRelationOwner.SELF:
-                    continue
-                pass
+            if oto_field.entity_relation_owner != EntityRelationOwner.SELF:
+                continue
 
             service = ServiceBase(
                 self._injector_factory,
@@ -2781,15 +2777,7 @@ class ServiceBase:
                 oto_field.entity_type,
             )
 
-            field_name: str = key
-            if oto_field.is_self_related is True:
-                if oto_field.field is None:
-                    # NOTE: This is only to make the type checker happy.
-                    continue
-                if oto_field.field.entity_field is not None:
-                    field_name = oto_field.field.entity_field
-                    pass
-                pass
+            field_name: str = oto_field.entity_field
 
             keys_to_fetch: ty.Set[str] = {
                 getattr(dto, field_name)
