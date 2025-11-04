@@ -110,6 +110,11 @@ Obsevações:
   
 ## Histórico de versões
 
+### 4.17.2
+
+- Ajuste para que as colunas tenant sejam ignoradas caso uma variável de ambiente, chamada "ENV_MULTIDB", seja igual a "true".
+  - A ideia é permitir que um mesmo DTO seja usado para ambiente nuvem e desktop (multibanco).
+
 ### 4.17.1
 
 - Ajuste para o DTOOneToOneField suportar o parâmetro `entity_field`.
