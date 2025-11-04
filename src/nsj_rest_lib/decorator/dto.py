@@ -15,6 +15,7 @@ from nsj_rest_lib.descriptor.dto_left_join_field import DTOLeftJoinField, LeftJo
 from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
 from nsj_rest_lib.descriptor.dto_sql_join_field import DTOSQLJoinField, SQLJoinQuery
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.settings import ENV_MULTIDB
 
 
 @dataclass
@@ -153,11 +154,28 @@ class DTO:
                 raise Exception(
                     "O parâmetro data_override deve conter a chave 'fields' com ao menos uma propriedade que permita override das configurações."
                 )
+                
+    def ignore_tenant_field_on_desktop(self, cls):
+        """
+        Remove all tenant-related fields if the ENV_MULTIDB environment variable is true.
+        If ENV_MULTIDB is not setted or is "false", do nothing.
+        """        
+        if ENV_MULTIDB == "true":            
+            tenant_columns = ["tenant", "tenant_id", "tenantid", "id_tenant", "idtenant"]            
+            for col in tenant_columns:
+                if col in cls.__dict__:
+                    delattr(cls, col)
+                if col in getattr(cls, "__annotations__", {}):
+                    del cls.__annotations__[col]
+
 
     def __call__(self, cls):
         """
         Iterating DTO class to handle DTOFields descriptors.
         """
+        
+        #Ignore tenant field on desktop environment (for JobManager)
+        self.ignore_tenant_field_on_desktop(cls)
 
         # Mantém metadados da classe original
         functools.update_wrapper(self, cls)

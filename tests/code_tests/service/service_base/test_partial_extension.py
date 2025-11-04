@@ -7,6 +7,7 @@ from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.service.service_base import ServiceBase
 from nsj_rest_lib.exception import NotFoundException
+from nsj_rest_lib.settings import ENV_MULTIDB
 
 
 @Entity(
@@ -145,8 +146,10 @@ def test_partial_insert_saves_extension_record():
     assert insert_args[0] == "farmaco"
     payload = insert_args[1]
     assert payload["id_produto"] == 1
-    assert payload["registro_anvisa"] == "ABC123"
-    assert payload["tenant"] == 42
+    assert payload["registro_anvisa"] == "ABC123"    
+    ## Verifica se o campo tenant é incluído ou não conforme a configuração
+    if ENV_MULTIDB == "false":
+        assert payload["tenant"] == 42
 
 
 def test_partial_update_updates_extension_record():
@@ -170,7 +173,9 @@ def test_partial_update_updates_extension_record():
     assert args_call[0] == "farmaco"
     assert args_call[1] == "id_produto"
     assert args_call[2] == 1
-    assert args_call[3] == {"registro_anvisa": "NEW", "tenant": 42}
+    ## Verifica se o campo tenant é incluído ou não conforme a configuração
+    if ENV_MULTIDB == "false":
+        assert args_call[3] == {"registro_anvisa": "NEW", "tenant": 42}
 
 
 def test_partial_patch_updates_only_provided_extension_fields():

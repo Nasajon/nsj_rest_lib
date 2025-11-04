@@ -22,6 +22,7 @@ DATABASE_PORT = os.getenv("DATABASE_PORT", "")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "")
 DATABASE_USER = os.getenv("DATABASE_USER", "")
 DATABASE_DRIVER = os.getenv("DATABASE_DRIVER", "POSTGRES")
+ENV_MULTIDB = os.getenv("ENV_MULTIDB", "false").lower()
 
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", 1))
 
@@ -35,6 +36,10 @@ REST_LIB_AUTO_INCREMENT_TABLE = os.getenv(
 
 def get_logger():
     return logging.getLogger(APP_NAME)
+
+
+if ENV_MULTIDB == "true":
+    get_logger().warning("Atenção! Todas as propriedades (colunas) do tipo tenant serão ignoradas nos DTOs.")
 
 
 # Endpoint do OpenTelemetry Collector
