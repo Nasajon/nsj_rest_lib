@@ -21,7 +21,6 @@ from nsj_rest_lib.util.fields_util import (
 
 class DTOBase(abc.ABC):
     resume_fields: Set[str] = set()
-    resume_expands: Set[str] = set()
     partition_fields: Set[str] = set()
     fields_map: Dict[str, DTOField] = {}
     list_fields_map: dict = {}

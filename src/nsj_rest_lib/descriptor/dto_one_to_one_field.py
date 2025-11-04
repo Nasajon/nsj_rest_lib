@@ -104,9 +104,9 @@ class DTOOneToOneField:
         - not_null: If the field can not be `None`. Only relevant in POST, PUT
             or PATCH requests.
 
-        - resume: If this field will be included by default on GET requests.
-            When it's False it becomes required for the field name to be on the
-            query string "fields" for it to be returned.
+        - resume: DOES Nothing, if you want to aways return the value in the
+            entity, set the `resume=True` in the DTOField passed to the argument
+            `field`.
 
         - validator: Function that receives the instance of this class and the
             value to be checked and returns it. For validation erros MUST throw

@@ -37,7 +37,6 @@ class ParentEntity(EntityBase):
 class ParentDTO(DTOBase):
     b: int = DTOField(pk=True, resume=True)
     child: ChildDTO = DTOOneToOneField(
-        resume=True,
         not_null=True,
         entity_type=ChildEntity,
         relation_type=OTORelationType.AGGREGATION,
@@ -81,7 +80,7 @@ def test_configure() -> None:
     field: DTOField = ParentDTO.fields_map['child']
 
     assert oto_field.field is field
-    assert 'child' in ParentDTO.resume_expands
+    #assert 'child' in ParentDTO.resume_expands
     assert oto_field.expected_type is ChildDTO
     assert oto_field.relation_field == 'child'
     pass

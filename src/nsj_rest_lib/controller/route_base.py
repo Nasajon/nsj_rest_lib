@@ -95,9 +95,9 @@ class RouteBase:
         return fields_tree
 
     @staticmethod
-    def parse_expands(dto_class: DTOBase, expands: Optional[str]) -> FieldsTree:
+    def parse_expands(_dto_class: DTOBase, expands: Optional[str]) -> FieldsTree:
         expands_tree = parse_fields_expression(expands)
-        expands_tree["root"] |= dto_class.resume_expands
+        #expands_tree["root"] |= dto_class.resume_expands
 
         return expands_tree
 
