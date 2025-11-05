@@ -110,6 +110,10 @@ Obsevações:
   
 ## Histórico de versões
 
+### 5.0.1
+
+- Reoganização (retrocompatível) das classes ServiceBase e DAOBase (divindindo em classes especializadas, no estilo mixin).
+
 ### 5.0.0
 
 - Simplificação na sintaxe do DTOOneToOneField, de modo que agora o mesmo já não recebe mais um DTOField como parâmetro, mas apenas parâmetros simples (semelhante aos demais descritores de propriedades).
