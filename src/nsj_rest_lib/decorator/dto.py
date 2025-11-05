@@ -4,10 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Set, Type
 
 from nsj_rest_lib.dto.dto_base import DTOBase
-from nsj_rest_lib.descriptor import (
-    DTOAggregator,
-    DTOOneToOneField, OTORelationType
-)
+from nsj_rest_lib.descriptor import DTOAggregator, DTOOneToOneField, OTORelationType
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
@@ -87,6 +84,24 @@ class DTO:
 
             No exemplo, os dados com mesmo "escopo" e "codigo" são equivalentes, e, podem ser especificados de maneira a ter um padrão
             global, o qual pode ser especializado para um tenant, e, dentro de um tenant, especializado ainda mais para um grupo_empresarial.
+
+            - partial_of: Permite declarar esse DTO como classe parcial de outro, isso é, um tipo de extensão de outro DTO:
+                - Uma entidade parcial consiste numa outra tabela que extende a tabela principal.
+                - Entre as tabelas existe um relacionamento 1X1 (obrigatório apenas para a entidade que extende a principal).
+                - O DTO da entidade de extensão recebe todos os campos do DTO principal, além de seus próprios campos.
+                - O mesmo ocorre com a Entity (de modo que, na query, apenas a Entity da extensora é usada).
+                - Do ponto de vista da query, é feito um join para alimentar os campos da entidade parcial, e da entidade extensão.
+                - No fluxo de código do RestList, as propriedades de controle da entidade (seja para o DTO, ou para a entity), são populadas
+                  com as propriedades de ambas as entidades (por exemplo: fields_map). Assim, tudo funciona como se as propriedades estivessem
+                  declaradas na entidade extensora (mas, a query é com JOIN).
+                - Não se trata de uma simples extensão de classes, justamente por conta do JOIN.
+
+
+            partial_of={
+                "dto": {DTOClass da entidade principal},
+                "relation_field": "{Nome do campo, da entity extensora, usado como chave do relacionamento}",
+                "related_entity_field": "{Nome do campo, da entity principal, para onde o relacionamento aponta}"
+            }
         """
         super().__init__()
 
@@ -154,27 +169,32 @@ class DTO:
                 raise Exception(
                     "O parâmetro data_override deve conter a chave 'fields' com ao menos uma propriedade que permita override das configurações."
                 )
-                
+
     def ignore_tenant_field_on_desktop(self, cls):
         """
         Remove all tenant-related fields if the ENV_MULTIDB environment variable is true.
         If ENV_MULTIDB is not setted or is "false", do nothing.
-        """        
-        if ENV_MULTIDB == "true":            
-            tenant_columns = ["tenant", "tenant_id", "tenantid", "id_tenant", "idtenant"]            
+        """
+        if ENV_MULTIDB == "true":
+            tenant_columns = [
+                "tenant",
+                "tenant_id",
+                "tenantid",
+                "id_tenant",
+                "idtenant",
+            ]
             for col in tenant_columns:
                 if col in cls.__dict__:
                     delattr(cls, col)
                 if col in getattr(cls, "__annotations__", {}):
                     del cls.__annotations__[col]
 
-
     def __call__(self, cls):
         """
         Iterating DTO class to handle DTOFields descriptors.
         """
-        
-        #Ignore tenant field on desktop environment (for JobManager)
+
+        # Ignore tenant field on desktop environment (for JobManager)
         self.ignore_tenant_field_on_desktop(cls)
 
         # Mantém metadados da classe original
@@ -212,7 +232,7 @@ class DTO:
         # Creating object_fields_map in cls, if needed
         self._check_class_attribute(cls, "object_fields_map", {})
 
-        self._check_class_attribute(cls, 'one_to_one_fields_map', {})
+        self._check_class_attribute(cls, "one_to_one_fields_map", {})
 
         # Creating field_filters_map in cls, if needed
         self._check_class_attribute(cls, "field_filters_map", {})
@@ -495,17 +515,19 @@ class DTO:
                 attr.storage_name = str(key)
                 attr.name = str(key)
 
-                assert key in cls.__annotations__, \
-                    f"`DTOOneToOneField` with name `{key}` HAS to have an" \
+                assert key in cls.__annotations__, (
+                    f"`DTOOneToOneField` with name `{key}` HAS to have an"
                     f" annotation."
+                )
 
-                assert issubclass(cls.__annotations__[key], DTOBase), \
-                    f"`DTOOneToOneField` with name `{key}` annotation's MUST" \
-                    f" be a subclass of `DTOBase`." \
+                assert issubclass(cls.__annotations__[key], DTOBase), (
+                    f"`DTOOneToOneField` with name `{key}` annotation's MUST"
+                    f" be a subclass of `DTOBase`."
                     f" Is `{repr(cls.__annotations__[key])}`."
+                )
 
                 attr.expected_type = cls.__annotations__[key]
-                if attr.entity_field == '':
+                if attr.entity_field == "":
                     attr.entity_field = key
                     pass
 
