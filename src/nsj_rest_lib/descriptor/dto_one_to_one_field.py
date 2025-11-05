@@ -28,19 +28,20 @@ class DTOOneToOneField:
 
     expected_type: ty.Type['DTOBase']
     relation_type: OTORelationType
-    field: ty.Optional[DTOField]
+    field: DTOField
     entity_relation_owner: 'EntityRelationOwner'
     not_null: bool
     resume: bool
+    entity_field: str
     validator: ty.Optional[ty.Callable[..., ty.Any]]
     description: str
-    entity_field: str
 
     def __init__(
         self,
         entity_type: ty.Type[EntityBase],
         relation_type: OTORelationType,
-        field: DTOField,
+        resume: bool = False,
+        entity_field: ty.Optional[str] = None,
         entity_relation_owner: 'EntityRelationOwner' = 'self',  # type: ignore
         not_null: bool = False,
         validator: ty.Optional[ty.Callable[['DTOOneToOneField', T], T]] = None,
@@ -80,7 +81,11 @@ class DTOOneToOneField:
                     `pk_field` of the `Related DTO` will be used in place of
                     the object.
 
-        - field: It is the DTOField that represents the field.
+        - resume: Indicates if on GET requests the non expanded value should be
+            always returned.
+
+        - entity_field: The name of the field in the Entity of the `Current DTO`.
+            If `None` will use the name of the field in the `Current DTO`.
 
         - entity_relation_owner: Indicates which entity contain the
             `relation_field`, it must be one of:
@@ -92,26 +97,23 @@ class DTOOneToOneField:
         - not_null: If the field can not be `None`. Only relevant in POST, PUT
             or PATCH requests.
 
-        - resume: DOES Nothing, if you want to aways return the value in the
-            entity, set the `resume=True` in the DTOField passed to the argument
-            `field`.
-
         - validator: Function that receives the instance of this class and the
             value to be checked and returns it. For validation erros MUST throw
             ValueError. Errors are only honored on POST, PUT or PATCH requests.
-            HAS to be `None` when `relation_type` is `OTORelationType.AGGREGATION`.
+            When `OTORelationType.AGGREGATION` the value passed will be the value
+            in the `pk_field` of the `Related DTO`.
 
         - description: Description of this field that can be used in
             documentation.
         """
         self.entity_type = entity_type
         self.relation_type = relation_type
-        self.field = field
+        self.resume = resume
+        self.entity_field = entity_field or ''
         self.entity_relation_owner = entity_relation_owner
         self.not_null = not_null
         self.validator = validator
         self.description = description
-        self.entity_field = ''
 
         self.name = None
         self.expected_type = ty.cast(ty.Type['DTOBase'], type)
@@ -132,18 +134,6 @@ class DTOOneToOneField:
             f"Argument `entity_type` of `DTOOneToOneField` HAS to be"
             f" a `EntityBase`. Is {repr(self.entity_type)}."
         )
-
-        assert isinstance(self.field, DTOField), (
-            f"Argument `field` of `DTOOneToOneField` HAS to be"
-            f" a `DTOField` when `relation_field` is `None`."
-            f" Is {repr(self.field)}."
-        )
-
-        if relation_type is OTORelationType.AGGREGATION:
-            assert self.validator is None, (
-                f"Argument `validator` of `DTOOneToOneField` HAS to be `None`"
-                f" when `relation_field` is `None`. Is {repr(self.validator)}."
-            )
         pass
 
     def __get__(self, instance: ty.Optional['DTOBase'], owner: ty.Any):

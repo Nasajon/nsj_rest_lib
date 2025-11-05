@@ -40,7 +40,6 @@ class ParentDTO(DTOBase):
         not_null=True,
         entity_type=ChildEntity,
         relation_type=OTORelationType.AGGREGATION,
-        field=DTOField(),
     )
     pass
 
@@ -125,7 +124,6 @@ def test_invalid_entity_type() -> None:
             child: ChildDTO = DTOOneToOneField(
                 entity_type=object,
                 relation_type=OTORelationType.AGGREGATION,
-                field=DTOField()
             )
             pass
     except AssertionError as err:
@@ -143,7 +141,6 @@ def test_no_annotation() -> None:
             child = DTOOneToOneField(
                 entity_type=ChildEntity,
                 relation_type=OTORelationType.AGGREGATION,
-                field=DTOField()
             )
             pass
     except AssertionError as err:
@@ -161,7 +158,6 @@ def test_invalid_expected_type() -> None:
             child: object = DTOOneToOneField(
                 entity_type=ChildEntity,
                 relation_type=OTORelationType.AGGREGATION,
-                field=DTOField()
             )
             pass
     except AssertionError as err:
@@ -179,7 +175,6 @@ def test_entity_relation_owner_other() -> None:
                 entity_type=ChildEntity,
                 relation_type=OTORelationType.AGGREGATION,
                 entity_relation_owner=EntityRelationOwner.OTHER,
-                field=DTOField()
             )
             pass
     except AssertionError as err:
