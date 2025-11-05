@@ -5,10 +5,10 @@ from typing import Any, Dict
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.util.fields_util import FieldsTree
 
-from .service_base_partial_of import ServiceBasePartialOf
+from .service_base_retrieve import ServiceBaseRetrieve
 
 
-class ServiceBaseGet(ServiceBasePartialOf):
+class ServiceBaseGet(ServiceBaseRetrieve):
 
     def get(
         self,

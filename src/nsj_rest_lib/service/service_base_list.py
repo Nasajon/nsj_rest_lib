@@ -12,10 +12,10 @@ from nsj_rest_lib.util.order_spec import (
     OrderFieldSource,
 )
 
-from .service_base_partial_of import ServiceBasePartialOf
+from .service_base_retrieve import ServiceBaseRetrieve
 
 
-class ServiceBaseList(ServiceBasePartialOf):
+class ServiceBaseList(ServiceBaseRetrieve):
 
     def filter_list(self, filters: Dict[str, Any]):
         return self.list(
