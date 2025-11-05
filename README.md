@@ -110,6 +110,10 @@ Obsevações:
   
 ## Histórico de versões
 
+### 5.0.0
+
+- Simplificação na sintaxe do DTOOneToOneField, de modo que agora o mesmo já não recebe mais um DTOField como parâmetro, mas apenas parâmetros simples (semelhante aos demais descritores de propriedades).
+
 ### 4.17.2
 
 - Ajuste para que as colunas tenant sejam ignoradas caso uma variável de ambiente, chamada "ENV_MULTIDB", seja igual a "true".
