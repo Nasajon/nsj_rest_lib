@@ -80,7 +80,7 @@ class ListRoute(RouteBase):
                     )
                 )
 
-                expands = RouteBase.parse_expands(args.get('expand'))
+                expands = RouteBase.parse_expands(self._dto_class, args.get('expand'))
 
                 # Tratando dos filters e search_query
                 filters = {}

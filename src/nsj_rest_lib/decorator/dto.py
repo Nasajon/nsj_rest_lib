@@ -505,17 +505,22 @@ class DTO:
                     f" Is `{repr(cls.__annotations__[key])}`."
 
                 attr.expected_type = cls.__annotations__[key]
-                attr.entity_field = key
-
-                if attr.relation_field is None:
-                    attr.relation_field = key
-                    cls.fields_map[key] = attr.field
-                    if attr.field.entity_field is not None:
-                        attr.entity_field = attr.field.entity_field
-                        pass
+                if attr.entity_field == '':
+                    attr.entity_field = key
                     pass
 
-                if attr.resume:
+                attr.field = DTOField(
+                    not_null=attr.not_null,
+                    entity_field=attr.entity_field,
+                    resume=attr.resume,
+                    validator=attr.validator,
+                )
+
+                cls.fields_map[key] = attr.field
+                if attr.field.entity_field is not None:
+                    attr.entity_field = attr.field.entity_field
+                    pass
+                if attr.field.resume is True:
                     cls.resume_fields.add(key)
                     pass
                 pass

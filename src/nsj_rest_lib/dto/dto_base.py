@@ -204,9 +204,6 @@ class DTOBase(abc.ABC):
                 setattr(self, field, None)
                 continue
             if not isinstance(kwargs[field], (dict, oto_field.expected_type)):
-                if oto_field.field is None:
-                    # NOTE: This is to make the typing check happy
-                    continue
                 set_field(oto_field.field, field)
                 continue
 
@@ -563,7 +560,7 @@ class DTOBase(abc.ABC):
                 tree["root"] |= descriptor.expected_type.resume_fields
 
         for field_name, descriptor in cls.one_to_one_fields_map.items():
-            if descriptor.resume:
+            if descriptor.field.resume:
                 tree["root"].add(field_name)
 
         return tree
@@ -640,7 +637,7 @@ class DTOBase(abc.ABC):
             else:
                 if isinstance(getattr(self, field), oto_field.expected_type):
                     result[field] = getattr(self, field).convert_to_dict(
-                        {"root": fields_tree[field]} if field in fields_tree else None
+                         fields_tree[field] if field in fields_tree else None
                     )
                     pass
                 pass

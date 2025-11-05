@@ -95,30 +95,11 @@ class RouteBase:
         return fields_tree
 
     @staticmethod
-    def parse_expands(expands: Optional[str]) -> Dict[str, Set[str]]:
-        if expands is None:
-            return {'root': set()}
+    def parse_expands(_dto_class: DTOBase, expands: Optional[str]) -> FieldsTree:
+        expands_tree = parse_fields_expression(expands)
+        #expands_tree["root"] |= dto_class.resume_expands
 
-        expands_map: Dict[str, Set[str]] = collections.defaultdict(set)
-
-        for field in expands.split(','):
-            field = field.strip()
-
-            if '.' in field:
-                key = field[:field.index('.')]
-                value = field[field.index('.')+1:]
-                expands_map['root'].add(key)
-                expands_map[key].add(value)
-            elif '(' in field and ')' in field:
-                key = field[:field.index('(')]
-                values = field[field.index('(')+1:field.index(')')]
-                expands_map['root'].add(key)
-                for value in values.split(','):
-                    expands_map[key].add(value.strip())
-            else:
-                expands_map['root'].add(field)
-
-        return expands_map
+        return expands_tree
 
     def _validade_data_override_parameters(self, args):
         """

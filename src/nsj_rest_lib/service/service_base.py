@@ -107,7 +107,7 @@ class ServiceBase:
         id: str,
         partition_fields: Dict[str, Any],
         fields: FieldsTree,
-        expands: ty.Optional[Dict[str, Set[str]]] = None,
+        expands: ty.Optional[FieldsTree] = None,
     ) -> DTOBase:
 
         if expands is None:
@@ -1063,7 +1063,7 @@ class ServiceBase:
         filters: Dict[str, Any],
         search_query: str = None,
         return_hidden_fields: set[str] = None,
-        expands: ty.Optional[Dict[str, Set[str]]] = None,
+        expands: ty.Optional[FieldsTree] = None,
     ) -> List[DTOBase]:
         # Resolving fields
         fields = self._resolving_fields(fields)
@@ -2753,7 +2753,7 @@ class ServiceBase:
         self,
         dto_list: ty.List[ty.Union[DTOBase, EntityBase]],
         fields: ty.Dict[str, ty.Set[str]],
-        expands: ty.Dict[str, ty.Set[str]],
+        expands: FieldsTree,
         partition_fields: ty.Dict[str, ty.Any],
     ) -> None:
         if len(dto_list) == 0:
@@ -2761,15 +2761,11 @@ class ServiceBase:
 
         oto_field: DTOOneToOneField
         for key, oto_field in self._dto_class.one_to_one_fields_map.items():
-            if key not in fields['root']:
+            if key not in fields['root'] or key not in expands['root']:
                 continue
 
-            if oto_field.is_self_related is True:
-                if key not in expands['root']:
-                    continue
-                if oto_field.entity_relation_owner != EntityRelationOwner.SELF:
-                    continue
-                pass
+            if oto_field.entity_relation_owner != EntityRelationOwner.SELF:
+                continue
 
             service = ServiceBase(
                 self._injector_factory,
@@ -2781,15 +2777,7 @@ class ServiceBase:
                 oto_field.entity_type,
             )
 
-            field_name: str = key
-            if oto_field.is_self_related is True:
-                if oto_field.field is None:
-                    # NOTE: This is only to make the type checker happy.
-                    continue
-                if oto_field.field.entity_field is not None:
-                    field_name = oto_field.field.entity_field
-                    pass
-                pass
+            field_name: str = oto_field.entity_field
 
             keys_to_fetch: ty.Set[str] = {
                 getattr(dto, field_name)
@@ -2808,14 +2796,14 @@ class ServiceBase:
                 )
             }
 
-            local_expands: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
+            local_expands: ty.Optional[FieldsTree] = None
             if key in expands:
-                local_expands = {"root": expands[key]}
+                local_expands = extract_child_tree(expands, key)
                 pass
 
-            local_fields: ty.Optional[ty.Dict[str, ty.Set[str]]] = None
+            local_fields: ty.Optional[FieldsTree] = None
             if key in fields:
-                local_fields = {"root": fields[key]}
+                local_fields = extract_child_tree(fields, key)
                 pass
 
             related_dto_list: ty.List[DTOBase] = service.list(
