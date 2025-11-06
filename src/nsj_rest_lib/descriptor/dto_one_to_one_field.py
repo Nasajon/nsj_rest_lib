@@ -32,6 +32,7 @@ class DTOOneToOneField:
     entity_relation_owner: 'EntityRelationOwner'
     not_null: bool
     resume: bool
+    partition_data: bool
     entity_field: str
     validator: ty.Optional[ty.Callable[..., ty.Any]]
     description: str
@@ -44,6 +45,7 @@ class DTOOneToOneField:
         entity_field: ty.Optional[str] = None,
         entity_relation_owner: 'EntityRelationOwner' = 'self',  # type: ignore
         not_null: bool = False,
+        partition_data: bool = False,
         validator: ty.Optional[ty.Callable[['DTOOneToOneField', T], T]] = None,
         description: str = '',
     ):
@@ -97,6 +99,9 @@ class DTOOneToOneField:
         - not_null: If the field can not be `None`. Only relevant in POST, PUT
             or PATCH requests.
 
+        - partition_data: If the propertie is obligatory when listing(GET/LIST)
+            including on relations.
+
         - validator: Function that receives the instance of this class and the
             value to be checked and returns it. For validation erros MUST throw
             ValueError. Errors are only honored on POST, PUT or PATCH requests.
@@ -112,6 +117,7 @@ class DTOOneToOneField:
         self.entity_field = entity_field or ''
         self.entity_relation_owner = entity_relation_owner
         self.not_null = not_null
+        self.partition_data = partition_data
         self.validator = validator
         self.description = description
 
