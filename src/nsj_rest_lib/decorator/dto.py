@@ -536,6 +536,7 @@ class DTO:
                     entity_field=attr.entity_field,
                     resume=attr.resume,
                     validator=attr.validator,
+                    partition_data=attr.partition_data,
                 )
 
                 cls.fields_map[key] = attr.field
@@ -544,6 +545,9 @@ class DTO:
                     pass
                 if attr.field.resume is True:
                     cls.resume_fields.add(key)
+                    pass
+                if attr.field.partition_data is True:
+                    cls.partition_fields.add(key)
                     pass
                 pass
 
