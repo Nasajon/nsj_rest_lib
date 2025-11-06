@@ -110,6 +110,10 @@ Obsevações:
   
 ## Histórico de versões
 
+### 5.0.2
+
+- Adição da propriedade "partition_data" ao DTOOneToOneField.
+
 ### 5.0.1
 
 - Reoganização (retrocompatível) das classes ServiceBase e DAOBase (divindindo em classes especializadas, no estilo mixin).
