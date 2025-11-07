@@ -130,6 +130,8 @@ class DAOBaseInsert(DAOBaseUtil):
                 continue
 
             entity_field = entity.__class__.fields_map[k]
+            if not getattr(entity_field, "insert_by_function", False):
+                continue
 
             type_field_name = entity_field.get_insert_type_field_name()
 
@@ -157,19 +159,18 @@ class DAOBaseInsert(DAOBaseUtil):
         BEGIN
             {sql_insert_function_type}
 
-            VAR_RETORNO = {entity.insert_function}(VAR_TIPO) INTO VAR_RETORNO;
+            VAR_RETORNO = {entity.insert_function}(VAR_TIPO);
             PERFORM set_config('retorno.bloco', VAR_RETORNO.mensagem::varchar, true);
         END $DOINSERT$;
-        """
 
-        sql_result = "SELECT current_setting('retorno.bloco', true)::jsonb as retorno;"
-        sql_batch = f"{sql}\n{sql_result}"
+        SELECT current_setting('retorno.bloco', true)::jsonb as retorno;
+        """
 
         # Montando um dicionário com valores das propriedades
         values_map = convert_to_dumps(entity)
 
         # Realizando o insert no BD e recuperando o retorno em uma única chamada
-        rowcount, returning = self._db.execute_batch(sql_batch, **values_map)
+        rowcount, returning = self._db.execute_batch(sql, **values_map)
 
         if rowcount <= 0 or len(returning) <= 0:
             raise Exception(
@@ -177,7 +178,7 @@ class DAOBaseInsert(DAOBaseUtil):
             )
 
         # Interpretando o retorno da função
-        returning = json.loads(returning[0]["retorno"])
+        returning = returning[0]["retorno"]
 
         if returning["codigo"].lower().strip() != "ok":
             if returning["tipo"]:

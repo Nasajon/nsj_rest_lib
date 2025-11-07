@@ -16,17 +16,21 @@ from nsj_rest_lib.descriptor.entity_field import EntityField
 class ClassificacaoFinanceiraEntity(EntityBase):
 
     classificacaofinanceira: uuid.UUID = EntityField(
-        insert_type_field="idclassificacao"
+        insert_type_field="idclassificacao",
+        insert_by_function=True,
     )
-    codigo: str = None
-    descricao: str = None
-    codigocontabil: str = None
-    resumo: str = None
+    codigo: str = EntityField(insert_by_function=True)
+    descricao: str = EntityField(insert_by_function=True)
+    codigocontabil: str = EntityField(insert_by_function=True)
+    resumo: str = EntityField(insert_by_function=True)
     situacao: int = None
     versao: int = None
-    natureza: int = None
-    paiid: uuid.UUID = None
-    grupoempresarial: uuid.UUID = None
+    natureza: int = EntityField(insert_by_function=True)
+    paiid: uuid.UUID = EntityField(
+        insert_type_field="classificacaopai",
+        insert_by_function=True,
+    )
+    grupoempresarial: uuid.UUID = EntityField(insert_by_function=True)
     lastupdate: datetime.datetime = None
     resumoexplicativo: str = None
     importacao_hash: str = None
@@ -34,10 +38,10 @@ class ClassificacaoFinanceiraEntity(EntityBase):
     apenasagrupador: bool = None
     id_erp: int = None
     padrao: bool = None
-    transferencia: bool = None
-    repasse_deducao: bool = None
+    transferencia: bool = EntityField(insert_by_function=True)
+    repasse_deducao: bool = EntityField(insert_by_function=True)
     tenant: int = None
-    rendimentos: bool = None
+    rendimentos: bool = EntityField(insert_by_function=True)
     categoriafinanceira: uuid.UUID = None
     grupobalancete: str = None
     atributo1: str = None

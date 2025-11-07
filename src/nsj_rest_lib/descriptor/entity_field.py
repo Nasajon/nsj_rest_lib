@@ -9,6 +9,7 @@ class EntityField:
         insert_type_field: str | None = None,
         update_type_field: str | None = None,
         description: str = "",
+        insert_by_function: bool = False,
     ):
         """
         -----------
@@ -24,6 +25,7 @@ class EntityField:
         self.insert_type_field = insert_type_field
         self.update_type_field = update_type_field
         self.description = description
+        self.insert_by_function = insert_by_function
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1

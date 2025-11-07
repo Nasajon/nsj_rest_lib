@@ -20,15 +20,13 @@ def create_url(
     database: str,
     db_dialect: str = "postgresql+pg8000",
 ):
-    return str(
-        sqlalchemy.engine.URL.create(
-            db_dialect,
-            username=username,
-            password=password,
-            host=host,
-            port=port,
-            database=database,
-        )
+    return sqlalchemy.engine.URL.create(
+        db_dialect,
+        username=username,
+        password=password,
+        host=host,
+        port=int(port),
+        database=database,
     )
 
 

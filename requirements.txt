@@ -1,4 +1,6 @@
 Flask>=2.0.3,<3.0.0
+# TODO Rever compatibilidade abaixo (as versões além da 2 não acitam o como passamos parâmetros, mas, em nossa imagem, não quebra).
+# SQLAlchemy>=1.4.32,<2.0.0
 SQLAlchemy>=1.4.32,<3.0.0
 pg8000>=1.24.1,<2.0.0
 nsj_gcf_utils>=1.0.22,<2.0.0

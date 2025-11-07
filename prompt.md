@@ -1,3 +1,55 @@
+@PostRoute(
+    url=LIST_POST_ROUTE,
+    http_method='POST',
+    dto_class=ClienteDTO,
+    entity_class=ClienteEntity,
+    insert_entity_class=ClienteInsertEntity
+)
+def post_cliente():
+    pass
+
+
+
+class ClienteDTO:
+    nome: DTOField(entity_field="nome_completo", insert_function_field="nomecompleto")
+    enderecos: DTOListField(dto_type=EnderecoDTO, entity_type=EnderecoEntity, insert_function_field="enderecos")
+
+
+class ClienteEntity:
+    nome_completo: str
+
+
+
+
+
+class ClienteInsertEntity:
+    nomecompleto: str
+    enderecos: list[EnderecoInsertEntity] = InsertEntityField(...)
+
+
+class EnderecoInsertEntity:
+    logradouro: str
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Me ajude a fazer a seguinte implementação:
 
 Preciso de um recurso que permita unir tabelas que tenham relacionamento 1X1, mas que não representem duas entidades relacionadas, e sim um modo de extender um entidade.
