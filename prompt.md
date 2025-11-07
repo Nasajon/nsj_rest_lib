@@ -1,3 +1,52 @@
+A primeira parte da implementação do uso de funções de banco para insert está, em fim, funcionando. Mas, me arrependi do modo como implementei a definição da função de insert, bem como do tipo, e dos campos do tipo.
+
+Atualmente, estou usando o decorator Entity, e a classe EntityBase para tudo, tendo criado as propriedades "insert_type" e "insert_function" no decorator Entity, e tendo criado as propriedades "insert_type_field" e "insert_by_function", no property descriptor "EntityField". Mas, quero refatorar isso.
+
+Minha ideia é agora separar as coisas... O DTO continua valendo para o formato de entrada e saída das APIs. A Entity cootinua valendo como espelho da tabela do banco de dados. Mas, quero criar agora uma nova parte, chamada de "InsertFunctionType", que também será composta por um decorator, com esse mesmo nome "InsertFunctionType", um property descriptor, chamado "InsertFunctionField", o qual deve conter a propriedade "type_field_name", em vez de "insert_type_field" (já a propriedade "insert_by_function" pode ser extinta, pois, se estiver na classe de um "InsertFunctionType", já se entende que tal propriedade será usada no type do BD), e uma superclasse "InsertFunctionTypeBase", a qual deve conter a lista de fields do type, e que deve ser a superclasse de qualquer classe que use o decorator "InsertFunctionType", servindo para apoiar a definição de funções de insert.
+
+A ideia é seguir os padrões que já existem. Assim, no uso da biblioteca, o usuário terá que definir uma classe, que use o decorator "InsertFunctionType", sempre que quiser que um entidade seja inserida por meio de uma função de banco.
+
+Quanto a lógica em tempo de execução, penso que será preciso criar um DAOBaseInsertByFunction, o qual conterá a lógica que hoje está do DAOBaseInsert, que serve para gravação por meio de funções de banco.
+
+Além disso, para definir que a função de insert será usada, quero que o decorator "PostRoute" ganhe uma propriedade chamada "insert_function_type_class", a qual deve apontar para a classe que estender "InsertFunctionTypeBase", e assim, o ServiceBaseSave não deve mais olhar para a Entity para saber se o fluxo deve seguir pelo insert de função de banco, ou pelo insert normal. Antes, o ServiceBaseSave vai receber o a type da função de insert, e, caso tenha recebido, seguirá pelo fluxo de insert por meio do DAOBaseInsertByFunction.
+
+A título de exemplo, considere o esboço de como podera ficar a classificacao financeira, só com os campos id, descricacao, e codigo:
+
+@PostRoute(
+    url=LIST_POST_ROUTE,
+    http_method='POST',
+    dto_class=ClassificacaoFinanceiraDTO,
+    entity_class=ClassificacaoFinanceiraEntity,
+    insert_function_type_class=ClassificacaoFinanceiraInsertType
+)
+def post_classificacao_financeira():
+    pass
+
+@DTO()
+class ClassificacaoFinanceiraDTO:
+    id: uuid.UUID = DTOField(entity_field="classificacaofinanceita", pk=true)
+    codigo: str = DTOField()
+    descricao: str = DTOField()
+
+@Entity()
+class ClassificacaoFinanceiraEntity:
+    classificacaofinanceita: uuid.UUID = EntityField()
+    codigo: str = EntityField()
+    descricao: str = EntityField()
+
+@InsertFunctionType()
+class ClassificacaoFinanceiraInsertType:
+    id: uuid.UUID = InsertFunctionField(type_field_name="classificacao_financeita")
+    codigo: str = InsertFunctionField()
+    descricao: str = InsertFunctionField()
+
+Observações:
+1. Respeite os padrões do projeto.
+2. 2. Se não for passado um "type_field_name" para o "InsertFunctionField", o nome da própriedade será o default.
+3. Tente manter o teste atual funcionando, refatorando a definição do controler, para que seja criado a classe ClassificacaoFinanceiraInsertType, a ser usada pelo PostRoute.
+
+
+
 @PostRoute(
     url=LIST_POST_ROUTE,
     http_method='POST',

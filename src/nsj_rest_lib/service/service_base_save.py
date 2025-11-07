@@ -140,11 +140,12 @@ class ServiceBaseSave(ServiceBasePartialOf):
                 ################################################
                 # DAO.INSERT (ou DAO.INSERT_BY_FUNCTION)
                 ################################################
-                if not entity.__class__.insert_function:
+                if self._insert_function_type_class is None:
                     entity = self._dao.insert(entity, dto.sql_read_only_fields)
                 else:
-                    entity = self._dao.insert_by_function(
-                        entity, dto.sql_read_only_fields
+                    insert_function_object = self._build_insert_function_type_object(dto)
+                    self._dao.insert_by_function(
+                        insert_function_object,
                     )
 
                 if partial_write_data is not None:

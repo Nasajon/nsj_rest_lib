@@ -1,5 +1,8 @@
 from tests.classificacao_financeira_dto import ClassificacaoFinanceiraDTO
 from tests.classificacao_financeira_entity import ClassificacaoFinanceiraEntity
+from tests.classificacao_financeira_insert_function_type import (
+    ClassificacaoFinanceiraInsertType,
+)
 from nsj_rest_lib.settings import application, APP_NAME, MOPE_CODE
 
 from nsj_rest_lib.controller.list_route import ListRoute
@@ -26,6 +29,7 @@ def get_classificacoes_financeiras(request, response):
     http_method="POST",
     dto_class=ClassificacaoFinanceiraDTO,
     entity_class=ClassificacaoFinanceiraEntity,
+    insert_function_type_class=ClassificacaoFinanceiraInsertType,
 )
 def post_classificacoes_financeiras(request, response):
     return response

@@ -14,8 +14,6 @@ class EntityBase(abc.ABC):
     table_name: str = ""
     pk_field: str = ""
     default_order_fields: List[str] = []
-    insert_type: str = ""
-    insert_function: str = ""
 
     def __init__(self) -> None:
         super().__init__()
