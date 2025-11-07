@@ -7,7 +7,8 @@ import enum
 from typing import Any, Dict, List, Set, Union, Optional
 
 from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
-from nsj_rest_lib.descriptor import DTOAggregator, DTOOneToOneField
+from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
+from nsj_rest_lib.descriptor.dto_one_to_one_field import DTOOneToOneField
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField, DTOFieldFilter
 from nsj_rest_lib.util.fields_util import (
@@ -569,7 +570,7 @@ class DTOBase(abc.ABC):
         self,
         fields: Optional[FieldsTree] = None,
         expands: Optional[Dict[str, Set[str]]] = None,
-        just_resume: bool = False
+        just_resume: bool = False,
     ):
         """
         Converte DTO para dict
@@ -628,8 +629,7 @@ class DTOBase(abc.ABC):
             )
 
         for field, oto_field in self.one_to_one_fields_map.items():
-            if field not in fields_tree['root'] \
-               or field not in expands['root']:
+            if field not in fields_tree["root"] or field not in expands["root"]:
                 continue
 
             if getattr(self, field) is None:
@@ -637,7 +637,7 @@ class DTOBase(abc.ABC):
             else:
                 if isinstance(getattr(self, field), oto_field.expected_type):
                     result[field] = getattr(self, field).convert_to_dict(
-                         fields_tree[field] if field in fields_tree else None
+                        fields_tree[field] if field in fields_tree else None
                     )
                     pass
                 pass

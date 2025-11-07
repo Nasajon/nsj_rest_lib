@@ -4,14 +4,13 @@ import warnings
 from typing import Any, Dict, List, Set
 
 from nsj_rest_lib.dao.dao_base import DAOBase
-from nsj_rest_lib.descriptor import DTOOneToOneField
+from nsj_rest_lib.descriptor.dto_one_to_one_field import DTOOneToOneField
 from nsj_rest_lib.descriptor.dto_left_join_field import (
     DTOLeftJoinField,
     EntityRelationOwner,
     LeftJoinQuery,
 )
 from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
-from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.entity.filter import Filter

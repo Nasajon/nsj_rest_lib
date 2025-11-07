@@ -140,7 +140,7 @@ class ServiceBaseSave(ServiceBasePartialOf):
                 ################################################
                 # DAO.INSERT (ou DAO.INSERT_BY_FUNCTION)
                 ################################################
-                if entity.__class__.insert_function:
+                if not entity.__class__.insert_function:
                     entity = self._dao.insert(entity, dto.sql_read_only_fields)
                 else:
                     entity = self._dao.insert_by_function(

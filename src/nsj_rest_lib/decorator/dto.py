@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Set, Type
 
 from nsj_rest_lib.dto.dto_base import DTOBase
-from nsj_rest_lib.descriptor import DTOAggregator, DTOOneToOneField, OTORelationType
+from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
+from nsj_rest_lib.descriptor.dto_one_to_one_field import DTOOneToOneField
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
