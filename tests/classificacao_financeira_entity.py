@@ -9,6 +9,8 @@ from nsj_rest_lib.decorator.entity import Entity
     table_name="teste.classificacoesfinanceiras",
     pk_field="classificacaofinanceira",
     default_order_fields=["codigo"],
+    insert_function="teste.api_classificacaofinanceiranovo",
+    insert_type="teste.tclassificacaofinanceiranovo",
 )
 class ClassificacaoFinanceiraEntity(EntityBase):
 

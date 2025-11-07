@@ -151,7 +151,7 @@ class DAOBaseInsert(DAOBaseUtil):
 
         # Montando a query principal
         sql = f"""
-        DO$DOINSERT$
+        DO $DOINSERT$
             DECLARE VAR_TIPO {entity.insert_type};
             DECLARE VAR_RETORNO RECORD;
         BEGIN
@@ -159,16 +159,19 @@ class DAOBaseInsert(DAOBaseUtil):
 
             VAR_RETORNO = {entity.insert_function}(VAR_TIPO) INTO VAR_RETORNO;
             PERFORM set_config('retorno.bloco', VAR_RETORNO.mensagem::varchar, true);
-        END$DOINSERT$;
-
-        SELECT current_setting('retorno.bloco', true)::jsonb as retorno;
+        END $DOINSERT$;
         """
+
+        sql_result = "SELECT current_setting('retorno.bloco', true)::jsonb as retorno;"
 
         # Montando um dicionário com valores das propriedades
         values_map = convert_to_dumps(entity)
 
         # Realizando o insert no BD
-        returning = self._db.execute_query(sql, **values_map)
+        self._db.execute_query(sql, **values_map)
+
+        # Recuperando o resultado
+        returning = self._db.execute_query(sql_result)
 
         if len(returning) <= 0:
             raise Exception(
