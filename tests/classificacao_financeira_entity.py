@@ -3,6 +3,7 @@ import uuid
 
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.decorator.entity import Entity
+from nsj_rest_lib.descriptor.entity_field import EntityField
 
 
 @Entity(
@@ -14,7 +15,9 @@ from nsj_rest_lib.decorator.entity import Entity
 )
 class ClassificacaoFinanceiraEntity(EntityBase):
 
-    classificacaofinanceira: uuid.UUID = None
+    classificacaofinanceira: uuid.UUID = EntityField(
+        insert_type_field="idclassificacao"
+    )
     codigo: str = None
     descricao: str = None
     codigocontabil: str = None

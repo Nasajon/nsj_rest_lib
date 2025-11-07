@@ -2,7 +2,7 @@ import abc
 
 from typing import Dict, List
 
-from nsj_rest_lib.descriptor.emtity_field import EntityField
+from nsj_rest_lib.descriptor.entity_field import EntityField
 
 
 class EMPTY:

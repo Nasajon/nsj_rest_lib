@@ -3,7 +3,7 @@ import functools
 from dataclasses import dataclass
 from typing import Any, List, Optional, Set, Type
 
-from nsj_rest_lib.descriptor.emtity_field import EntityField
+from nsj_rest_lib.descriptor.entity_field import EntityField
 from nsj_rest_lib.entity.entity_base import EntityBase
 
 

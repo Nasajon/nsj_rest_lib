@@ -163,17 +163,15 @@ class DAOBaseInsert(DAOBaseUtil):
         """
 
         sql_result = "SELECT current_setting('retorno.bloco', true)::jsonb as retorno;"
+        sql_batch = f"{sql}\n{sql_result}"
 
         # Montando um dicionário com valores das propriedades
         values_map = convert_to_dumps(entity)
 
-        # Realizando o insert no BD
-        self._db.execute_query(sql, **values_map)
+        # Realizando o insert no BD e recuperando o retorno em uma única chamada
+        rowcount, returning = self._db.execute_batch(sql_batch, **values_map)
 
-        # Recuperando o resultado
-        returning = self._db.execute_query(sql_result)
-
-        if len(returning) <= 0:
+        if rowcount <= 0 or len(returning) <= 0:
             raise Exception(
                 f"Erro inserindo {entity.__class__.__name__} no banco de dados"
             )
