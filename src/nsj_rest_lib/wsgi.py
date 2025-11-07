@@ -8,6 +8,7 @@ from nsj_rest_lib.healthcheck_config import HealthCheckConfig
 HealthCheckConfig(flask_application=application).config(True)
 
 import tests.cliente_controller
+import tests.classificacao_financeira_controller
 
 if __name__ == "__main__":
     application.run(port=5000)

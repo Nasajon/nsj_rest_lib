@@ -7,7 +7,7 @@ print(sys.path)
 test_util = TCaseUtil(
     __file__,
     "2531",
-    "clientes",
+    "classificacoes-financeiras",
     port=80,
 )
 
