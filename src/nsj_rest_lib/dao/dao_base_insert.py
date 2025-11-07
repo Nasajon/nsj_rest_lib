@@ -1,7 +1,10 @@
+import json
+
 from typing import List
 
 from nsj_gcf_utils.json_util import convert_to_dumps
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.exception import PostgresFunctionException
 from nsj_rest_lib.settings import USE_SQL_RETURNING_CLAUSE
 
 from .dao_base_util import DAOBaseUtil
@@ -94,5 +97,93 @@ class DAOBaseInsert(DAOBaseUtil):
         if len(returning_fields) > 0 and USE_SQL_RETURNING_CLAUSE:
             for field in returning_fields:
                 setattr(entity, field, returning[0][field])
+
+        return entity
+
+    def _sql_insert_function_type(
+        self, entity: EntityBase, sql_read_only_fields: List[str] = []
+    ) -> str:
+        """
+        Retorna uma string contendo uma lista de atribuições para os campos do type do banco de dados (a ser usado como entrada da função).
+        """
+        # Construindo a lista de valores que entrarão na query
+        sql_fields = (
+            entity._sql_fields
+            if entity._sql_fields
+            else [
+                f"{k}"
+                for k in entity.__dict__
+                if not callable(getattr(entity, k, None)) and not k.startswith("_")
+            ]
+        )
+
+        # Building SQL fields
+        fields = []
+        for k in sql_fields:
+            if k in sql_read_only_fields:
+                continue
+
+            if getattr(entity, k, None) is None:
+                continue
+
+            if k not in entity.__class__.fields_map:
+                continue
+
+            entity_field = entity.__class__.fields_map[k]
+
+            type_field_name = entity_field.get_insert_type_field_name()
+
+            fields.append(f"VAR_TIPO.{type_field_name} = :{k};")
+
+        return "\n".join(fields)
+
+    def insert_by_function(
+        self, entity: EntityBase, sql_read_only_fields: List[str] = []
+    ):
+        """
+        Insere o objeto de entidade "entity" no banco de dados, por meio de uma função de banco em PL/PGSQL
+        """
+
+        # Montando as cláusulas dos campos
+        sql_insert_function_type = self._sql_insert_function_type(
+            entity, sql_read_only_fields
+        )
+
+        # Montando a query principal
+        sql = f"""
+        DO$DOINSERT$
+            DECLARE VAR_TIPO {entity.insert_type};
+            DECLARE VAR_RETORNO RECORD;
+        BEGIN
+            {sql_insert_function_type}
+
+            VAR_RETORNO = {entity.insert_function}(VAR_TIPO) INTO VAR_RETORNO;
+            PERFORM set_config('retorno.bloco', VAR_RETORNO.mensagem::varchar, true);
+        END$DOINSERT$;
+
+        SELECT current_setting('retorno.bloco', true)::jsonb as retorno;
+        """
+
+        # Montando um dicionário com valores das propriedades
+        values_map = convert_to_dumps(entity)
+
+        # Realizando o insert no BD
+        returning = self._db.execute_query(sql, **values_map)
+
+        if len(returning) <= 0:
+            raise Exception(
+                f"Erro inserindo {entity.__class__.__name__} no banco de dados"
+            )
+
+        # Interpretando o retorno da função
+        returning = json.loads(returning[0]["retorno"])
+
+        if returning["codigo"].lower().strip() != "ok":
+            if returning["tipo"]:
+                msg = f"{returning['tipo']}: {returning['mensagem']}"
+            else:
+                msg = returning["mensagem"]
+
+            raise PostgresFunctionException(msg)
 
         return entity

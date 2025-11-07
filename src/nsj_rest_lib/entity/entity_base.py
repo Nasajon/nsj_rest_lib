@@ -1,6 +1,8 @@
 import abc
 
-from typing import List
+from typing import Dict, List
+
+from nsj_rest_lib.descriptor.emtity_field import EntityField
 
 
 class EMPTY:
@@ -8,6 +10,13 @@ class EMPTY:
 
 
 class EntityBase(abc.ABC):
+    fields_map: Dict[str, EntityField] = {}
+    table_name: str = ""
+    pk_field: str = ""
+    default_order_fields: List[str] = []
+    insert_type: str = ""
+    insert_function: str = ""
+
     def __init__(self) -> None:
         super().__init__()
         self._sql_fields: list[str] = []

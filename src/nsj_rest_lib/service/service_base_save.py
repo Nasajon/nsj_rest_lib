@@ -137,7 +137,15 @@ class ServiceBaseSave(ServiceBasePartialOf):
                         f"Já existe um registro no banco com o identificador '{getattr(entity, entity_pk_field)}'"
                     )
 
-                entity = self._dao.insert(entity, dto.sql_read_only_fields)
+                ################################################
+                # DAO.INSERT (ou DAO.INSERT_BY_FUNCTION)
+                ################################################
+                if entity.__class__.insert_function:
+                    entity = self._dao.insert(entity, dto.sql_read_only_fields)
+                else:
+                    entity = self._dao.insert_by_function(
+                        entity, dto.sql_read_only_fields
+                    )
 
                 if partial_write_data is not None:
                     self._handle_partial_extension_insert(entity, partial_write_data)
@@ -282,9 +290,7 @@ class ServiceBaseSave(ServiceBasePartialOf):
     def _retrieve_old_dto(self, dto, id, aditional_filters):
         fields = self._make_fields_from_dto(dto)
         get_filters = (
-            copy.deepcopy(aditional_filters)
-            if aditional_filters is not None
-            else {}
+            copy.deepcopy(aditional_filters) if aditional_filters is not None else {}
         )
 
         if (

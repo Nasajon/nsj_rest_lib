@@ -3,6 +3,7 @@ import functools
 from dataclasses import dataclass
 from typing import Any, List, Optional, Set, Type
 
+from nsj_rest_lib.descriptor.emtity_field import EntityField
 from nsj_rest_lib.entity.entity_base import EntityBase
 
 
@@ -14,10 +15,6 @@ class PartialEntityConfig:
     extension_fields: Set[str]
 
 
-class EntityField:
-    expected_type: object
-
-
 class Entity:
     def __init__(
         self,
@@ -26,6 +23,8 @@ class Entity:
         default_order_fields: Optional[List[str]] = None,
         partial_of: Optional[Type[EntityBase]] = None,
         partial_table_name: Optional[str] = None,
+        insert_type: Optional[str] = None,
+        insert_function: Optional[str] = None,
     ) -> None:
         super().__init__()
 
@@ -82,11 +81,20 @@ class Entity:
         if pk_field is not None and pk_field not in default_order_fields:
             default_order_fields.append(pk_field)
 
+        if (insert_type or insert_function) and (
+            not insert_type or not insert_function
+        ):
+            raise ValueError(
+                "Os parâmetros 'insert_type' e 'insert_function' devem ser informados juntos."
+            )
+
         self.table_name = table_name
         self.pk_field = pk_field
         self.default_order_fields = default_order_fields
         self.partial_table_name = extension_table_name
         self.parent_default_order_fields = parent_default_order_fields
+        self.insert_type = insert_type
+        self.insert_function = insert_function
 
     def __call__(self, cls: object):
         """
@@ -129,18 +137,35 @@ class Entity:
             cls, "default_order_fields", self.default_order_fields
         )
 
+        # Guardando o tipo de insert na classe
+        self._check_class_attribute(cls, "insert_type", self.insert_type)
+
+        # Guardando a função de insert na classe
+        self._check_class_attribute(cls, "insert_function", self.insert_function)
+
         # Creating fields_map in cls, if needed
         self._check_class_attribute(cls, "fields_map", {})
 
         # Iterando pelos atributos de classe
         for key, attr in cls.__dict__.items():
+            atributo = None
+
             # Copiando o tipo a partir da anotação de tipo (se existir)
-            if key in cls.__annotations__:
+            if isinstance(attr, EntityField):
+                atributo = attr
+            elif key in cls.__annotations__:
                 atributo = attr
                 if not isinstance(attr, EntityField):
                     atributo = EntityField()
 
-                atributo.expected_type = cls.__annotations__[key]
+            if atributo:
+                # Setting a better name to storage_name
+                atributo.storage_name = f"{key}"
+                atributo.name = f"{key}"
+
+                # Guardando o type esperado
+                if key in cls.__annotations__:
+                    atributo.expected_type = cls.__annotations__[key]
 
                 # Guardando o atributo no fields_map
                 getattr(cls, "fields_map")[key] = atributo

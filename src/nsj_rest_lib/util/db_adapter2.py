@@ -1,6 +1,8 @@
 import uuid
 
 from sqlparams import SQLParams
+from typing import Tuple
+
 from nsj_rest_lib.util.log_time import log_time_context
 
 
@@ -27,7 +29,7 @@ class DBAdapter2:
     def in_transaction(self):
         return self._transaction is not None
 
-    def execute(self, sql: str, **kwargs) -> int:
+    def execute(self, sql: str, **kwargs) -> Tuple[int, list | None]:
         """
         Executando uma instrução sql, com ou sem retorno.
         É obrigatório a passagem de uma conexão de banco no argumento self._db.
