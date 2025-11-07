@@ -20,6 +20,8 @@ class DTOObjectField:
         validator: typing.Callable = None,
         description: str = "",
         resume_fields: typing.Iterable[str] = None,
+        insert_function_field: str = None,
+        convert_to_function: typing.Callable = None,
     ):
         """
         DEPRECATED! Use DTOOneToOneField instead!
@@ -77,6 +79,8 @@ class DTOObjectField:
         self.validator = validator
         self.resume_fields = list(resume_fields or [])
         self.resume_fields_tree: FieldsTree = build_fields_tree(self.resume_fields)
+        self.insert_function_field = insert_function_field
+        self.convert_to_function = convert_to_function
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1

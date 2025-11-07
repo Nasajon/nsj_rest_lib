@@ -24,7 +24,13 @@ class ClassificacaoFinanceiraDTO(DTOBase):
     )
 
     codigo: str = DTOField(resume=True, not_null=True, strip=True, min=1, max=30)
-    descricao: str = DTOField(resume=True, strip=True, min=1, max=150)
+    descricao: str = DTOField(
+        resume=True,
+        strip=True,
+        min=1,
+        max=150,
+        insert_function_field="descricao_func",
+    )
     codigocontabil: str = DTOField(strip=True, min=1, max=20)
     resumo: str = DTOField(strip=True, min=1, max=30)
     situacao: int = DTOField(not_null=True, default_value=0)

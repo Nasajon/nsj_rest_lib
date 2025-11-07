@@ -34,8 +34,10 @@ class DTOOneToOneField:
     resume: bool
     partition_data: bool
     entity_field: str
+    insert_function_field: str
     validator: ty.Optional[ty.Callable[..., ty.Any]]
     description: str
+    convert_to_function: ty.Optional[ty.Callable[..., ty.Any]]
 
     def __init__(
         self,
@@ -48,6 +50,8 @@ class DTOOneToOneField:
         partition_data: bool = False,
         validator: ty.Optional[ty.Callable[['DTOOneToOneField', T], T]] = None,
         description: str = '',
+        insert_function_field: ty.Optional[str] = None,
+        convert_to_function: ty.Optional[ty.Callable[..., ty.Any]] = None,
     ):
         """Descriptor used for One to One relations.
         ---------
@@ -115,11 +119,13 @@ class DTOOneToOneField:
         self.relation_type = relation_type
         self.resume = resume
         self.entity_field = entity_field or ''
+        self.insert_function_field = insert_function_field
         self.entity_relation_owner = entity_relation_owner
         self.not_null = not_null
         self.partition_data = partition_data
         self.validator = validator
         self.description = description
+        self.convert_to_function = convert_to_function
 
         self.name = None
         self.expected_type = ty.cast(ty.Type['DTOBase'], type)

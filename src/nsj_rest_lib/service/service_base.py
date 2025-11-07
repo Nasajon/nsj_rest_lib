@@ -2,6 +2,7 @@ import typing as ty
 
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
@@ -47,7 +48,9 @@ class ServiceBase(
         self._insert_function_type_class: ty.Optional[
             ty.Type[InsertFunctionTypeBase]
         ] = None
-        self._insert_function_type_fields_map: ty.Optional[dict[str, any]] = None
+        self._insert_function_type_fields_map: ty.Optional[
+            ty.Dict[str, tuple[str, DTOField]]
+        ] = None
         self.set_insert_function_type_class(insert_function_type_class)
 
     @staticmethod
@@ -109,16 +112,37 @@ class ServiceBase(
                 f"A classe {self._insert_function_type_class.__name__} não possui fields_map configurado."
             )
 
-        dto_fields_map = getattr(self._dto_class, "fields_map", {})
         insert_fields_map = getattr(self._insert_function_type_class, "fields_map", {})
+        dto_lookup = self._build_dto_insert_function_lookup()
+
+        mapping: ty.Dict[str, tuple[str, DTOField]] = {}
 
         for field_name in insert_fields_map.keys():
-            if field_name not in dto_fields_map:
+            if field_name not in dto_lookup:
                 raise ValueError(
                     f"O campo '{field_name}' do InsertFunctionType '{self._insert_function_type_class.__name__}' não existe no DTO '{self._dto_class.__name__}'."
                 )
 
-        return insert_fields_map
+            mapping[field_name] = dto_lookup[field_name]
+
+        return mapping
+
+    def _build_dto_insert_function_lookup(self) -> ty.Dict[str, tuple[str, DTOField]]:
+        dto_fields_map = getattr(self._dto_class, "fields_map", {})
+
+        lookup: ty.Dict[str, tuple[str, DTOField]] = {}
+
+        for field_name, dto_field in dto_fields_map.items():
+            target_name = dto_field.get_insert_function_field_name()
+
+            if target_name in lookup:
+                raise ValueError(
+                    f"O campo '{target_name}' do InsertFunctionType está mapeado por mais de um campo do DTO '{self._dto_class.__name__}'."
+                )
+
+            lookup[target_name] = (field_name, dto_field)
+
+        return lookup
 
     def _build_insert_function_type_object(self, dto: DTOBase):
         if self._insert_function_type_class is None:
@@ -130,14 +154,37 @@ class ServiceBase(
             )
 
         insert_object = self._insert_function_type_class()
+        dto_values = dto.__dict__
 
-        for field_name in self._insert_function_type_fields_map.keys():
-            if not hasattr(dto, field_name):
+        for (
+            function_field_name,
+            (dto_field_name, dto_field),
+        ) in self._insert_function_type_fields_map.items():
+            if not hasattr(dto, dto_field_name):
                 raise ValueError(
-                    f"DTO '{self._dto_class.__name__}' não possui o campo '{field_name}' utilizado no InsertFunctionType '{self._insert_function_type_class.__name__}'."
+                    f"DTO '{self._dto_class.__name__}' não possui o campo '{dto_field_name}' utilizado no InsertFunctionType '{self._insert_function_type_class.__name__}'."
                 )
 
-            value = getattr(dto, field_name, None)
-            setattr(insert_object, field_name, value)
+            value = getattr(dto, dto_field_name, None)
+
+            if dto_field.convert_to_function is not None:
+                converted_values = dto_field.convert_to_function(value, dto_values) or {}
+
+                if not isinstance(converted_values, dict):
+                    raise ValueError(
+                        f"A função 'convert_to_function' configurada no campo '{dto_field_name}' deve retornar um dicionário."
+                    )
+
+                if function_field_name not in converted_values:
+                    converted_values = {
+                        function_field_name: None,
+                        **converted_values,
+                    }
+
+                for target_field, target_value in converted_values.items():
+                    setattr(insert_object, target_field, target_value)
+                continue
+
+            setattr(insert_object, function_field_name, value)
 
         return insert_object

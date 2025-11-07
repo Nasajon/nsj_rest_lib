@@ -12,7 +12,7 @@ from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
 class ClassificacaoFinanceiraInsertType(InsertFunctionTypeBase):
     id: uuid.UUID = InsertFunctionField(type_field_name="idclassificacao")
     codigo: str = InsertFunctionField()
-    descricao: str = InsertFunctionField()
+    descricao_func: str = InsertFunctionField(type_field_name="descricao")
     codigocontabil: str = InsertFunctionField()
     resumo: str = InsertFunctionField()
     natureza: int = InsertFunctionField()

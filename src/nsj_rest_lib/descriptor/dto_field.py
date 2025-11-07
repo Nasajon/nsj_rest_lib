@@ -84,6 +84,8 @@ class DTOField:
         auto_increment: dict[str, any] = {},
         description: str = '',
         use_integrity_check: bool = True,
+        insert_function_field: str = None,
+        convert_to_function: typing.Callable = None,
     ):
         """
         -----------
@@ -105,6 +107,8 @@ class DTOField:
         - strip: O valor da string sofrerá strip (remoção de espaços no início e no fim), antes de ser guardado (só é útil para strings).
 
         - entity_field: Nome da propriedade equivalente na classe de entity (que reflete a estruturua do banco de dados).
+
+        - insert_function_field: Nome da propriedade equivalente na classe de InsertFunctionType. Se não informado, assume o nome do campo do DTO.
 
         - filters: Lista de filtros adicionais suportados para esta propriedade (adicionais, porque todos as propriedades, por padrão, suportam filtros de igualdade, que podem ser passados por meio de uma query string, com mesmo nome da proriedade, e um valor qualquer a ser comparado).
             Essa lista de filtros consiste em objetos do DTOFieldFilter (veja a documentação da classe para enteder a estrutura de declaração dos filtros).
@@ -178,12 +182,14 @@ class DTOField:
         self.validator = validator
         self.strip = strip
         self.entity_field = entity_field
+        self.insert_function_field = insert_function_field
         self.filters = filters
         self.pk = pk
         self.use_default_validator = use_default_validator
         self.default_value = default_value
         self.partition_data = partition_data
         self.convert_to_entity = convert_to_entity
+        self.convert_to_function = convert_to_function
         self.convert_from_entity = convert_from_entity
         self.unique = unique
         self.candidate_key = candidate_key
@@ -305,6 +311,18 @@ class DTOField:
 
         if self.entity_field is not None:
             return self.entity_field
+        else:
+            return self.name
+
+    def get_insert_function_field_name(self) -> str:
+        """
+        Retorna o nome correspondente do field no InsertFunctionType
+        (o qual é o nome do field no DTO por padrão, ou o nome que for
+        passado no parâmetro "insert_function_field" no construtor).
+        """
+
+        if self.insert_function_field is not None:
+            return self.insert_function_field
         else:
             return self.name
 
