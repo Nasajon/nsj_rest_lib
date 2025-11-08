@@ -67,6 +67,10 @@ class DTOObjectField:
             tipo de tratamento (como adição ou remoção, automática, de formatação).
 
         - description: Descrição deste campo na documentação.
+
+        - insert_function_field: Nome do campo equivalente no InsertFunctionType (default: o nome do campo no DTO).
+
+        - convert_to_function: Função para converter o valor antes de preencher o InsertFunctionType. Recebe (valor, dict_com_valores_do_dto) e deve retornar um dicionário com os campos/resultados a serem atribuídos.
         """
         self.name = None
         self.description = description

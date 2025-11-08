@@ -113,7 +113,7 @@ class ServiceBase(
             )
 
         insert_fields_map = getattr(self._insert_function_type_class, "fields_map", {})
-        dto_lookup = self._build_dto_insert_function_lookup()
+        dto_lookup = self._get_dto_insert_function_lookup()
 
         mapping: ty.Dict[str, tuple[str, DTOField]] = {}
 
@@ -127,21 +127,12 @@ class ServiceBase(
 
         return mapping
 
-    def _build_dto_insert_function_lookup(self) -> ty.Dict[str, tuple[str, DTOField]]:
-        dto_fields_map = getattr(self._dto_class, "fields_map", {})
-
-        lookup: ty.Dict[str, tuple[str, DTOField]] = {}
-
-        for field_name, dto_field in dto_fields_map.items():
-            target_name = dto_field.get_insert_function_field_name()
-
-            if target_name in lookup:
-                raise ValueError(
-                    f"O campo '{target_name}' do InsertFunctionType está mapeado por mais de um campo do DTO '{self._dto_class.__name__}'."
-                )
-
-            lookup[target_name] = (field_name, dto_field)
-
+    def _get_dto_insert_function_lookup(self) -> ty.Dict[str, tuple[str, DTOField]]:
+        lookup = getattr(self._dto_class, "insert_function_field_lookup", None)
+        if lookup is None or len(lookup) == 0:
+            raise ValueError(
+                f"DTO '{self._dto_class.__name__}' não possui insert_function_field_lookup configurado."
+            )
         return lookup
 
     def _build_insert_function_type_object(self, dto: DTOBase):

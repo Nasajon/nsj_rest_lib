@@ -93,6 +93,8 @@ class DTOOneToOneField:
         - entity_field: The name of the field in the Entity of the `Current DTO`.
             If `None` will use the name of the field in the `Current DTO`.
 
+        - insert_function_field: Nome opcional do campo correspondente no InsertFunctionType (default: nome do campo no DTO).
+
         - entity_relation_owner: Indicates which entity contain the
             `relation_field`, it must be one of:
                 - EntityRelationField.SELF: The `relation_field` is part of the
@@ -114,6 +116,8 @@ class DTOOneToOneField:
 
         - description: Description of this field that can be used in
             documentation.
+
+        - convert_to_function: Função usada para converter o valor antes de popular o InsertFunctionType. Recebe (valor, dict_com_valores_do_dto) e deve retornar um dicionário com os campos/resultados a atribuir.
         """
         self.entity_type = entity_type
         self.relation_type = relation_type

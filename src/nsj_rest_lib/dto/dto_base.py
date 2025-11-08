@@ -4,7 +4,7 @@ import enum
 
 # import uuid
 
-from typing import Any, Dict, List, Set, Union, Optional
+from typing import Any, Dict, List, Set, Union, Optional, Tuple
 
 from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
 from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
@@ -24,6 +24,7 @@ class DTOBase(abc.ABC):
     resume_fields: Set[str] = set()
     partition_fields: Set[str] = set()
     fields_map: Dict[str, DTOField] = {}
+    insert_function_field_lookup: Dict[str, Tuple[str, DTOField]] = {}
     list_fields_map: dict = {}
     integrity_check_fields_map: dict = {}
     left_join_fields_map: dict = {}

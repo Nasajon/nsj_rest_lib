@@ -57,6 +57,8 @@ class DTOListField:
         - relation_key_field: Nome do campo, no DTO corrente, utilizado como chave de apontamento no relacionamento
             (isso é, campo para o qual a entidade, do lado N, aponta via FK).
 
+        - insert_function_field: Nome da propriedade equivalente no InsertFunctionType quando o campo lista precisar apontar para um nome diferente (default: o nome do campo no DTO).
+
         - service_name: Nome do serviço customizado, caso se deseje que as operações sobre esse tipo de lista se façam
             de um modo customizado (e não usando o service_base do próprio RestLib).
 
@@ -66,6 +68,8 @@ class DTOListField:
 
         - resume_fields: Lista de campos (usando a mesma sintaxe do parâmetro "fields" das chamadas GET)
             pertencentes ao DTO relacionado que devem ser incluídos automaticamente nas respostas.
+
+        - convert_to_function: Função chamada para converter os objetos da lista antes de popular o InsertFunctionType. Recebe (lista_de_valores, dict_com_valores_do_dto) e deve retornar um dicionário com os campos/resultados que serão atribuídos no InsertFunctionType.
         """
         self.name = None
         self.description = description

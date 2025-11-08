@@ -82,7 +82,7 @@ class DTOField:
         no_update: bool = False,
         metric_label: bool = False,
         auto_increment: dict[str, any] = {},
-        description: str = '',
+        description: str = "",
         use_integrity_check: bool = True,
         insert_function_field: str = None,
         convert_to_function: typing.Callable = None,
@@ -108,6 +108,8 @@ class DTOField:
 
         - entity_field: Nome da propriedade equivalente na classe de entity (que reflete a estruturua do banco de dados).
 
+        - insert_function_field: Nome do campo correspondente no InsertFunctionType utilizado para inserts por função (default: o próprio nome do campo no DTO).
+
         - insert_function_field: Nome da propriedade equivalente na classe de InsertFunctionType. Se não informado, assume o nome do campo do DTO.
 
         - filters: Lista de filtros adicionais suportados para esta propriedade (adicionais, porque todos as propriedades, por padrão, suportam filtros de igualdade, que podem ser passados por meio de uma query string, com mesmo nome da proriedade, e um valor qualquer a ser comparado).
@@ -121,9 +123,11 @@ class DTOField:
 
         - partition_data: Flag indicando se esta propriedade participa dos campos de particionamento da entidade, isto é, campos sempre usados nas queries de listagem gravação dos dados, inclusíve para recuperação de entidades relacionadas.
 
-        - convert_to_entity: Função para converter o valor contido no DTO, para o(s) valor(es) a serem gravados no objeto de entidade (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
+        - convert_to_entity: Função para converter o valor contido no DTO, para o(s) valor(es) a serem gravados no objeto de entidade (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade.
             (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
             A função recebida deve suportar os parâmetros (dto_value: Any, dto: DTOBase), e retornar um Dict[str, Any], como uma coleção de chaves e valores a serem atribuídos na entidade.
+
+        - convert_to_function: Função para converter o valor do DTO antes de popular o InsertFunctionType. Recebe (value_do_campo, dict_com_valores_do_dto) e deve retornar um dicionário cujas chaves são os campos do InsertFunctionType e os valores correspondentes (permite mapear/derivar múltiplos campos). Se None, o valor é copiado diretamente.
 
         - convert_from_entity: Função para converter o valor contido na Entity, para o(s) valor(es) a serem gravados no objeto DTO (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
             (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
@@ -246,7 +250,13 @@ class DTOField:
         # Checking not null constraint
         if (
             self.not_null
-            and (value is None or (isinstance(value, str) and len(value.strip() if dto_field.strip else value) <= 0))
+            and (
+                value is None
+                or (
+                    isinstance(value, str)
+                    and len(value.strip() if dto_field.strip else value) <= 0
+                )
+            )
             and (
                 not dto_field.pk
                 or (

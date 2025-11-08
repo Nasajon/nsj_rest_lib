@@ -239,6 +239,7 @@ class DTO:
         self._check_class_attribute(cls, "field_filters_map", {})
 
         self._check_class_attribute(cls, "aggregator_fields_map", {})
+        self._check_class_attribute(cls, "insert_function_field_lookup", {})
 
         # Creating pk_field in cls, if needed
         # TODO Refatorar para suportar PKs compostas
@@ -586,6 +587,8 @@ class DTO:
         else:
             setattr(cls, "partial_dto_config", None)
 
+        self._build_insert_function_field_lookup(cls)
+
         return cls
 
     def _validate_data_override_properties(self, cls):
@@ -631,6 +634,21 @@ class DTO:
 
         if attr_name not in cls.__dict__:
             setattr(cls, attr_name, default_value)
+
+    def _build_insert_function_field_lookup(self, cls: object):
+        lookup = {}
+
+        for field_name, descriptor in getattr(cls, "fields_map").items():
+            target_name = descriptor.get_insert_function_field_name()
+
+            if target_name in lookup:
+                raise ValueError(
+                    f"O campo '{target_name}' no InsertFunctionType está mapeado por mais de um campo no DTO '{cls.__name__}'."
+                )
+
+            lookup[target_name] = (field_name, descriptor)
+
+        setattr(cls, "insert_function_field_lookup", lookup)
 
     def set_left_join_fields_map_to_query(
         self,
