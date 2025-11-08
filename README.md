@@ -106,7 +106,7 @@ make code_tests
 ```
 
 Obsevações:
-* Este tipo de teste faz mock de BD e etc.
+* Este tipo de teste faz mock de BD e etc
   
 ## Histórico de versões
 
@@ -178,3 +178,8 @@ Obsevações:
         ],
     )
 ```
+
+
+## TODO
+
+* Implementar salvamento de listas por meio de funções de banco (como arrays dentro dos types)
