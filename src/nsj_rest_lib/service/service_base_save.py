@@ -337,6 +337,13 @@ class ServiceBaseSave(ServiceBasePartialOf):
             if detail_list is None:
                 continue
 
+            if (
+                insert
+                and self._insert_function_type_class is not None
+                and getattr(list_field, "insert_function_type", None) is not None
+            ):
+                continue
+
             detail_dao = DAOBase(
                 self._injector_factory.db_adapter(), list_field.entity_type
             )

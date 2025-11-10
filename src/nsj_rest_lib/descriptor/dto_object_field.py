@@ -2,6 +2,7 @@ import typing
 
 from nsj_rest_lib.descriptor.dto_left_join_field import EntityRelationOwner
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
 from nsj_rest_lib.util.fields_util import FieldsTree, build_fields_tree
 
 
@@ -21,6 +22,7 @@ class DTOObjectField:
         description: str = "",
         resume_fields: typing.Iterable[str] = None,
         insert_function_field: str = None,
+        insert_function_type: typing.Optional[type[InsertFunctionTypeBase]] = None,
         convert_to_function: typing.Callable = None,
     ):
         """
@@ -84,10 +86,19 @@ class DTOObjectField:
         self.resume_fields = list(resume_fields or [])
         self.resume_fields_tree: FieldsTree = build_fields_tree(self.resume_fields)
         self.insert_function_field = insert_function_field
+        self.insert_function_type = insert_function_type
         self.convert_to_function = convert_to_function
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
+
+        if (
+            self.insert_function_type is not None
+            and not issubclass(self.insert_function_type, InsertFunctionTypeBase)
+        ):
+            raise ValueError(
+                "insert_function_type deve herdar de InsertFunctionTypeBase."
+            )
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -119,3 +130,8 @@ class DTOObjectField:
                 raise
 
         instance.__dict__[self.storage_name] = value
+
+    def get_insert_function_field_name(self) -> str:
+        if self.insert_function_field is not None:
+            return self.insert_function_field
+        return self.name

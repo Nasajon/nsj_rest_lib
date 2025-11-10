@@ -638,15 +638,42 @@ class DTO:
     def _build_insert_function_field_lookup(self, cls: object):
         lookup = {}
 
-        for field_name, descriptor in getattr(cls, "fields_map").items():
-            target_name = descriptor.get_insert_function_field_name()
+        relation_oto_fields = {
+            field_name
+            for field_name, descriptor in getattr(cls, "one_to_one_fields_map").items()
+            if descriptor.insert_function_type is not None
+        }
 
+        def add_lookup_entry(target_name: str, field_name: str, descriptor: Any):
             if target_name in lookup:
                 raise ValueError(
                     f"O campo '{target_name}' no InsertFunctionType está mapeado por mais de um campo no DTO '{cls.__name__}'."
                 )
-
             lookup[target_name] = (field_name, descriptor)
+
+        for field_name, descriptor in getattr(cls, "fields_map").items():
+            if field_name in relation_oto_fields:
+                continue
+            target_name = descriptor.get_insert_function_field_name()
+            add_lookup_entry(target_name, field_name, descriptor)
+
+        for field_name, descriptor in getattr(cls, "list_fields_map").items():
+            if descriptor.insert_function_type is None:
+                continue
+            target_name = descriptor.get_insert_function_field_name()
+            add_lookup_entry(target_name, field_name, descriptor)
+
+        for field_name, descriptor in getattr(cls, "object_fields_map").items():
+            if getattr(descriptor, "insert_function_type", None) is None:
+                continue
+            target_name = descriptor.get_insert_function_field_name()
+            add_lookup_entry(target_name, field_name, descriptor)
+
+        for field_name, descriptor in getattr(cls, "one_to_one_fields_map").items():
+            if descriptor.insert_function_type is None:
+                continue
+            target_name = descriptor.get_insert_function_field_name()
+            add_lookup_entry(target_name, field_name, descriptor)
 
         setattr(cls, "insert_function_field_lookup", lookup)
 

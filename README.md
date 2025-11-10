@@ -182,4 +182,5 @@ Obsevações:
 
 ## TODO
 
-* Implementar salvamento de listas por meio de funções de banco (como arrays dentro dos types)
+* Testar insert por função com relacionamentos
+* Implementar update por função

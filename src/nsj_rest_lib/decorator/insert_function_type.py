@@ -1,6 +1,9 @@
 import functools
 from typing import Optional, Type
 
+from nsj_rest_lib.descriptor.insert_function_relation_field import (
+    InsertFunctionRelationField,
+)
 from nsj_rest_lib.descriptor.insert_function_field import InsertFunctionField
 from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
 
@@ -26,17 +29,22 @@ class InsertFunctionType:
         self._check_class_attribute(cls, "type_name", self.type_name)
         self._check_class_attribute(cls, "function_name", self.function_name)
         self._check_class_attribute(cls, "fields_map", {})
+        self._check_class_attribute(
+            cls, "_dto_insert_function_mapping_cache", {}
+        )
 
         annotations = dict(getattr(cls, "__annotations__", {}) or {})
 
         for key, attr in cls.__dict__.items():
             descriptor: Optional[InsertFunctionField] = None
 
-            if isinstance(attr, InsertFunctionField):
+            if isinstance(attr, (InsertFunctionField, InsertFunctionRelationField)):
                 descriptor = attr
             elif key in annotations:
                 descriptor = attr
-                if not isinstance(attr, InsertFunctionField):
+                if not isinstance(
+                    attr, (InsertFunctionField, InsertFunctionRelationField)
+                ):
                     descriptor = InsertFunctionField()
 
             if descriptor:
@@ -44,6 +52,8 @@ class InsertFunctionType:
                 descriptor.name = key
                 if key in annotations:
                     descriptor.expected_type = annotations[key]
+                    if isinstance(descriptor, InsertFunctionRelationField):
+                        descriptor.configure_related_type(annotations[key], key)
                 cls.fields_map[key] = descriptor
 
         return cls

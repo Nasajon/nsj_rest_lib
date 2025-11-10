@@ -2,6 +2,7 @@ import typing
 
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
 from nsj_rest_lib.exception import DTOListFieldConfigException
 from nsj_rest_lib.util.fields_util import FieldsTree, build_fields_tree
 
@@ -30,6 +31,7 @@ class DTOListField:
         use_integrity_check: bool = True,
         resume_fields: typing.Iterable[str] = None,
         insert_function_field: str = None,
+        insert_function_type: typing.Optional[type[InsertFunctionTypeBase]] = None,
         convert_to_function: typing.Callable = None,
     ):
         """
@@ -77,6 +79,7 @@ class DTOListField:
         self.entity_type = entity_type
         self.related_entity_field = related_entity_field
         self.insert_function_field = insert_function_field
+        self.insert_function_type = insert_function_type
         self.not_null = not_null
         self.min = min
         self.max = max
@@ -102,6 +105,14 @@ class DTOListField:
                     "entity_type parameter must be not None."
                 )
 
+        if (
+            self.insert_function_type is not None
+            and not issubclass(self.insert_function_type, InsertFunctionTypeBase)
+        ):
+            raise DTOListFieldConfigException(
+                "insert_function_type deve herdar de InsertFunctionTypeBase."
+            )
+
     def __get__(self, instance, owner):
         if instance is None:
             return self
@@ -125,6 +136,11 @@ class DTOListField:
         self.set_partition_fields(instance, value)
 
         instance.__dict__[self.storage_name] = value
+
+    def get_insert_function_field_name(self) -> str:
+        if self.insert_function_field is not None:
+            return self.insert_function_field
+        return self.name
 
     def set_partition_fields(self, instance, value):
         """

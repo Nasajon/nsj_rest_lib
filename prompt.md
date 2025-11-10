@@ -1,3 +1,71 @@
+Me ajude a implementar agora um modo de inserção dos relacionamentos via função de banco de dados.
+
+Hoje, a implementação já permite que uma rota PostRoute recebe uma classe que herde de InsertFunctionTypeBase, para representar o formato de um type de BD, que será usado para gravação das informações no banco, por meio de uma função de banco.
+
+Mas, quando uma entidade tem relacionamentos, foi convencionado que esses relacionamentos serão mapeados no próprio type. Por exemplo, uma entidade cliente pode ter uma lista de endereços, o que ficaria assim:
+
+CREATE TYPE ns.tclientenovo AS (
+	cliente uuid,
+	codigo varchar(30),
+	nome varchar(150),
+	nomefantasia varchar(150),
+	identidade varchar(20),
+	documento varchar(20),
+	retemiss bool,
+	retemir bool,
+	retempis bool,
+	retemcofins bool,
+	retemcsll bool,
+	reteminss bool,
+	entidadescompartilhadoras _tentidadecompartilhadora,
+	endereco _tendereco,
+	inscricaoestadual varchar(20));
+
+CREATE TYPE ns.tendereco AS (
+	id uuid,
+	tipologradouro varchar(50),
+	logradouro varchar(150),
+	numero varchar(50),
+	complemento varchar(100),
+	cep varchar(30),
+	bairro varchar(100),
+	municipio varchar(50),
+	pais varchar(50),
+	uf varchar(2),
+	tipo int4,
+	enderecopadrao int4,
+	referencia varchar(150),
+	idpessoa uuid,
+	cidade varchar(60),
+	idpessoafisica uuid,
+	idproposta uuid,
+	idordemservico uuid);
+
+Minha ideia é então mapear os relacionamentos, também como subclasses de InsertFunctionTypeBase, apontando o tipo no DTO, por meio dos descritores de propriedade DTOListField, DTOOneToOneField e DTOObjectField. A ideia é seguir o mesmo padrão de apontar o DTO e o Entity nesses relacionamentos, porém agora apontando o InsertFunctionType, incluindo duas novas propriedadades:
+
+- "insert_function_type", que apontará para a classe da entidade relacionada (que estende InsertFunctionTypeBase).
+- "insert_function_field", que conterá o nome do campo, do type postgres, que mapeia o relacionamento (cujo tipo é um array).
+
+Na classe InsertFunctionTypeBase que for mestre do relacionamento, também deve haver um mapeamento do relacionamento, pois, ao salvar as entidades, esses objetos serão populados em memória (conforme explicação abaixo).
+
+Então para a classe InsertFunctionTypeBase, deve ser criado um novo tipo de descritor de propriedades que sirva para apontar entidades relacionamentos, chamado DTORelationField, que deve carregar da anotation de type, o tipo da entidade relacionada. Além disso, se a anotação de tipo for uma list da outra entidade, se tratará de um relacionamento 1XN, enquanto se for apenas um objetov, se trata de um 1X1.
+
+O maior desafio, porém, está na adaptação do fluxo de salvamento dentro do ServiceBaseSave. A ideia é refatorar de modo que:
+
+- Quando houver um mapeamento para uso de uma função de banco (por agora, só será considerado para insert, mas, no futuro será também para o update), o service deve popular o objeto do tipo InsertFunctionTypeBase completamente, antes de chamar o DAOBaseInsertByFunction.
+- Em vez de chamar o save para a entidade principal, e depois para os relacionamentos, a ideia é ter um objeto completo, do tipo InsertFunctionTypeBase, contendo tanto os dados primitivos, quanto os dodos dos relacionamentos em si.
+- Em resumo, a ideia é caminhar pelos relacionamentos mapeados na subclasse de InsertFunctionTypeBase, procurando no DTO recebido os dados, para popular, recursivamente, toda a árvore do objeto postgres necessário para chamar a função.
+
+Por fim, além das mudanças acima, será necessário alterar o DAOBaseInsertByFunction para que o mesmo saiba popular os tipos dos relacionamentos, no método _sql_insert_function_type, seguindo, recursivamente, os relacionamentos, e gerando, consistentemente, um variável final (postgres) que contenha tanto a entidade principal, como as entidades relacionadas que a compõe (tratam-se, geralmente, de relacionamentos de composição, e não agregação).
+
+
+
+
+
+
+
+
+
 A primeira parte da implementação do uso de funções de banco para insert está, em fim, funcionando. Mas, me arrependi do modo como implementei a definição da função de insert, bem como do tipo, e dos campos do tipo.
 
 Atualmente, estou usando o decorator Entity, e a classe EntityBase para tudo, tendo criado as propriedades "insert_type" e "insert_function" no decorator Entity, e tendo criado as propriedades "insert_type_field" e "insert_by_function", no property descriptor "EntityField". Mas, quero refatorar isso.

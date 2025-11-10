@@ -2,6 +2,7 @@ import enum
 import typing as ty
 
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
 
 from .dto_field import DTOField
 
@@ -51,6 +52,7 @@ class DTOOneToOneField:
         validator: ty.Optional[ty.Callable[['DTOOneToOneField', T], T]] = None,
         description: str = '',
         insert_function_field: ty.Optional[str] = None,
+        insert_function_type: ty.Optional[ty.Type[InsertFunctionTypeBase]] = None,
         convert_to_function: ty.Optional[ty.Callable[..., ty.Any]] = None,
     ):
         """Descriptor used for One to One relations.
@@ -124,6 +126,7 @@ class DTOOneToOneField:
         self.resume = resume
         self.entity_field = entity_field or ''
         self.insert_function_field = insert_function_field
+        self.insert_function_type = insert_function_type
         self.entity_relation_owner = entity_relation_owner
         self.not_null = not_null
         self.partition_data = partition_data
@@ -138,6 +141,14 @@ class DTOOneToOneField:
             f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         )
         self.__class__._ref_counter += 1
+
+        if (
+            self.insert_function_type is not None
+            and not issubclass(self.insert_function_type, InsertFunctionTypeBase)
+        ):
+            raise ValueError(
+                "insert_function_type deve herdar de InsertFunctionTypeBase."
+            )
 
         # NOTE: To support EntityRelationOwner.OTHER you will have to modify
         #           `_retrieve_one_to_one_fields in ServiceBase`. do NOT forget
@@ -171,6 +182,10 @@ class DTOOneToOneField:
         try:
             if self.not_null is True and value is None:
                 raise ValueError(f"{self.storage_name} deve ser preenchido.")
+
+            if value is None:
+                instance.__dict__[self.storage_name] = None
+                return
 
             if self.relation_type == OTORelationType.AGGREGATION:
                 if escape_validator is True:
@@ -231,3 +246,8 @@ class DTOOneToOneField:
 
         instance.__dict__[self.storage_name] = value
         pass
+
+    def get_insert_function_field_name(self) -> str:
+        if self.insert_function_field is not None:
+            return self.insert_function_field
+        return self.name
