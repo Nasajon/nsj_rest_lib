@@ -188,6 +188,12 @@ class ServiceBaseList(ServiceBaseRetrieve):
         ):
             dto_list = []
             for entity in entity_list:
+                # NOTE: This has to be done first so the DTOAggregator can have
+                #           the same name as a field in the entity
+                for k, v in agg_field_map.items():
+                    setattr(entity, k, v.expected_type(entity, escape_validator=True))
+                    pass
+
                 with log_time_context(f"Convertendo um único DTO"):
                     dto = self._dto_class(entity, escape_validator=True)  # type: ignore
 
@@ -202,10 +208,6 @@ class ServiceBaseList(ServiceBaseRetrieve):
                             value = getattr(entity, hf)
                             result_hf[hf] = value
                     setattr(dto, "return_hidden_fields", result_hf)
-
-                for k, v in agg_field_map.items():
-                    setattr(dto, k, v.expected_type(entity, escape_validator=True))
-                    pass
                 dto_list.append(dto)
                 pass
 
