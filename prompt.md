@@ -1,27 +1,281 @@
-Me ajude a implementar agora um modo de inserção dos relacionamentos via função de banco de dados.
+Considerando toda a estrutura abaixo (já rodada no banco):
 
-Hoje, a implementação já permite que uma rota PostRoute recebe uma classe que herde de InsertFunctionTypeBase, para representar o formato de um type de BD, que será usado para gravação das informações no banco, por meio de uma função de banco.
 
-Mas, quando uma entidade tem relacionamentos, foi convencionado que esses relacionamentos serão mapeados no próprio type. Por exemplo, uma entidade cliente pode ter uma lista de endereços, o que ficaria assim:
+--------------------------------------------------
+-- Cliente
+--------------------------------------------------
 
-CREATE TYPE ns.tclientenovo AS (
-	cliente uuid,
-	codigo varchar(30),
-	nome varchar(150),
-	nomefantasia varchar(150),
-	identidade varchar(20),
-	documento varchar(20),
-	retemiss bool,
-	retemir bool,
-	retempis bool,
-	retemcofins bool,
-	retemcsll bool,
-	reteminss bool,
-	entidadescompartilhadoras _tentidadecompartilhadora,
-	endereco _tendereco,
-	inscricaoestadual varchar(20));
+CREATE TABLE teste.enderecos (
+	tipologradouro varchar(10) NULL,
+	logradouro varchar(150) NULL,
+	numero varchar(10) NULL,
+	complemento varchar(60) NULL,
+	cep varchar(15) NULL,
+	bairro varchar(60) NULL,
+	tipoendereco int2 NULL,
+	ufexterior varchar(2) NULL,
+	enderecopadrao int2 NULL,
+	uf varchar(2) NULL,
+	pais varchar(5) NULL,
+	ibge varchar(8) NULL,
+	cidade varchar(60) NULL,
+	referencia varchar NULL,
+	versao int8 DEFAULT 1 NULL,
+	endereco uuid DEFAULT uuid_generate_v4() NOT NULL,
+	id_pessoa uuid NULL,
+	lastupdate timestamp DEFAULT now() NULL,
+	tenant int8 NULL,
+	id_pessoafisica uuid NULL,
+	id_proposta uuid NULL,
+	id_ordemservico uuid NULL,
+	CONSTRAINT "PK_enderecos_endereco" PRIMARY KEY (endereco)
+);
 
-CREATE TYPE ns.tendereco AS (
+CREATE TABLE teste.pessoas (
+	pessoa varchar(30) NOT NULL,
+	datacadastro date NULL,
+	proximocontato date NULL,
+	nome varchar(150) NULL,
+	nomefantasia varchar(150) NULL,
+	tp_identificacao int4 NULL,
+	cnpj varchar(18) NULL,
+	chavecnpj varchar(18) NULL,
+	cpf varchar(18) NULL,
+	caepf varchar(18) NULL,
+	inscricaoestadual varchar(20) NULL,
+	inscestsubstituto varchar(20) NULL,
+	inscricaomunicipal varchar(20) NULL,
+	rntrc varchar(14) NULL,
+	identidade varchar(20) NULL,
+	suframa varchar(14) NULL,
+	nit varchar(11) NULL,
+	nire varchar(11) NULL,
+	observacao varchar(255) NULL,
+	email varchar(150) NULL,
+	site varchar(150) NULL,
+	codigopis varchar(6) NULL,
+	codigocofins varchar(6) NULL,
+	codigocsll varchar(6) NULL,
+	codigoirrf varchar(6) NULL,
+	conta varchar(15) NULL,
+	contrapartida varchar(16) NULL,
+	contadesconto varchar(16) NULL,
+	contajuros varchar(16) NULL,
+	classefinpersona varchar(16) NULL,
+	contacorrente varchar(16) NULL,
+	ccustopersona varchar(10) NULL,
+	contamulta varchar(16) NULL,
+	contaestoque varchar(16) NULL,
+	bloqueado bool DEFAULT false NOT NULL,
+	contribuinteicms bool NULL,
+	contribuinteipi bool NULL,
+	produtorrural bool NULL,
+	substitutomunicipal bool NULL,
+	tiposimples int4 NULL,
+	qualificacao int4 NULL,
+	icmssimp int4 NULL,
+	regimereceita int4 NULL,
+	percentualtaxaservicoscooperativa float8 NULL,
+	percentualinsscooperativa float8 NULL,
+	lastupdate timestamp DEFAULT now() NULL,
+	orgaoemissor varchar(10) NULL,
+	tipoicms int2 NULL,
+	codigocontabilcliente varchar(20) NULL,
+	anotacao text NULL,
+	datacliente date NULL,
+	datafornecedor date NULL,
+	datavendedor date NULL,
+	leadativado int2 DEFAULT 0 NOT NULL,
+	clienteativado int2 DEFAULT 0 NOT NULL,
+	fornecedorativado int2 DEFAULT 0 NOT NULL,
+	vendedorativado int2 DEFAULT 0 NOT NULL,
+	transportadoraativado int2 DEFAULT 0 NOT NULL,
+	pagamentounificado int2 NULL,
+	tipovencimento int2 NULL,
+	diavencimento int2 NULL,
+	notaantecipadacobranca int2 NULL,
+	emailcobranca varchar(200) NULL,
+	enviarnfeporemail int2 NULL,
+	pontofidelidade float8 NULL,
+	retempis int2 NULL,
+	retemcofins int2 NULL,
+	retemcsll int2 NULL,
+	retemirrf int2 NULL,
+	retemiss int2 NULL,
+	tipolead int2 NULL,
+	descricao varchar(150) NULL,
+	totalfuncionarios int4 NULL,
+	receitaanual float4 NULL,
+	datacriacao timestamp NULL,
+	codigocontabilfornecedor varchar(20) NULL,
+	banco varchar(3) NULL,
+	agencianumero varchar(10) NULL,
+	agencianome varchar(50) NULL,
+	contanumero varchar(20) NULL,
+	podeparticiparagendamento int2 DEFAULT 0 NOT NULL,
+	codigocontabiltransportadora varchar(20) NULL,
+	datatransportadora date NULL,
+	cobrancaaposservico int2 NULL,
+	prorataantecipada int2 NULL,
+	celulavenda uuid NULL,
+	classificacaolead uuid NULL,
+	midiaorigem uuid NULL,
+	parcelamento uuid NULL,
+	promocaolead uuid NULL,
+	representante uuid NULL,
+	segmentoatuacao uuid NULL,
+	statuslead uuid NULL,
+	agencia uuid NULL,
+	centrocusto uuid NULL,
+	id_grupo uuid NULL,
+	idclasspessoacliente uuid NULL,
+	idclasspessoafornecedor uuid NULL,
+	idclasspessoatransportadora uuid NULL,
+	idclasspessoavendedor uuid NULL,
+	classificado uuid NULL,
+	id uuid DEFAULT uuid_generate_v4() NOT NULL,
+	captador uuid NULL,
+	vendedor uuid NULL,
+	usuariovendedor uuid NULL,
+	criador uuid NULL,
+	contatoativado int2 DEFAULT 0 NOT NULL,
+	id_receitadiferenciada uuid NULL,
+	id_despesadiferenciada uuid NULL,
+	tecnicoativado int2 DEFAULT 0 NOT NULL,
+	tpcontacompra int4 NULL,
+	fichaativado int2 DEFAULT 1 NOT NULL,
+	categoriatecnico_id uuid NULL,
+	percentualfaturamentoservico float8 NULL,
+	percentualfaturamentoencargo float8 NULL,
+	percentualfaturamentoiss float8 NULL,
+	percentualfaturamentoretencao float8 NULL,
+	tributoativado int2 DEFAULT 0 NOT NULL,
+	valormaxdesconto float8 NULL,
+	id_conta uuid NULL,
+	id_rateiopadrao uuid NULL,
+	enviarboletoporemail int2 DEFAULT 1 NULL,
+	concessionariapublica bool DEFAULT false NOT NULL,
+	codigoconcessionaria varchar(4) NULL,
+	id_conta_receber uuid NULL,
+	id_rateiopadrao_receber uuid NULL,
+	id_layoutcobranca uuid NULL,
+	id_cliente_fatura uuid NULL,
+	diafaturamento int4 NULL,
+	diasvencimentofatura int4 NULL,
+	id_formapagamento uuid NULL,
+	aliquotarat float8 NULL,
+	aliquotafap float8 NULL,
+	aliquotaterceiros float8 NULL,
+	templateordemservico uuid NULL,
+	nacionalidade int4 DEFAULT 0 NULL,
+	chavegold text NULL,
+	id_faixadecredito uuid NULL,
+	limite_de_credito numeric(20, 4) NULL,
+	importacao_hash text NULL,
+	id_erp bigserial,
+	retem_inss bool DEFAULT false NULL,
+	enderecocobrancautilizarenderecoprincipal bool DEFAULT false NOT NULL,
+	enderecoentregautilizarenderecoprincipal bool DEFAULT false NOT NULL,
+	classificado_old uuid NULL,
+	ajuste_cnpj bool DEFAULT false NOT NULL,
+	representantecomercialativado int2 DEFAULT 0 NULL,
+	representantetecnicoativado int2 DEFAULT 0 NULL,
+	representante_old uuid NULL,
+	representante_tecnico uuid NULL,
+	template_rps uuid NULL,
+	percentualtaxacobrancaterceirizacao numeric(20, 6) NULL,
+	dataultimacompra date NULL,
+	valorultimacompra numeric(20, 2) NULL,
+	contratounificadonacobranca bool DEFAULT false NULL,
+	vendedor_anterior uuid NULL,
+	usarvencimentounificado bool DEFAULT false NULL,
+	diavencimentounificado int4 NULL,
+	projeto uuid NULL,
+	indicadorinscricaoestadual int2 NULL,
+	comissao numeric(20, 2) NULL,
+	json_elementos_controle json NULL,
+	enviarnfseporemail bool DEFAULT false NULL,
+	documentoestrangeiro varchar(20) NULL,
+	id_formapagamento_fornecedor uuid NULL,
+	cnpjsemformato varchar NULL,
+	tipocontrolepagamento int2 DEFAULT 2 NULL,
+	situacaopagamento int2 DEFAULT 0 NULL,
+	tipoclientepagamento int2 DEFAULT 0 NULL,
+	justificativasituacaopagamento varchar(255) NULL,
+	justificativatipoclientepagamento varchar(255) NULL,
+	inscritapaa bool NULL,
+	retem_abaixo_minimo bool DEFAULT false NULL,
+	id_fornecedorfactoring uuid NULL,
+	funcionarioativado int2 DEFAULT 0 NOT NULL,
+	contribuinteindividualativado int2 DEFAULT 0 NOT NULL,
+	tomadorfolhaativado int2 DEFAULT 0 NOT NULL,
+	classificacaofinanceirafrete uuid NULL,
+	classificacaofinanceiraseguro uuid NULL,
+	classificacaofinanceiraoutdesp uuid NULL,
+	notafutura bool DEFAULT false NULL,
+	datasituacaopagamento date NULL,
+	datatipoclientepagamento date NULL,
+	reguacobranca uuid NULL,
+	restricaocobranca1 uuid NULL,
+	restricaocobranca2 uuid NULL,
+	restricaocobranca3 uuid NULL,
+	grupodeparticipante uuid NULL,
+	tipocliente_codigo varchar(20) NULL,
+	tipocliente_descricao varchar(100) NULL,
+	tenant int8 NULL,
+	desabilitadopersona bool DEFAULT false NOT NULL,
+	ajudanteativado int4 NULL,
+	formatributacaofunrural int2 NULL,
+	cnae varchar(7) NULL,
+	valor_comissao int4 NULL,
+	recebimento_comissao int4 NULL,
+	prospectativado int4 NULL,
+	id_transportadora uuid NULL,
+	id_historicopadraoestoque uuid NULL,
+	nascimento date NULL,
+	confirmacao_email varchar(150) NULL,
+	mensagem_de_alerta text NULL,
+	tiponegocio uuid NULL,
+	atividadeicms int4 DEFAULT 0 NULL,
+	id_conjunto uuid NULL,
+	suframa_perc_reducao_icms numeric(15, 2) DEFAULT 0 NULL,
+	suframa_perc_reducao_ipi numeric(15, 2) DEFAULT 0 NULL,
+	suframa_perc_descto numeric(15, 2) DEFAULT 0 NULL,
+	suframa_perc_descto_pis_confins numeric(15, 2) DEFAULT 0 NULL,
+	suframa_dtvalidade date NULL,
+	suframa_habilitar_descto bool DEFAULT false NULL,
+	suframa_descto_icms_basecalc bool DEFAULT false NULL,
+	suframa_descto_pis_confins bool DEFAULT false NULL,
+	suframa_descto_icms_antes bool DEFAULT false NULL,
+	suframa_incluir_desp_basecalc_icms bool DEFAULT false NULL,
+	suframa_isencao_ipi bool DEFAULT false NULL,
+	enviarxmlnfseporemail bool DEFAULT false NULL,
+	enviarpdfnfseporemail bool DEFAULT false NULL,
+	pendenciaaprovacaocliente bool NULL,
+	suframa_desoneracao_icms bool DEFAULT true NULL,
+	suframa_destaque_ipi bool DEFAULT false NULL,
+	aliquotapis float8 NULL,
+	aliquotacofins float8 NULL,
+	aliquotairrf float8 NULL,
+	aliquotacsll float8 NULL,
+	incentivopis bool DEFAULT false NULL,
+	incentivoipi bool DEFAULT false NULL,
+	id_potencialportfolio uuid NULL,
+	negativado bool NULL,
+	prioridade int4 NULL,
+	classificacaoabc varchar(1) NULL,
+	reinf_natrend varchar(5) NULL,
+	data_atualizacao_nasajonhub date NULL,
+	aplica_regra_abaixo_minimo bool DEFAULT false NULL,
+	grupovendedor uuid NULL,
+	descontofixo numeric(20, 4) NULL,
+	tipooperacao int4 DEFAULT '-1'::integer NULL,
+	CONSTRAINT "PK_pessoas_id" PRIMARY KEY (id),
+	CONSTRAINT "UK_teste.pessoas_pessoa_id_grupo" UNIQUE (id_grupo, pessoa) DEFERRABLE,
+	CONSTRAINT ck_tpcontacompra CHECK ((tpcontacompra = ANY (ARRAY[1, 2])))
+);
+
+CREATE TYPE teste.tendereco AS (
 	id uuid,
 	tipologradouro varchar(50),
 	logradouro varchar(150),
@@ -41,250 +295,255 @@ CREATE TYPE ns.tendereco AS (
 	idproposta uuid,
 	idordemservico uuid);
 
-Minha ideia é então mapear os relacionamentos, também como subclasses de InsertFunctionTypeBase, apontando o tipo no DTO, por meio dos descritores de propriedade DTOListField, DTOOneToOneField e DTOObjectField. A ideia é seguir o mesmo padrão de apontar o DTO e o Entity nesses relacionamentos, porém agora apontando o InsertFunctionType, incluindo duas novas propriedadades:
-
-- "insert_function_type", que apontará para a classe da entidade relacionada (que estende InsertFunctionTypeBase).
-- "insert_function_field", que conterá o nome do campo, do type postgres, que mapeia o relacionamento (cujo tipo é um array).
-
-Na classe InsertFunctionTypeBase que for mestre do relacionamento, também deve haver um mapeamento do relacionamento, pois, ao salvar as entidades, esses objetos serão populados em memória (conforme explicação abaixo).
-
-Então para a classe InsertFunctionTypeBase, deve ser criado um novo tipo de descritor de propriedades que sirva para apontar entidades relacionamentos, chamado DTORelationField, que deve carregar da anotation de type, o tipo da entidade relacionada. Além disso, se a anotação de tipo for uma list da outra entidade, se tratará de um relacionamento 1XN, enquanto se for apenas um objetov, se trata de um 1X1.
-
-O maior desafio, porém, está na adaptação do fluxo de salvamento dentro do ServiceBaseSave. A ideia é refatorar de modo que:
-
-- Quando houver um mapeamento para uso de uma função de banco (por agora, só será considerado para insert, mas, no futuro será também para o update), o service deve popular o objeto do tipo InsertFunctionTypeBase completamente, antes de chamar o DAOBaseInsertByFunction.
-- Em vez de chamar o save para a entidade principal, e depois para os relacionamentos, a ideia é ter um objeto completo, do tipo InsertFunctionTypeBase, contendo tanto os dados primitivos, quanto os dodos dos relacionamentos em si.
-- Em resumo, a ideia é caminhar pelos relacionamentos mapeados na subclasse de InsertFunctionTypeBase, procurando no DTO recebido os dados, para popular, recursivamente, toda a árvore do objeto postgres necessário para chamar a função.
-
-Por fim, além das mudanças acima, será necessário alterar o DAOBaseInsertByFunction para que o mesmo saiba popular os tipos dos relacionamentos, no método _sql_insert_function_type, seguindo, recursivamente, os relacionamentos, e gerando, consistentemente, um variável final (postgres) que contenha tanto a entidade principal, como as entidades relacionadas que a compõe (tratam-se, geralmente, de relacionamentos de composição, e não agregação).
-
-
-
-
-
-
-
-
-
-A primeira parte da implementação do uso de funções de banco para insert está, em fim, funcionando. Mas, me arrependi do modo como implementei a definição da função de insert, bem como do tipo, e dos campos do tipo.
-
-Atualmente, estou usando o decorator Entity, e a classe EntityBase para tudo, tendo criado as propriedades "insert_type" e "insert_function" no decorator Entity, e tendo criado as propriedades "insert_type_field" e "insert_by_function", no property descriptor "EntityField". Mas, quero refatorar isso.
-
-Minha ideia é agora separar as coisas... O DTO continua valendo para o formato de entrada e saída das APIs. A Entity cootinua valendo como espelho da tabela do banco de dados. Mas, quero criar agora uma nova parte, chamada de "InsertFunctionType", que também será composta por um decorator, com esse mesmo nome "InsertFunctionType", um property descriptor, chamado "InsertFunctionField", o qual deve conter a propriedade "type_field_name", em vez de "insert_type_field" (já a propriedade "insert_by_function" pode ser extinta, pois, se estiver na classe de um "InsertFunctionType", já se entende que tal propriedade será usada no type do BD), e uma superclasse "InsertFunctionTypeBase", a qual deve conter a lista de fields do type, e que deve ser a superclasse de qualquer classe que use o decorator "InsertFunctionType", servindo para apoiar a definição de funções de insert.
-
-A ideia é seguir os padrões que já existem. Assim, no uso da biblioteca, o usuário terá que definir uma classe, que use o decorator "InsertFunctionType", sempre que quiser que um entidade seja inserida por meio de uma função de banco.
-
-Quanto a lógica em tempo de execução, penso que será preciso criar um DAOBaseInsertByFunction, o qual conterá a lógica que hoje está do DAOBaseInsert, que serve para gravação por meio de funções de banco.
-
-Além disso, para definir que a função de insert será usada, quero que o decorator "PostRoute" ganhe uma propriedade chamada "insert_function_type_class", a qual deve apontar para a classe que estender "InsertFunctionTypeBase", e assim, o ServiceBaseSave não deve mais olhar para a Entity para saber se o fluxo deve seguir pelo insert de função de banco, ou pelo insert normal. Antes, o ServiceBaseSave vai receber o a type da função de insert, e, caso tenha recebido, seguirá pelo fluxo de insert por meio do DAOBaseInsertByFunction.
-
-A título de exemplo, considere o esboço de como podera ficar a classificacao financeira, só com os campos id, descricacao, e codigo:
-
-@PostRoute(
-    url=LIST_POST_ROUTE,
-    http_method='POST',
-    dto_class=ClassificacaoFinanceiraDTO,
-    entity_class=ClassificacaoFinanceiraEntity,
-    insert_function_type_class=ClassificacaoFinanceiraInsertType
-)
-def post_classificacao_financeira():
-    pass
-
-@DTO()
-class ClassificacaoFinanceiraDTO:
-    id: uuid.UUID = DTOField(entity_field="classificacaofinanceita", pk=true)
-    codigo: str = DTOField()
-    descricao: str = DTOField()
-
-@Entity()
-class ClassificacaoFinanceiraEntity:
-    classificacaofinanceita: uuid.UUID = EntityField()
-    codigo: str = EntityField()
-    descricao: str = EntityField()
-
-@InsertFunctionType()
-class ClassificacaoFinanceiraInsertType:
-    id: uuid.UUID = InsertFunctionField(type_field_name="classificacao_financeita")
-    codigo: str = InsertFunctionField()
-    descricao: str = InsertFunctionField()
-
-Observações:
-1. Respeite os padrões do projeto.
-2. 2. Se não for passado um "type_field_name" para o "InsertFunctionField", o nome da própriedade será o default.
-3. Tente manter o teste atual funcionando, refatorando a definição do controler, para que seja criado a classe ClassificacaoFinanceiraInsertType, a ser usada pelo PostRoute.
-
-
-
-@PostRoute(
-    url=LIST_POST_ROUTE,
-    http_method='POST',
-    dto_class=ClienteDTO,
-    entity_class=ClienteEntity,
-    insert_entity_class=ClienteInsertEntity
-)
-def post_cliente():
-    pass
-
-
-
-class ClienteDTO:
-    nome: DTOField(entity_field="nome_completo", insert_function_field="nomecompleto")
-    enderecos: DTOListField(dto_type=EnderecoDTO, entity_type=EnderecoEntity, insert_function_field="enderecos")
-
-
-class ClienteEntity:
-    nome_completo: str
-
-
-
-
-
-class ClienteInsertEntity:
-    nomecompleto: str
-    enderecos: list[EnderecoInsertEntity] = InsertEntityField(...)
-
-
-class EnderecoInsertEntity:
-    logradouro: str
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Me ajude a fazer a seguinte implementação:
-
-Preciso de um recurso que permita unir tabelas que tenham relacionamento 1X1, mas que não representem duas entidades relacionadas, e sim um modo de extender um entidade.
-
-Por exemplo, imagine que eu tenha uma tabela de "produtos", que quero extender para representar produtos de um tipo específico, como fármacos. Então eu crio outra tabela chamada "farmaco", que se relaciona 1X1 com a tabela de produtos.
-
-Mas, no objeto em si de retorno, a API deve deixar transparente o se tratar de duas tabelas. O usuário final não vai saber disso...
-
-Em geral, a ideia é extender aquela outra tabela adicionando propriedades, no exemplo acima, uma fármaco por de ter número de registro da anvisa, flag indicando se é de venda controlada, etc. Propriedades essas que não estarão na tabela principal de produto.
-
-Então, o retorno da API de produtos seria algo como:
-
-GET /rota_base/produtos/{id}
-
-```json
-{
-    "id": "uuid",
-    "codigo": "str",
-    "descricao": "str",
-    ...
-}
-```
-
-E, da API de fármacos seria algo como:
-
-GET /rota_base/farmacos/{id}
-
-```json
-{
-    "id": "uuid",
-    "codigo": "str",
-    "descricao": "str",
-    "registro_anvisa": "str",
-    "venda_controlada": bool,
-    ...
-}
-```
-
-Do ponto de vista de execução das queries, porém, a ideia é ser apenas uma, e não duas queries, usando um inner join normal.
-
-Além disso, o join só deve acontecer de fato, caso a API chamada tenha que retornar uma das propriedades da tabela de extensão (o que pode acontecer se algumas dessas propriedades estiver marcada como "resume=true", ou se o usuário, ao chamar a API, passar o nome da propriedade no campo "fields").
-
-No exemplo acima, caso os campos "registro_anvisa" e "venda_controlada" não estejam com "resume=true", e o usuário não os adicionar no fields, o retorno da API seria igual ao da API normal de produtos:
-
-```json
-{
-    "id": "uuid",
-    "codigo": "str",
-    "descricao": "str",
-    ...
-}
-```
-
-E, além disso, não é para haver join (visto que não servirá para nada além de atrasar a query).
-
-Por fim, do ponto de vista de como isso será declarado, minha intenção é incrementar o decorator "@DTO" e o decorator "@Entity". de modo que:
-
-## No DTO:
-
-```python
-@DTO(
-    partial_of={
-        "dto": ProdutoDTO,
-        "relation_field": "id_produto",
-        "related_entity_field": "id", # (OPCIONAL)
-    },
-    ...
-)
-class FarmacoDTO(DTOBase):
-    registro_anvisa: str = DTOField()
-    venda_controlada: bool = DTOField()
-```
-
-Onde:
-- dto: Indica a classe do DTO principal (extendido pelo DTO atual)
-- relation_field: Inidica o campo, da tabela "farmaco", que será usado para no relacionamento 1X1 com a tabela "produto".
-- related_entity_field: Propriedade opcional, que indica o campo, na tabela do produto, usado para o relacionamento (por padrão, o campo marcado como "pk=True" será utilizado).
-
-## Na Entity:
-
-```python
-@Entity(
-    partial_of=ProdutoEntity,
-    ...
-)
-class FarmacoEntity(EntityBase):
-    registro_anvisa: str = EntityField()
-    venda_controlada: bool = EntityField()
-```
-
-Onde:
-- partial_of: Indica a classe da Entity principal (extendida pela Entity atual).
-
-## Nas rotas
-Na delcaração das rotas (nos controllers), é os DTOs de extensão serão usados diretamenteo. Exemplo:
-
-```python
-@application.route(LIST_POST_ROUTE, methods=['GET'])
-@ListRoute(
-    url=LIST_POST_ROUTE,
-    http_method='GET',
-    dto_class=FarmacoDTO,
-    entity_class=FarmacoEntity
-)
-def get_farmacos(request, response):
-    return response
-```
-
-## Pontos de atenção:
-- DTOs e Entities que usem "partial_of" não representam entidades sozinhos (precisam estar juntos com as classes "extendidas").
-- A extensão compartilha com a entidade principal as propriedades marcadas como "partition_data" (o que interfere nas queries e chamadas às rotas, pois precisam ser passados obrigatoriamente nas chamadas).
-- A construção das queries deve ser bem sensível ao uso ou não das propriedades da extensão (evitando joins desnecessários).
-
-
-
-
-
-Por que usar a cláusula exists?
-O _split_partial_fields não deveria tratar os campos reumo, quando vier None no field?
-Preciso que implemente a ordenação por campos de extensão
-Por que existe aquele tratamento dos nomes dos campos de relacionamento? Está aceitando tanto o nome do campo no DOT, quanto no Entity?
+CREATE TYPE teste.tclientenovo AS (
+	cliente uuid,
+	codigo varchar(30),
+	nome varchar(150),
+	nomefantasia varchar(150),
+	identidade varchar(20),
+	documento varchar(20),
+	retemiss bool,
+	retemir bool,
+	retempis bool,
+	retemcofins bool,
+	retemcsll bool,
+	reteminss bool,
+	endereco teste._tendereco,
+	inscricaoestadual varchar(20));
+
+CREATE OR REPLACE FUNCTION teste.public_get_only_number(a_texto character varying)
+ RETURNS text
+ LANGUAGE plpgsql
+AS $function$
+	DECLARE VAR_CHAR VARCHAR;
+	DECLARE VAR_RETURN VARCHAR;
+BEGIN
+	VAR_RETURN = '';
+	FOR VAR_CHAR IN (SELECT UNNEST(REGEXP_SPLIT_TO_ARRAY(A_TEXTO,'')))
+	LOOP
+		IF NOT ((SELECT (VAR_CHAR ~'^[0-9]+$')::BOOLEAN)) THEN
+			CONTINUE;
+		ELSE
+			VAR_RETURN = VAR_RETURN || VAR_CHAR;
+		END IF;
+	END LOOP;
+
+	RETURN VAR_RETURN;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION teste.api_endereco(a_objeto teste.tendereco)
+ RETURNS teste.trecibo
+ LANGUAGE plpgsql
+AS $function$
+	-- BEGIN DECLARE
+	DECLARE VAR_RETURN teste.TRECIBO;	
+	DECLARE VAR_ID_ENDERECO UUID;  
+        DECLARE VAR_MONTACAMPOS text;
+	DECLARE VAR_MONTACONDICAO text;
+	DECLARE VAR_ENCONTRADO boolean;
+	DECLARE VAR_LINHASAFETADAS integer;
+	-- END DECLARE	
+BEGIN      
+	-- BEGIN CODE  
+	IF A_OBJETO.IDPESSOA IS NULL THEN
+		VAR_RETURN.MENSAGEM := teste.API_MONTAMENSAGEM('ERRO', 'A Pessoa não pode ser vazia.');
+		RAISE EXCEPTION '%', VAR_RETURN.MENSAGEM;
+	END IF;
+
+	if true then
+		VAR_ID_ENDERECO := UUID_GENERATE_V4();
+
+		INSERT INTO teste.ENDERECOS(
+			ENDERECO,
+			TIPOLOGRADOURO,
+			LOGRADOURO,
+			NUMERO,
+			COMPLEMENTO,
+			CEP,
+			BAIRRO,
+			IBGE,
+			PAIS,
+			UF,
+			TIPOENDERECO,
+			ENDERECOPADRAO,
+			REFERENCIA,
+			ID_PESSOA		
+			
+		) VALUES (
+			VAR_ID_ENDERECO,
+			A_OBJETO.TIPOLOGRADOURO,
+			A_OBJETO.LOGRADOURO,		
+			A_OBJETO.NUMERO,		
+			A_OBJETO.COMPLEMENTO,		
+			A_OBJETO.CEP,		
+			A_OBJETO.BAIRRO,
+			null,
+			null,
+			A_OBJETO.UF,
+			A_OBJETO.TIPO,
+			A_OBJETO.ENDERECOPADRAO,
+			A_OBJETO.REFERENCIA,
+			A_OBJETO.IDPESSOA
+		);		
+	END IF;
+	
+	VAR_RETURN.MENSAGEM := teste.API_MONTAMENSAGEM('OK', 'Endereço cadastrado com sucesso');
+	RETURN VAR_RETURN;
+	-- END CODE	
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION teste.public_get_with_mask_cpf_cnpj(a_documento character varying)
+ RETURNS text
+ LANGUAGE plpgsql
+AS $function$
+	DECLARE VAR_DOCUMENTO VARCHAR;
+BEGIN
+	SELECT teste.PUBLIC_GET_ONLY_NUMBER(A_DOCUMENTO) INTO VAR_DOCUMENTO;
+
+	IF (VAR_DOCUMENTO IS NULL) OR (VAR_DOCUMENTO = '') OR (LENGTH(VAR_DOCUMENTO) NOT IN (11, 14)) THEN
+		--RAISE EXCEPTION 'O documento possui formato não suportado: %', A_DOCUMENTO;
+        RETURN NULL;
+	END IF;
+
+	IF LENGTH(VAR_DOCUMENTO) = 11 THEN
+		RETURN REPLACE((TO_CHAR(VAR_DOCUMENTO::BIGINT, '000"."000"."000"-"00'::text)), ' ', '');
+	ELSEIF LENGTH(VAR_DOCUMENTO) = 14 THEN
+		RETURN REPLACE((TO_CHAR(VAR_DOCUMENTO::BIGINT, '00"."000"."000"/"0000"-"00'::TEXT)), ' ', '');	
+	END IF;
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION teste.api_montamensagemerro(a_mensagem text)
+ RETURNS json
+ LANGUAGE plpgsql
+ IMMUTABLE
+AS $function$
+
+	DECLARE VAR_TIPO VARCHAR;
+	DECLARE VAR_MENSGEM VARCHAR;
+
+BEGIN          
+	IF STRPOS(A_MENSAGEM, '#') > 0 THEN
+		VAR_TIPO = COALESCE(SUBSTRING(a_mensagem from 1 for strpos(a_mensagem, '#')-1), '');
+		VAR_MENSGEM = SUBSTRING(a_mensagem from strpos(a_mensagem, '#')+1 for LENGTH(a_mensagem));	
+	ELSE
+		VAR_TIPO = '';
+		VAR_MENSGEM = A_MENSAGEM;
+	END IF;
+	RETURN ('{"codigo" : "ERRO", "tipo" : "'|| VAR_TIPO ||'", "mensagem" : "' || REPLACE(COALESCE(VAR_MENSGEM, ''), '"', '\"') || '"}' )::JSON; 
+END;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION teste.api_clientenovo(a_objeto teste.tclientenovo, a_usaconfigadmincodigounico boolean DEFAULT true)
+ RETURNS teste.trecibo
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+  var_return teste.TRecibo;
+  var_guid_cliente uuid;
+  var_encontrado boolean;
+  var_guid_conjunto uuid;
+  var_guids_conjuntos uuid[];
+  var_endereco teste.TEndereco;
+  var_documento_mascarado text;
+  var_tipo_documento integer;
+BEGIN
+  BEGIN
+	var_encontrado := False;
+
+    IF NOT var_encontrado THEN
+      var_guid_cliente := uuid_generate_v4();
+
+      var_documento_mascarado := NULL;
+      SELECT teste.PUBLIC_GET_WITH_MASK_CPF_CNPJ(a_objeto.documento) INTO var_documento_mascarado;
+
+      var_tipo_documento := 0;
+      IF LENGTH(var_documento_mascarado) = 14 THEN -- É CPF MASCARADO
+        var_tipo_documento = 90; -- QUALIFICAÇÃO PESSOA FÍSICA EM GERAL
+      END IF;
+
+      INSERT INTO teste.pessoas
+      (
+        /*01*/id,
+        /*02*/clienteativado,
+        /*03*/pessoa,
+        /*04*/nome,
+        /*05*/nomefantasia,
+        /*06*/identidade,
+        /*07*/datacadastro,
+        /*08*/bloqueado,
+        /*09*/cnpj,
+        /*10*/retemiss,
+        /*11*/retemirrf,
+        /*12*/retempis,
+        /*13*/retemcofins,
+        /*14*/retemcsll,
+        /*15*/retem_inss,
+        /*16*/inscricaoestadual,
+        /*17*/qualificacao
+      )
+      VALUES
+      (
+        /*01*/var_guid_cliente,
+        /*02*/1,
+        /*03*/a_objeto.codigo,
+        /*04*/a_objeto.nome,
+        /*05*/a_objeto.nomefantasia,
+        /*06*/a_objeto.identidade,
+        /*07*/current_date,
+        /*08*/FALSE,
+        /*09*/var_documento_mascarado,
+        /*10*/(case when coalesce(a_objeto.retemiss, false) = false then 0 else 1 end),
+        /*11*/(case when coalesce(a_objeto.retemir, false) = false then 0 else 1 end),
+        /*12*/(case when coalesce(a_objeto.retempis, false) = false then 0 else 1 end),
+        /*13*/(case when coalesce(a_objeto.retemcofins, false) = false then 0 else 1 end),
+        /*14*/(case when coalesce(a_objeto.retemcsll, false) = false then 0 else 1 end),
+        /*15*/coalesce(a_objeto.retemiss, false),
+        /*16*/a_objeto.inscricaoestadual,
+        /*17*/var_tipo_documento
+      );
+
+      IF a_objeto.endereco IS NOT NULL THEN
+        FOREACH var_endereco IN ARRAY a_objeto.endereco
+        LOOP
+          var_endereco.idpessoa := var_guid_cliente;
+          var_return := teste.api_endereco(var_endereco);
+        END LOOP;
+      END IF;
+
+    ElSE
+      RETURN VAR_RETURN;
+    END IF;
+
+    VAR_RETURN.MENSAGEM := teste.api_montamensagemok(var_guid_cliente::varchar);
+
+  EXCEPTION
+    WHEN OTHERS THEN
+      VAR_RETURN.MENSAGEM := teste.api_montamensagemerro(SQLERRM);
+  END;
+
+  RETURN VAR_RETURN;
+END;
+$function$
+;
+
+
+Me ajude a criar os artefatos para o teste automatizado de uma nova API, apenas de teste, que usará o mecanismo de InsertFunctionType para inserir pessoas com endereços.
+
+Para fazer esse teste automatizado, deve-se usar a exata mesma estrutura do teste já implementado para as Classificações Financeiras. Estrtura essa encontrada no arquivos/diretórios:
+
+- tests/api/casos_de_teste/classificacao_financeira
+- tests/classificacao_financeira_controller.py
+- tests/classificacao_financeira_dto.py
+- tests/classificacao_financeira_entity.py
+- tests/classificacao_financeira_insert_function_type.py
+
+É importante notar que já existe um teste para cliente, mas é algo  muito mais simples, e que não deve ser alterado. Em vez disso, chame o novo teste de ClienteByfunction (no DTO, Entity, Rota, etc).
+
+Boa sorte!

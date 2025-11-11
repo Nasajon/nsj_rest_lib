@@ -1,0 +1,30 @@
+{
+    "codigo": "CLI-BYFUNCTION-POST",
+    "nome": "Cliente By Function Insert",
+    "nomefantasia": "Cliente Insert Fantasia",
+    "identidade": "MG123456",
+    "documento": "50913266000101",
+    "inscricaoestadual": "1234567890",
+    "tenant": 99999,
+    "retemiss": true,
+    "retemir": false,
+    "retempis": false,
+    "retemcofins": false,
+    "retemcsll": false,
+    "reteminss": true,
+    "enderecos": [
+        {
+            "tipologradouro": "Rua",
+            "logradouro": "Rua do Teste",
+            "numero": "100",
+            "complemento": "Sala 1",
+            "cep": "12345000",
+            "bairro": "Centro",
+            "tipo": 1,
+            "enderecopadrao": 1,
+            "referencia": "Ao lado da praça",
+            "uf": "SP",
+            "cidade": "Sao Paulo"
+        }
+    ]
+}
