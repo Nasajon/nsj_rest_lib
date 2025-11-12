@@ -52,6 +52,3 @@ class FunctionRelationField(FunctionField):
             return (args[0], True)
 
         return (annotation, False)
-
-
-InsertFunctionRelationField = FunctionRelationField
