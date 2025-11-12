@@ -1,33 +1,39 @@
-from nsj_rest_lib.dao.dao_base_insert_by_function import DAOBaseInsertByFunction
+from nsj_rest_lib.dao.dao_base_save_by_function import DAOBaseSaveByFunction
 from nsj_rest_lib.decorator.dto import DTO
 from nsj_rest_lib.decorator.entity import Entity
 from nsj_rest_lib.decorator.insert_function_type import InsertFunctionType
+from nsj_rest_lib.decorator.update_function_type import UpdateFunctionType
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_one_to_one_field import (
     DTOOneToOneField,
     OTORelationType,
 )
-from nsj_rest_lib.descriptor.insert_function_relation_field import (
-    InsertFunctionRelationField,
-)
+from nsj_rest_lib.descriptor.function_relation_field import FunctionRelationField
 from nsj_rest_lib.descriptor.entity_field import EntityField
-from nsj_rest_lib.descriptor.insert_function_field import InsertFunctionField
+from nsj_rest_lib.descriptor.function_field import FunctionField
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
+from nsj_rest_lib.entity.function_type_base import (
+    InsertFunctionTypeBase,
+    UpdateFunctionTypeBase,
+)
 from nsj_rest_lib.service.service_base import ServiceBase
 
 
 @DTO()
 class DummyDTO(DTOBase):
-    valor: int = DTOField(insert_function_field="valor_func")
+    valor: int = DTOField(
+        insert_function_field="valor_func",
+        update_function_field="valor_update",
+    )
 
     descricao: str = DTOField(
         insert_function_field="descricao_func",
         convert_to_function=lambda value, dto_values: {
             "descricao_func": value.upper() if value else value,
             "valor_func": (dto_values.get("valor") or 0) + 10,
+            "valor_update": (dto_values.get("valor") or 0) + 10,
         },
     )
 
@@ -40,20 +46,20 @@ class DummyEntity(EntityBase):
 
 @InsertFunctionType(type_name="teste.tdummy", function_name="teste.fn_dummy")
 class DummyInsertType(InsertFunctionTypeBase):
-    valor_func: int = InsertFunctionField()
-    descricao_func: str = InsertFunctionField()
+    valor_func: int = FunctionField()
+    descricao_func: str = FunctionField()
 
 
 @InsertFunctionType(type_name="teste.tendereco", function_name="teste.fn_endereco")
 class AddressInsertType(InsertFunctionTypeBase):
-    rua: str = InsertFunctionField()
-    numero: str = InsertFunctionField()
+    rua: str = FunctionField()
+    numero: str = FunctionField()
 
 
 @InsertFunctionType(type_name="teste.tdocumento", function_name="teste.fn_documento")
 class DocumentInsertType(InsertFunctionTypeBase):
-    numero: str = InsertFunctionField()
-    tipo: str = InsertFunctionField()
+    numero: str = FunctionField()
+    tipo: str = FunctionField()
 
 
 @InsertFunctionType(
@@ -61,9 +67,41 @@ class DocumentInsertType(InsertFunctionTypeBase):
     function_name="teste.fn_cliente_relacionado",
 )
 class CustomerWithRelationsInsertType(InsertFunctionTypeBase):
-    nome: str = InsertFunctionField()
-    enderecos: list[AddressInsertType] = InsertFunctionRelationField()
-    documento: DocumentInsertType = InsertFunctionRelationField()
+    nome: str = FunctionField()
+    enderecos: list[AddressInsertType] = FunctionRelationField()
+    documento: DocumentInsertType = FunctionRelationField()
+
+
+@UpdateFunctionType(type_name="teste.tdummy_upd", function_name="teste.fn_dummy_upd")
+class DummyUpdateType(UpdateFunctionTypeBase):
+    valor_update: int = FunctionField()
+    descricao_func: str = FunctionField()
+
+
+@UpdateFunctionType(
+    type_name="teste.tendereco_upd", function_name="teste.fn_endereco_upd"
+)
+class AddressUpdateType(UpdateFunctionTypeBase):
+    rua: str = FunctionField()
+    numero: str = FunctionField()
+
+
+@UpdateFunctionType(
+    type_name="teste.tdocumento_upd", function_name="teste.fn_documento_upd"
+)
+class DocumentUpdateType(UpdateFunctionTypeBase):
+    numero: str = FunctionField()
+    tipo: str = FunctionField()
+
+
+@UpdateFunctionType(
+    type_name="teste.tcliente_relacionado_upd",
+    function_name="teste.fn_cliente_relacionado_upd",
+)
+class CustomerWithRelationsUpdateType(UpdateFunctionTypeBase):
+    nome: str = FunctionField()
+    enderecos_update: list[AddressUpdateType] = FunctionRelationField()
+    documento_update: DocumentUpdateType = FunctionRelationField()
 
 
 @DTO()
@@ -88,6 +126,8 @@ class CustomerWithRelationsDTO(DTOBase):
         related_entity_field="cliente_id",
         insert_function_field="enderecos",
         insert_function_type=AddressInsertType,
+        update_function_field="enderecos_update",
+        update_function_type=AddressUpdateType,
     )
 
     documento: DocumentDTO = DTOOneToOneField(
@@ -95,6 +135,8 @@ class CustomerWithRelationsDTO(DTOBase):
         relation_type=OTORelationType.COMPOSITION,
         insert_function_field="documento",
         insert_function_type=DocumentInsertType,
+        update_function_field="documento_update",
+        update_function_type=DocumentUpdateType,
     )
 
 
@@ -167,8 +209,60 @@ def test_build_insert_function_type_object_with_relations():
     assert insert_object.documento.numero == "123"
 
 
-def test_sql_insert_function_type_with_relations():
-    dao = DAOBaseInsertByFunction(None, DummyEntity)
+def test_build_update_function_type_object_with_mapped_fields():
+    service = ServiceBase(
+        FakeInjector(),
+        DummyDAO(),
+        DummyDTO,
+        DummyEntity,
+        update_function_type_class=DummyUpdateType,
+    )
+
+    dto = DummyDTO()
+    dto.valor = 2
+    dto.descricao = "nova descricao"
+
+    update_object = service._build_update_function_type_object(dto)
+
+    assert update_object.valor_update == 12
+    assert update_object.descricao_func == "NOVA DESCRICAO"
+
+
+def test_build_update_function_type_object_with_relations():
+    service = ServiceBase(
+        FakeInjector(),
+        DummyDAO(),
+        CustomerWithRelationsDTO,
+        DummyEntity,
+        update_function_type_class=CustomerWithRelationsUpdateType,
+    )
+
+    dto = CustomerWithRelationsDTO()
+    dto.nome = "Cliente Teste"
+
+    addr1 = AddressDTO()
+    addr1.rua = "Rua A"
+    addr1.numero = "10"
+
+    dto.enderecos = [addr1]
+
+    document = DocumentDTO()
+    document.numero = "123"
+    document.tipo = "CPF"
+    dto.documento = document
+
+    update_object = service._build_update_function_type_object(dto)
+
+    assert isinstance(update_object.enderecos_update, list)
+    assert len(update_object.enderecos_update) == 1
+    assert isinstance(update_object.enderecos_update[0], AddressUpdateType)
+    assert update_object.enderecos_update[0].rua == "Rua A"
+    assert isinstance(update_object.documento_update, DocumentUpdateType)
+    assert update_object.documento_update.numero == "123"
+
+
+def test_sql_function_type_with_relations():
+    dao = DAOBaseSaveByFunction(None, DummyEntity)
 
     insert_object = CustomerWithRelationsInsertType()
     insert_object.nome = "Cliente SQL"
@@ -183,7 +277,7 @@ def test_sql_insert_function_type_with_relations():
     document_insert.tipo = "CNPJ"
     insert_object.documento = document_insert
 
-    declarations, assignments, values_map = dao._sql_insert_function_type(
+    declarations, assignments, values_map = dao._sql_function_type(
         insert_object
     )
 

@@ -2,7 +2,10 @@ import typing
 
 from nsj_rest_lib.descriptor.dto_left_join_field import EntityRelationOwner
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
+from nsj_rest_lib.entity.function_type_base import (
+    InsertFunctionTypeBase,
+    UpdateFunctionTypeBase,
+)
 from nsj_rest_lib.util.fields_util import FieldsTree, build_fields_tree
 
 
@@ -23,6 +26,8 @@ class DTOObjectField:
         resume_fields: typing.Iterable[str] = None,
         insert_function_field: str = None,
         insert_function_type: typing.Optional[type[InsertFunctionTypeBase]] = None,
+        update_function_field: str = None,
+        update_function_type: typing.Optional[type[UpdateFunctionTypeBase]] = None,
         convert_to_function: typing.Callable = None,
     ):
         """
@@ -72,6 +77,8 @@ class DTOObjectField:
 
         - insert_function_field: Nome do campo equivalente no InsertFunctionType (default: o nome do campo no DTO).
 
+        - update_function_field: Nome do campo equivalente no UpdateFunctionType (default: herdado do insert_function_field).
+
         - convert_to_function: Função para converter o valor antes de preencher o InsertFunctionType. Recebe (valor, dict_com_valores_do_dto) e deve retornar um dicionário com os campos/resultados a serem atribuídos.
         """
         self.name = None
@@ -87,6 +94,8 @@ class DTOObjectField:
         self.resume_fields_tree: FieldsTree = build_fields_tree(self.resume_fields)
         self.insert_function_field = insert_function_field
         self.insert_function_type = insert_function_type
+        self.update_function_field = update_function_field
+        self.update_function_type = update_function_type
         self.convert_to_function = convert_to_function
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
@@ -98,6 +107,14 @@ class DTOObjectField:
         ):
             raise ValueError(
                 "insert_function_type deve herdar de InsertFunctionTypeBase."
+            )
+
+        if (
+            self.update_function_type is not None
+            and not issubclass(self.update_function_type, UpdateFunctionTypeBase)
+        ):
+            raise ValueError(
+                "update_function_type deve herdar de UpdateFunctionTypeBase."
             )
 
     def __get__(self, instance, owner):
@@ -135,3 +152,18 @@ class DTOObjectField:
         if self.insert_function_field is not None:
             return self.insert_function_field
         return self.name
+
+    def get_update_function_field_name(self) -> str:
+        if self.update_function_field is not None:
+            return self.update_function_field
+        return self.get_insert_function_field_name()
+
+    def get_function_field_name(self, operation: str) -> str:
+        if operation == "update":
+            return self.get_update_function_field_name()
+        return self.get_insert_function_field_name()
+
+    def get_function_type(self, operation: str):
+        if operation == "update" and self.update_function_type is not None:
+            return self.update_function_type
+        return self.insert_function_type

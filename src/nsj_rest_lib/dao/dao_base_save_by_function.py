@@ -4,15 +4,13 @@ from typing import Any, Dict, List, Tuple
 from nsj_gcf_utils.json_util import convert_to_dumps
 
 from nsj_rest_lib.dao.dao_base_util import DAOBaseUtil
-from nsj_rest_lib.descriptor.insert_function_relation_field import (
-    InsertFunctionRelationField,
-)
-from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
+from nsj_rest_lib.descriptor.function_relation_field import FunctionRelationField
+from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.exception import PostgresFunctionException
 
 
-class _InsertFunctionSQLBuilder:
-    def __init__(self, root_object: InsertFunctionTypeBase):
+class _FunctionSQLBuilder:
+    def __init__(self, root_object: FunctionTypeBase):
         self._root_object = root_object
         self.declarations: List[str] = []
         self.assignments: List[str] = []
@@ -31,7 +29,7 @@ class _InsertFunctionSQLBuilder:
     def _assign_composite(
         self,
         target_var: str,
-        instance: InsertFunctionTypeBase,
+        instance: FunctionTypeBase,
         base_prefix: str,
     ):
         fields_map = instance.get_fields_map()
@@ -44,7 +42,7 @@ class _InsertFunctionSQLBuilder:
             type_field_name = descriptor.get_type_field_name()
             field_prefix = f"{base_prefix}_{type_field_name}"
 
-            if isinstance(descriptor, InsertFunctionRelationField):
+            if isinstance(descriptor, FunctionRelationField):
                 self._assign_relation_field(
                     parent_var=target_var,
                     target_field_name=type_field_name,
@@ -63,7 +61,7 @@ class _InsertFunctionSQLBuilder:
         self,
         parent_var: str,
         target_field_name: str,
-        descriptor: InsertFunctionRelationField,
+        descriptor: FunctionRelationField,
         value,
         base_prefix: str,
     ):
@@ -152,39 +150,65 @@ class _InsertFunctionSQLBuilder:
         return re.sub(r"[^0-9a-zA-Z_]", "_", identifier or "")
 
 
-class DAOBaseInsertByFunction(DAOBaseUtil):
-    def _sql_insert_function_type(
+class DAOBaseSaveByFunction(DAOBaseUtil):
+    def _sql_function_type(
         self,
-        insert_function_object: InsertFunctionTypeBase,
+        function_object: FunctionTypeBase,
     ) -> Tuple[List[str], List[str], Dict[str, Any]]:
         """
         Retorna as declarações adicionais, atribuições e mapa de valores
-        necessários para preencher o type usado na função de insert.
+        necessários para preencher o type usado na função configurada.
         """
 
-        builder = _InsertFunctionSQLBuilder(insert_function_object)
+        builder = _FunctionSQLBuilder(function_object)
         return builder.build()
 
     def insert_by_function(
         self,
-        insert_function_object: InsertFunctionTypeBase,
+        function_object: FunctionTypeBase,
     ):
         """
-        Insere a entidade utilizando uma função de banco declarada por meio de um InsertFunctionType.
+        Insere a entidade utilizando uma função de banco declarada por meio de um FunctionType.
         """
 
-        if insert_function_object is None:
+        return self._execute_function(
+            function_object,
+            block_label="DOINSERT",
+            action_label="inserindo",
+        )
+
+    def update_by_function(
+        self,
+        function_object: FunctionTypeBase,
+    ):
+        """
+        Atualiza a entidade utilizando uma função de banco declarada por meio de um FunctionType.
+        """
+
+        return self._execute_function(
+            function_object,
+            block_label="DOUPDATE",
+            action_label="atualizando",
+        )
+
+    def _execute_function(
+        self,
+        function_object: FunctionTypeBase,
+        block_label: str,
+        action_label: str,
+    ):
+        if function_object is None:
             raise ValueError(
-                "É necessário informar um objeto do tipo InsertFunctionTypeBase para o insert por função."
+                "É necessário informar um objeto do tipo FunctionTypeBase para o processamento por função."
             )
 
-        insert_function_type_class = insert_function_object.__class__
+        function_type_class = function_object.__class__
 
         (
             relation_declarations,
             assignments,
             values_map,
-        ) = self._sql_insert_function_type(insert_function_object)
+        ) = self._sql_function_type(function_object)
 
         declarations_sql = "\n".join(
             f"    DECLARE {declaration}" for declaration in relation_declarations
@@ -193,16 +217,16 @@ class DAOBaseInsertByFunction(DAOBaseUtil):
         assignments_sql = "\n".join(f"        {line}" for line in assignments)
 
         sql = f"""
-        DO $DOINSERT$
-            DECLARE VAR_TIPO {insert_function_type_class.type_name};
+        DO ${block_label}$
+            DECLARE VAR_TIPO {function_type_class.type_name};
 {declarations_sql if declarations_sql else ''}
             DECLARE VAR_RETORNO RECORD;
         BEGIN
 {assignments_sql}
 
-            VAR_RETORNO = {insert_function_type_class.function_name}(VAR_TIPO);
+            VAR_RETORNO = {function_type_class.function_name}(VAR_TIPO);
             PERFORM set_config('retorno.bloco', VAR_RETORNO.mensagem::varchar, true);
-        END $DOINSERT$;
+        END ${block_label}$;
 
         SELECT current_setting('retorno.bloco', true)::jsonb as retorno;
         """
@@ -211,7 +235,7 @@ class DAOBaseInsertByFunction(DAOBaseUtil):
 
         if rowcount <= 0 or len(returning) <= 0:
             raise Exception(
-                f"Erro inserindo {insert_function_type_class.__name__} no banco de dados"
+                f"Erro {action_label} {function_type_class.__name__} no banco de dados"
             )
 
         returning = returning[0]["retorno"]
@@ -224,4 +248,4 @@ class DAOBaseInsertByFunction(DAOBaseUtil):
 
             raise PostgresFunctionException(msg)
 
-        return insert_function_object
+        return function_object

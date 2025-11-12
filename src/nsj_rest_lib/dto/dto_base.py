@@ -25,6 +25,7 @@ class DTOBase(abc.ABC):
     partition_fields: Set[str] = set()
     fields_map: Dict[str, DTOField] = {}
     insert_function_field_lookup: Dict[str, Tuple[str, Any]] = {}
+    update_function_field_lookup: Dict[str, Tuple[str, Any]] = {}
     list_fields_map: dict = {}
     integrity_check_fields_map: dict = {}
     left_join_fields_map: dict = {}

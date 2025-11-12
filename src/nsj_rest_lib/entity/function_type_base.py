@@ -1,7 +1,7 @@
 import abc
 import typing as ty
 
-from nsj_rest_lib.descriptor.insert_function_field import InsertFunctionField
+from nsj_rest_lib.descriptor.function_field import FunctionField
 
 if ty.TYPE_CHECKING:
     from nsj_rest_lib.dto.dto_base import DTOBase
@@ -11,22 +11,21 @@ if ty.TYPE_CHECKING:
     from nsj_rest_lib.descriptor.dto_one_to_one_field import DTOOneToOneField
 
 
-
-class InsertFunctionTypeBase(abc.ABC):
+class FunctionTypeBase(abc.ABC):
     """
-    Classe base para todos os tipos usados em funções de insert via PL/PGSQL.
-    Mantém o contrato esperado pelo DAO para identificar campos e nomes do type/
-    função.
+    Classe base para todos os tipos usados em funções PL/PGSQL (insert/update),
+    mantendo o contrato esperado pelo DAO para identificar campos e referências.
     """
 
-    fields_map: ty.Dict[str, InsertFunctionField] = {}
+    fields_map: ty.Dict[str, FunctionField] = {}
     type_name: str = ""
     function_name: str = ""
-    _dto_insert_function_mapping_cache: ty.Dict[
+    dto_lookup_attribute: str = "function_field_lookup"
+    _dto_function_mapping_cache: ty.Dict[
         ty.Type["DTOBase"], ty.Dict[str, ty.Tuple[str, ty.Any]]
     ] = {}
 
-    def get_fields_map(self) -> ty.Dict[str, InsertFunctionField]:
+    def get_fields_map(self) -> ty.Dict[str, FunctionField]:
         if not hasattr(self.__class__, "fields_map"):
             raise NotImplementedError(
                 f"fields_map não definido em {self.__class__.__name__}"
@@ -48,29 +47,29 @@ class InsertFunctionTypeBase(abc.ABC):
         return self.__class__.function_name
 
     @classmethod
-    def get_insert_function_mapping(
+    def get_function_mapping(
         cls,
         dto_class: ty.Type["DTOBase"],
     ) -> ty.Dict[str, ty.Tuple[str, ty.Any]]:
-        cache = getattr(cls, "_dto_insert_function_mapping_cache", None)
+        cache = getattr(cls, "_dto_function_mapping_cache", None)
         if cache is None:
             cache = {}
-            setattr(cls, "_dto_insert_function_mapping_cache", cache)
+            setattr(cls, "_dto_function_mapping_cache", cache)
 
         if dto_class not in cache:
-            cache[dto_class] = cls._build_insert_function_mapping(dto_class)
+            cache[dto_class] = cls._build_function_mapping(dto_class)
 
         return cache[dto_class]
 
     @classmethod
-    def _build_insert_function_mapping(
+    def _build_function_mapping(
         cls,
         dto_class: ty.Type["DTOBase"],
     ) -> ty.Dict[str, ty.Tuple[str, ty.Any]]:
-        lookup = getattr(dto_class, "insert_function_field_lookup", None)
+        lookup = getattr(dto_class, cls.dto_lookup_attribute, None)
         if not lookup:
             raise ValueError(
-                f"DTO '{dto_class.__name__}' não possui insert_function_field_lookup configurado."
+                f"DTO '{dto_class.__name__}' não possui '{cls.dto_lookup_attribute}' configurado."
             )
 
         fields_map = getattr(cls, "fields_map", {})
@@ -79,8 +78,30 @@ class InsertFunctionTypeBase(abc.ABC):
         for field_name in fields_map.keys():
             if field_name not in lookup:
                 raise ValueError(
-                    f"O campo '{field_name}' do InsertFunctionType '{cls.__name__}' não existe no DTO '{dto_class.__name__}'."
+                    f"O campo '{field_name}' do FunctionType '{cls.__name__}' não existe no DTO '{dto_class.__name__}'."
                 )
             mapping[field_name] = lookup[field_name]
 
         return mapping
+
+
+class InsertFunctionTypeBase(FunctionTypeBase):
+    dto_lookup_attribute = "insert_function_field_lookup"
+
+    @classmethod
+    def get_insert_function_mapping(
+        cls,
+        dto_class: ty.Type["DTOBase"],
+    ) -> ty.Dict[str, ty.Tuple[str, ty.Any]]:
+        return cls.get_function_mapping(dto_class)
+
+
+class UpdateFunctionTypeBase(FunctionTypeBase):
+    dto_lookup_attribute = "update_function_field_lookup"
+
+    @classmethod
+    def get_update_function_mapping(
+        cls,
+        dto_class: ty.Type["DTOBase"],
+    ) -> ty.Dict[str, ty.Tuple[str, ty.Any]]:
+        return cls.get_function_mapping(dto_class)

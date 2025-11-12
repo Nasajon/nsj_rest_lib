@@ -162,16 +162,27 @@ class ServiceBaseSave(ServiceBasePartialOf):
                         id, conjunto_field_value, self._dto_class.conjunto_type
                     )
             else:
-                entity = self._dao.update(
-                    entity.get_pk_field(),
-                    getattr(old_dto, dto.pk_field),
-                    entity,
-                    aditional_entity_filters,
-                    partial_update,
-                    dto.sql_read_only_fields,
-                    dto.sql_no_update_fields,
-                    upsert,
-                )
+                if self._update_function_type_class is not None and upsert:
+                    raise ValueError(
+                        "update_by_function não suporta operações com upsert."
+                    )
+
+                if self._update_function_type_class is None:
+                    entity = self._dao.update(
+                        entity.get_pk_field(),
+                        getattr(old_dto, dto.pk_field),
+                        entity,
+                        aditional_entity_filters,
+                        partial_update,
+                        dto.sql_read_only_fields,
+                        dto.sql_no_update_fields,
+                        upsert,
+                    )
+                else:
+                    update_function_object = (
+                        self._build_update_function_type_object(dto)
+                    )
+                    self._dao.update_by_function(update_function_object)
 
                 if partial_write_data is not None:
                     self._handle_partial_extension_update(

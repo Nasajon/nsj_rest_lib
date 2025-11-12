@@ -240,6 +240,7 @@ class DTO:
 
         self._check_class_attribute(cls, "aggregator_fields_map", {})
         self._check_class_attribute(cls, "insert_function_field_lookup", {})
+        self._check_class_attribute(cls, "update_function_field_lookup", {})
 
         # Creating pk_field in cls, if needed
         # TODO Refatorar para suportar PKs compostas
@@ -587,7 +588,8 @@ class DTO:
         else:
             setattr(cls, "partial_dto_config", None)
 
-        self._build_insert_function_field_lookup(cls)
+        self._build_function_field_lookup(cls, operation="insert")
+        self._build_function_field_lookup(cls, operation="update")
 
         return cls
 
@@ -635,47 +637,54 @@ class DTO:
         if attr_name not in cls.__dict__:
             setattr(cls, attr_name, default_value)
 
-    def _build_insert_function_field_lookup(self, cls: object):
+    def _build_function_field_lookup(self, cls: object, operation: str):
         lookup = {}
 
         relation_oto_fields = {
             field_name
             for field_name, descriptor in getattr(cls, "one_to_one_fields_map").items()
-            if descriptor.insert_function_type is not None
+            if descriptor.get_function_type(operation) is not None
         }
+
+        operation_label = "InsertFunctionType" if operation == "insert" else "UpdateFunctionType"
+        lookup_attr = (
+            "insert_function_field_lookup"
+            if operation == "insert"
+            else "update_function_field_lookup"
+        )
 
         def add_lookup_entry(target_name: str, field_name: str, descriptor: Any):
             if target_name in lookup:
                 raise ValueError(
-                    f"O campo '{target_name}' no InsertFunctionType está mapeado por mais de um campo no DTO '{cls.__name__}'."
+                    f"O campo '{target_name}' no {operation_label} está mapeado por mais de um campo no DTO '{cls.__name__}'."
                 )
             lookup[target_name] = (field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "fields_map").items():
             if field_name in relation_oto_fields:
                 continue
-            target_name = descriptor.get_insert_function_field_name()
+            target_name = descriptor.get_function_field_name(operation)
             add_lookup_entry(target_name, field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "list_fields_map").items():
-            if descriptor.insert_function_type is None:
+            if descriptor.get_function_type(operation) is None:
                 continue
-            target_name = descriptor.get_insert_function_field_name()
+            target_name = descriptor.get_function_field_name(operation)
             add_lookup_entry(target_name, field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "object_fields_map").items():
-            if getattr(descriptor, "insert_function_type", None) is None:
+            if descriptor.get_function_type(operation) is None:
                 continue
-            target_name = descriptor.get_insert_function_field_name()
+            target_name = descriptor.get_function_field_name(operation)
             add_lookup_entry(target_name, field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "one_to_one_fields_map").items():
-            if descriptor.insert_function_type is None:
+            if descriptor.get_function_type(operation) is None:
                 continue
-            target_name = descriptor.get_insert_function_field_name()
+            target_name = descriptor.get_function_field_name(operation)
             add_lookup_entry(target_name, field_name, descriptor)
 
-        setattr(cls, "insert_function_field_lookup", lookup)
+        setattr(cls, lookup_attr, lookup)
 
     def set_left_join_fields_map_to_query(
         self,

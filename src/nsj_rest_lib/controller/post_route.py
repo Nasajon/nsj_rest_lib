@@ -8,7 +8,7 @@ from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.dto.queued_data_dto import QueuedDataDTO
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
+from nsj_rest_lib.entity.function_type_base import InsertFunctionTypeBase
 from nsj_rest_lib.exception import (
     MissingParameterException,
     ConflictException,
@@ -107,6 +107,10 @@ class PostRoute(RouteBase):
 
                 # Construindo os objetos
                 service = self._get_service(factory)
+                if self._insert_function_type_class is not None:
+                    service.set_insert_function_type_class(
+                        self._insert_function_type_class
+                    )
 
                 if len(data_pack) == 1:
                     # Chamando o service (método insert)

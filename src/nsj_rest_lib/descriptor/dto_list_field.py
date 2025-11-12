@@ -2,7 +2,10 @@ import typing
 
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
+from nsj_rest_lib.entity.function_type_base import (
+    InsertFunctionTypeBase,
+    UpdateFunctionTypeBase,
+)
 from nsj_rest_lib.exception import DTOListFieldConfigException
 from nsj_rest_lib.util.fields_util import FieldsTree, build_fields_tree
 
@@ -32,6 +35,8 @@ class DTOListField:
         resume_fields: typing.Iterable[str] = None,
         insert_function_field: str = None,
         insert_function_type: typing.Optional[type[InsertFunctionTypeBase]] = None,
+        update_function_field: str = None,
+        update_function_type: typing.Optional[type[UpdateFunctionTypeBase]] = None,
         convert_to_function: typing.Callable = None,
     ):
         """
@@ -61,6 +66,8 @@ class DTOListField:
 
         - insert_function_field: Nome da propriedade equivalente no InsertFunctionType quando o campo lista precisar apontar para um nome diferente (default: o nome do campo no DTO).
 
+        - update_function_field: Nome da propriedade equivalente no UpdateFunctionType.
+
         - service_name: Nome do serviço customizado, caso se deseje que as operações sobre esse tipo de lista se façam
             de um modo customizado (e não usando o service_base do próprio RestLib).
 
@@ -80,6 +87,8 @@ class DTOListField:
         self.related_entity_field = related_entity_field
         self.insert_function_field = insert_function_field
         self.insert_function_type = insert_function_type
+        self.update_function_field = update_function_field
+        self.update_function_type = update_function_type
         self.not_null = not_null
         self.min = min
         self.max = max
@@ -113,6 +122,14 @@ class DTOListField:
                 "insert_function_type deve herdar de InsertFunctionTypeBase."
             )
 
+        if (
+            self.update_function_type is not None
+            and not issubclass(self.update_function_type, UpdateFunctionTypeBase)
+        ):
+            raise DTOListFieldConfigException(
+                "update_function_type deve herdar de UpdateFunctionTypeBase."
+            )
+
     def __get__(self, instance, owner):
         if instance is None:
             return self
@@ -141,6 +158,21 @@ class DTOListField:
         if self.insert_function_field is not None:
             return self.insert_function_field
         return self.name
+
+    def get_update_function_field_name(self) -> str:
+        if self.update_function_field is not None:
+            return self.update_function_field
+        return self.get_insert_function_field_name()
+
+    def get_function_field_name(self, operation: str) -> str:
+        if operation == "update":
+            return self.get_update_function_field_name()
+        return self.get_insert_function_field_name()
+
+    def get_function_type(self, operation: str):
+        if operation == "update" and self.update_function_type is not None:
+            return self.update_function_type
+        return self.insert_function_type
 
     def set_partition_fields(self, instance, value):
         """

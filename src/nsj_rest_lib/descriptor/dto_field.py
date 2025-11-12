@@ -85,6 +85,7 @@ class DTOField:
         description: str = "",
         use_integrity_check: bool = True,
         insert_function_field: str = None,
+        update_function_field: str = None,
         convert_to_function: typing.Callable = None,
     ):
         """
@@ -110,7 +111,7 @@ class DTOField:
 
         - insert_function_field: Nome do campo correspondente no InsertFunctionType utilizado para inserts por função (default: o próprio nome do campo no DTO).
 
-        - insert_function_field: Nome da propriedade equivalente na classe de InsertFunctionType. Se não informado, assume o nome do campo do DTO.
+        - update_function_field: Nome do campo correspondente no UpdateFunctionType utilizado para updates por função (default: herdado de insert_function_field ou o próprio nome do campo no DTO).
 
         - filters: Lista de filtros adicionais suportados para esta propriedade (adicionais, porque todos as propriedades, por padrão, suportam filtros de igualdade, que podem ser passados por meio de uma query string, com mesmo nome da proriedade, e um valor qualquer a ser comparado).
             Essa lista de filtros consiste em objetos do DTOFieldFilter (veja a documentação da classe para enteder a estrutura de declaração dos filtros).
@@ -187,6 +188,7 @@ class DTOField:
         self.strip = strip
         self.entity_field = entity_field
         self.insert_function_field = insert_function_field
+        self.update_function_field = update_function_field
         self.filters = filters
         self.pk = pk
         self.use_default_validator = use_default_validator
@@ -335,6 +337,22 @@ class DTOField:
             return self.insert_function_field
         else:
             return self.name
+
+    def get_update_function_field_name(self) -> str:
+        """
+        Retorna o nome correspondente do field no UpdateFunctionType, caindo no
+        mapeamento de insert (ou no próprio nome do campo) quando não houver
+        configuração específica.
+        """
+
+        if self.update_function_field is not None:
+            return self.update_function_field
+        return self.get_insert_function_field_name()
+
+    def get_function_field_name(self, operation: str) -> str:
+        if operation == "update":
+            return self.get_update_function_field_name()
+        return self.get_insert_function_field_name()
 
     def get_metric_labels(dto_class, request, tenant, grupo_empresarial):
         """

@@ -4,10 +4,10 @@ from nsj_gcf_utils.json_util import convert_to_dumps
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.settings import USE_SQL_RETURNING_CLAUSE
 
-from .dao_base_insert_by_function import DAOBaseInsertByFunction
+from .dao_base_save_by_function import DAOBaseSaveByFunction
 
 
-class DAOBaseInsert(DAOBaseInsertByFunction):
+class DAOBaseInsert(DAOBaseSaveByFunction):
 
     def _sql_insert_fields(
         self, entity: EntityBase, sql_read_only_fields: List[str] = []

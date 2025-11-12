@@ -1,12 +1,13 @@
 import os
 from flask import request
-from typing import Callable
+from typing import Callable, Type
 
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.dto.queued_data_dto import QueuedDataDTO
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.entity.function_type_base import UpdateFunctionTypeBase
 from nsj_rest_lib.exception import (
     MissingParameterException,
     NotFoundException,
@@ -32,6 +33,7 @@ class PutRoute(RouteBase):
         handle_exception: Callable = None,
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
+        update_function_type_class: Type[UpdateFunctionTypeBase] | None = None,
     ):
         super().__init__(
             url=url,
@@ -45,6 +47,15 @@ class PutRoute(RouteBase):
         )
         self.custom_before_update = custom_before_update
         self.custom_after_update = custom_after_update
+        self._update_function_type_class = update_function_type_class
+
+        if (
+            self._update_function_type_class is not None
+            and not issubclass(self._update_function_type_class, UpdateFunctionTypeBase)
+        ):
+            raise ValueError(
+                "A classe informada em update_function_type_class deve herdar de UpdateFunctionTypeBase."
+            )
 
     def _partition_filters(self, data):
         # Montando os filtros de particao de dados
@@ -105,6 +116,10 @@ class PutRoute(RouteBase):
 
                 # Construindo os objetos
                 service = self._get_service(factory)
+                if self._update_function_type_class is not None:
+                    service.set_update_function_type_class(
+                        self._update_function_type_class
+                    )
 
                 if len(data_pack) == 1:
                     # Chamando o service (método insert)

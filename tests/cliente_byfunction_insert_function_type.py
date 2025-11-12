@@ -1,9 +1,7 @@
 from nsj_rest_lib.decorator.insert_function_type import InsertFunctionType
-from nsj_rest_lib.descriptor.insert_function_field import InsertFunctionField
-from nsj_rest_lib.descriptor.insert_function_relation_field import (
-    InsertFunctionRelationField,
-)
-from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
+from nsj_rest_lib.descriptor.function_field import FunctionField
+from nsj_rest_lib.descriptor.function_relation_field import FunctionRelationField
+from nsj_rest_lib.entity.function_type_base import InsertFunctionTypeBase
 
 
 @InsertFunctionType(
@@ -11,17 +9,17 @@ from nsj_rest_lib.entity.insert_function_type_base import InsertFunctionTypeBase
     function_name="teste.api_endereco",
 )
 class ClienteByfunctionEnderecoInsertType(InsertFunctionTypeBase):
-    tipologradouro: str = InsertFunctionField()
-    logradouro: str = InsertFunctionField()
-    numero: str = InsertFunctionField()
-    complemento: str = InsertFunctionField()
-    cep: str = InsertFunctionField()
-    bairro: str = InsertFunctionField()
-    tipo: int = InsertFunctionField(type_field_name="tipo")
-    enderecopadrao: int = InsertFunctionField()
-    referencia: str = InsertFunctionField()
-    uf: str = InsertFunctionField()
-    cidade: str = InsertFunctionField()
+    tipologradouro: str = FunctionField()
+    logradouro: str = FunctionField()
+    numero: str = FunctionField()
+    complemento: str = FunctionField()
+    cep: str = FunctionField()
+    bairro: str = FunctionField()
+    tipo: int = FunctionField(type_field_name="tipo")
+    enderecopadrao: int = FunctionField()
+    referencia: str = FunctionField()
+    uf: str = FunctionField()
+    cidade: str = FunctionField()
 
 
 @InsertFunctionType(
@@ -29,18 +27,18 @@ class ClienteByfunctionEnderecoInsertType(InsertFunctionTypeBase):
     function_name="teste.api_clientenovo",
 )
 class ClienteByfunctionInsertType(InsertFunctionTypeBase):
-    codigo: str = InsertFunctionField()
-    nome: str = InsertFunctionField()
-    nomefantasia: str = InsertFunctionField()
-    identidade: str = InsertFunctionField()
-    documento: str = InsertFunctionField()
-    inscricaoestadual: str = InsertFunctionField()
-    retemiss: bool = InsertFunctionField()
-    retemir: bool = InsertFunctionField()
-    retempis: bool = InsertFunctionField()
-    retemcofins: bool = InsertFunctionField()
-    retemcsll: bool = InsertFunctionField()
-    reteminss: bool = InsertFunctionField()
+    codigo: str = FunctionField()
+    nome: str = FunctionField()
+    nomefantasia: str = FunctionField()
+    identidade: str = FunctionField()
+    documento: str = FunctionField()
+    inscricaoestadual: str = FunctionField()
+    retemiss: bool = FunctionField()
+    retemir: bool = FunctionField()
+    retempis: bool = FunctionField()
+    retemcofins: bool = FunctionField()
+    retemcsll: bool = FunctionField()
+    reteminss: bool = FunctionField()
     enderecos: list[ClienteByfunctionEnderecoInsertType] = (
-        InsertFunctionRelationField(type_field_name="endereco")
+        FunctionRelationField(type_field_name="endereco")
     )
