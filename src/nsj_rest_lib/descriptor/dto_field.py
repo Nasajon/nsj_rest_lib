@@ -82,8 +82,11 @@ class DTOField:
         no_update: bool = False,
         metric_label: bool = False,
         auto_increment: dict[str, any] = {},
-        description: str = '',
+        description: str = "",
         use_integrity_check: bool = True,
+        insert_function_field: str = None,
+        update_function_field: str = None,
+        convert_to_function: typing.Callable = None,
     ):
         """
         -----------
@@ -106,6 +109,10 @@ class DTOField:
 
         - entity_field: Nome da propriedade equivalente na classe de entity (que reflete a estruturua do banco de dados).
 
+        - insert_function_field: Nome do campo correspondente no InsertFunctionType utilizado para inserts por função (default: o próprio nome do campo no DTO).
+
+        - update_function_field: Nome do campo correspondente no UpdateFunctionType utilizado para updates por função (default: herdado de insert_function_field ou o próprio nome do campo no DTO).
+
         - filters: Lista de filtros adicionais suportados para esta propriedade (adicionais, porque todos as propriedades, por padrão, suportam filtros de igualdade, que podem ser passados por meio de uma query string, com mesmo nome da proriedade, e um valor qualquer a ser comparado).
             Essa lista de filtros consiste em objetos do DTOFieldFilter (veja a documentação da classe para enteder a estrutura de declaração dos filtros).
 
@@ -117,9 +124,11 @@ class DTOField:
 
         - partition_data: Flag indicando se esta propriedade participa dos campos de particionamento da entidade, isto é, campos sempre usados nas queries de listagem gravação dos dados, inclusíve para recuperação de entidades relacionadas.
 
-        - convert_to_entity: Função para converter o valor contido no DTO, para o(s) valor(es) a serem gravados no objeto de entidade (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
+        - convert_to_entity: Função para converter o valor contido no DTO, para o(s) valor(es) a serem gravados no objeto de entidade (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade.
             (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
             A função recebida deve suportar os parâmetros (dto_value: Any, dto: DTOBase), e retornar um Dict[str, Any], como uma coleção de chaves e valores a serem atribuídos na entidade.
+
+        - convert_to_function: Função para converter o valor do DTO antes de popular o InsertFunctionType. Recebe (value_do_campo, dict_com_valores_do_dto) e deve retornar um dicionário cujas chaves são os campos do InsertFunctionType e os valores correspondentes (permite mapear/derivar múltiplos campos). Se None, o valor é copiado diretamente.
 
         - convert_from_entity: Função para converter o valor contido na Entity, para o(s) valor(es) a serem gravados no objeto DTO (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
             (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
@@ -178,12 +187,15 @@ class DTOField:
         self.validator = validator
         self.strip = strip
         self.entity_field = entity_field
+        self.insert_function_field = insert_function_field
+        self.update_function_field = update_function_field
         self.filters = filters
         self.pk = pk
         self.use_default_validator = use_default_validator
         self.default_value = default_value
         self.partition_data = partition_data
         self.convert_to_entity = convert_to_entity
+        self.convert_to_function = convert_to_function
         self.convert_from_entity = convert_from_entity
         self.unique = unique
         self.candidate_key = candidate_key
@@ -240,7 +252,13 @@ class DTOField:
         # Checking not null constraint
         if (
             self.not_null
-            and (value is None or (isinstance(value, str) and len(value.strip() if dto_field.strip else value) <= 0))
+            and (
+                value is None
+                or (
+                    isinstance(value, str)
+                    and len(value.strip() if dto_field.strip else value) <= 0
+                )
+            )
             and (
                 not dto_field.pk
                 or (
@@ -307,6 +325,34 @@ class DTOField:
             return self.entity_field
         else:
             return self.name
+
+    def get_insert_function_field_name(self) -> str:
+        """
+        Retorna o nome correspondente do field no InsertFunctionType
+        (o qual é o nome do field no DTO por padrão, ou o nome que for
+        passado no parâmetro "insert_function_field" no construtor).
+        """
+
+        if self.insert_function_field is not None:
+            return self.insert_function_field
+        else:
+            return self.name
+
+    def get_update_function_field_name(self) -> str:
+        """
+        Retorna o nome correspondente do field no UpdateFunctionType, caindo no
+        mapeamento de insert (ou no próprio nome do campo) quando não houver
+        configuração específica.
+        """
+
+        if self.update_function_field is not None:
+            return self.update_function_field
+        return self.get_insert_function_field_name()
+
+    def get_function_field_name(self, operation: str) -> str:
+        if operation == "update":
+            return self.get_update_function_field_name()
+        return self.get_insert_function_field_name()
 
     def get_metric_labels(dto_class, request, tenant, grupo_empresarial):
         """

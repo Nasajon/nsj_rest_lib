@@ -1,0 +1,14 @@
+{
+    "id": "ffe29dad-e33d-4e9c-9803-5eb926e5bc21",
+    "codigo": "teste-04",
+    "descricao": "Classificação atualizada via função",
+    "codigocontabil": "5678",
+    "resumo": "Classificação atualizada",
+    "situacao": 1,
+    "natureza": 1,
+    "paiid": null,
+    "grupoempresarial": "3964bfdc-e09e-4386-9655-5296062e632d",
+    "transferencia": true,
+    "repasse_deducao": true,
+    "rendimentos": false
+}

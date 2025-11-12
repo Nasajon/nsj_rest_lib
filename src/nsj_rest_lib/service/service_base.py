@@ -3,18 +3,24 @@ import typing as ty
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.entity.function_type_base import (
+    InsertFunctionTypeBase,
+    UpdateFunctionTypeBase,
+)
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.util.db_adapter2 import DBAdapter2
 
 from .service_base_delete import ServiceBaseDelete
 from .service_base_get import ServiceBaseGet
 from .service_base_insert import ServiceBaseInsert
+from .service_base_save_by_function import ServiceBaseSaveByFunction
 from .service_base_list import ServiceBaseList
 from .service_base_partial_update import ServiceBasePartialUpdate
 from .service_base_update import ServiceBaseUpdate
 
 
 class ServiceBase(
+    ServiceBaseSaveByFunction,
     ServiceBasePartialUpdate,
     ServiceBaseUpdate,
     ServiceBaseInsert,
@@ -32,6 +38,12 @@ class ServiceBase(
         dto_class: ty.Type[DTOBase],
         entity_class: ty.Type[EntityBase],
         dto_post_response_class: DTOBase = None,
+        insert_function_type_class: ty.Optional[
+            ty.Type[InsertFunctionTypeBase]
+        ] = None,
+        update_function_type_class: ty.Optional[
+            ty.Type[UpdateFunctionTypeBase]
+        ] = None,
     ):
         self._injector_factory = injector_factory
         self._dao = dao
@@ -40,6 +52,10 @@ class ServiceBase(
         self._dto_post_response_class = dto_post_response_class
         self._created_by_property = "criado_por"
         self._updated_by_property = "atualizado_por"
+        self._insert_function_type_class = None
+        self._update_function_type_class = None
+        self.set_insert_function_type_class(insert_function_type_class)
+        self.set_update_function_type_class(update_function_type_class)
 
     @staticmethod
     def construtor1(
@@ -48,6 +64,12 @@ class ServiceBase(
         dto_class: ty.Type[DTOBase],
         entity_class: ty.Type[EntityBase],
         dto_post_response_class: DTOBase = None,
+        insert_function_type_class: ty.Optional[
+            ty.Type[InsertFunctionTypeBase]
+        ] = None,
+        update_function_type_class: ty.Optional[
+            ty.Type[UpdateFunctionTypeBase]
+        ] = None,
     ):
         """
         Esse construtor alternativo, evita a necessidade de passar um InjectorFactory,
@@ -67,4 +89,6 @@ class ServiceBase(
             dto_class,
             entity_class,
             dto_post_response_class,
+            insert_function_type_class,
+            update_function_type_class,
         )

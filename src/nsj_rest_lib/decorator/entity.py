@@ -3,6 +3,7 @@ import functools
 from dataclasses import dataclass
 from typing import Any, List, Optional, Set, Type
 
+from nsj_rest_lib.descriptor.entity_field import EntityField
 from nsj_rest_lib.entity.entity_base import EntityBase
 
 
@@ -12,10 +13,6 @@ class PartialEntityConfig:
     extension_table_name: str
     parent_fields: Set[str]
     extension_fields: Set[str]
-
-
-class EntityField:
-    expected_type: object
 
 
 class Entity:
@@ -134,13 +131,24 @@ class Entity:
 
         # Iterando pelos atributos de classe
         for key, attr in cls.__dict__.items():
+            atributo = None
+
             # Copiando o tipo a partir da anotação de tipo (se existir)
-            if key in cls.__annotations__:
+            if isinstance(attr, EntityField):
+                atributo = attr
+            elif key in cls.__annotations__:
                 atributo = attr
                 if not isinstance(attr, EntityField):
                     atributo = EntityField()
 
-                atributo.expected_type = cls.__annotations__[key]
+            if atributo:
+                # Setting a better name to storage_name
+                atributo.storage_name = f"{key}"
+                atributo.name = f"{key}"
+
+                # Guardando o type esperado
+                if key in cls.__annotations__:
+                    atributo.expected_type = cls.__annotations__[key]
 
                 # Guardando o atributo no fields_map
                 getattr(cls, "fields_map")[key] = atributo

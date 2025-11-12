@@ -2,6 +2,10 @@ import enum
 import typing as ty
 
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.entity.function_type_base import (
+    InsertFunctionTypeBase,
+    UpdateFunctionTypeBase,
+)
 
 from .dto_field import DTOField
 
@@ -34,8 +38,11 @@ class DTOOneToOneField:
     resume: bool
     partition_data: bool
     entity_field: str
+    insert_function_field: str
+    update_function_field: str
     validator: ty.Optional[ty.Callable[..., ty.Any]]
     description: str
+    convert_to_function: ty.Optional[ty.Callable[..., ty.Any]]
 
     def __init__(
         self,
@@ -48,6 +55,11 @@ class DTOOneToOneField:
         partition_data: bool = False,
         validator: ty.Optional[ty.Callable[['DTOOneToOneField', T], T]] = None,
         description: str = '',
+        insert_function_field: ty.Optional[str] = None,
+        insert_function_type: ty.Optional[ty.Type[InsertFunctionTypeBase]] = None,
+        update_function_field: ty.Optional[str] = None,
+        update_function_type: ty.Optional[ty.Type[UpdateFunctionTypeBase]] = None,
+        convert_to_function: ty.Optional[ty.Callable[..., ty.Any]] = None,
     ):
         """Descriptor used for One to One relations.
         ---------
@@ -89,6 +101,10 @@ class DTOOneToOneField:
         - entity_field: The name of the field in the Entity of the `Current DTO`.
             If `None` will use the name of the field in the `Current DTO`.
 
+        - insert_function_field: Nome opcional do campo correspondente no InsertFunctionType (default: nome do campo no DTO).
+
+        - update_function_field: Nome opcional do campo correspondente no UpdateFunctionType (default: herdado do campo de insert).
+
         - entity_relation_owner: Indicates which entity contain the
             `relation_field`, it must be one of:
                 - EntityRelationField.SELF: The `relation_field` is part of the
@@ -110,16 +126,23 @@ class DTOOneToOneField:
 
         - description: Description of this field that can be used in
             documentation.
+
+        - convert_to_function: Função usada para converter o valor antes de popular o InsertFunctionType. Recebe (valor, dict_com_valores_do_dto) e deve retornar um dicionário com os campos/resultados a atribuir.
         """
         self.entity_type = entity_type
         self.relation_type = relation_type
         self.resume = resume
         self.entity_field = entity_field or ''
+        self.insert_function_field = insert_function_field
+        self.insert_function_type = insert_function_type
+        self.update_function_field = update_function_field
+        self.update_function_type = update_function_type
         self.entity_relation_owner = entity_relation_owner
         self.not_null = not_null
         self.partition_data = partition_data
         self.validator = validator
         self.description = description
+        self.convert_to_function = convert_to_function
 
         self.name = None
         self.expected_type = ty.cast(ty.Type['DTOBase'], type)
@@ -128,6 +151,22 @@ class DTOOneToOneField:
             f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         )
         self.__class__._ref_counter += 1
+
+        if (
+            self.insert_function_type is not None
+            and not issubclass(self.insert_function_type, InsertFunctionTypeBase)
+        ):
+            raise ValueError(
+                "insert_function_type deve herdar de InsertFunctionTypeBase."
+            )
+
+        if (
+            self.update_function_type is not None
+            and not issubclass(self.update_function_type, UpdateFunctionTypeBase)
+        ):
+            raise ValueError(
+                "update_function_type deve herdar de UpdateFunctionTypeBase."
+            )
 
         # NOTE: To support EntityRelationOwner.OTHER you will have to modify
         #           `_retrieve_one_to_one_fields in ServiceBase`. do NOT forget
@@ -161,6 +200,10 @@ class DTOOneToOneField:
         try:
             if self.not_null is True and value is None:
                 raise ValueError(f"{self.storage_name} deve ser preenchido.")
+
+            if value is None:
+                instance.__dict__[self.storage_name] = None
+                return
 
             if self.relation_type == OTORelationType.AGGREGATION:
                 if escape_validator is True:
@@ -221,3 +264,23 @@ class DTOOneToOneField:
 
         instance.__dict__[self.storage_name] = value
         pass
+
+    def get_insert_function_field_name(self) -> str:
+        if self.insert_function_field is not None:
+            return self.insert_function_field
+        return self.name
+
+    def get_update_function_field_name(self) -> str:
+        if self.update_function_field is not None:
+            return self.update_function_field
+        return self.get_insert_function_field_name()
+
+    def get_function_field_name(self, operation: str) -> str:
+        if operation == "update":
+            return self.get_update_function_field_name()
+        return self.get_insert_function_field_name()
+
+    def get_function_type(self, operation: str):
+        if operation == "update" and self.update_function_type is not None:
+            return self.update_function_type
+        return self.insert_function_type

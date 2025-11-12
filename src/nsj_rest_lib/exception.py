@@ -34,3 +34,7 @@ class ConflictException(Exception):
 
 class AfterRecordNotFoundException(Exception):
     pass
+
+
+class PostgresFunctionException(Exception):
+    pass

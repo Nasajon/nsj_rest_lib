@@ -1,0 +1,14 @@
+{
+    "next": null,
+    "result": [
+        {
+            "id": "8d0611a1-2f8c-4bd3-95cd-1fe15f1b8a7a",
+            "codigo": "CLI-BYFUNCTION-001",
+            "nome": "Cliente Via Function",
+            "nomefantasia": "Cliente Function",
+            "documento": "12.345.678/0001-90",
+            "inscricaoestadual": "123456789",
+            "tenant": 99999
+        }
+    ]
+}

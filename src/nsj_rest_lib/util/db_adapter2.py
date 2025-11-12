@@ -1,7 +1,10 @@
 import uuid
 
 from sqlparams import SQLParams
+from typing import List, Tuple
+
 from nsj_rest_lib.util.log_time import log_time_context
+from nsj_rest_lib.util.sql_utils import SQLUtils
 
 
 class DBAdapter2:
@@ -27,7 +30,7 @@ class DBAdapter2:
     def in_transaction(self):
         return self._transaction is not None
 
-    def execute(self, sql: str, **kwargs) -> int:
+    def execute(self, sql: str, **kwargs) -> Tuple[int, list | None]:
         """
         Executando uma instrução sql, com ou sem retorno.
         É obrigatório a passagem de uma conexão de banco no argumento self._db.
@@ -205,3 +208,94 @@ class DBAdapter2:
         with open(query_file_path, "r") as f:
             sql = f.read()
         return self.execute_query(sql, **kwargs)
+
+    def execute_batch(self, sql: str, **kwargs) -> Tuple[int, List[dict]]:
+        """
+        Executa instruções SQL que contenham mais de um statement.
+        Retorna uma tupla contendo:
+        - número de linhas retornadas pelo último statement
+        - lista de dicionários com os dados retornados pelo último statement
+        """
+        new_transaction = not self.in_transaction()
+        cursor = None
+
+        try:
+            if new_transaction:
+                self.begin()
+
+            sql_to_run = (
+                SQLUtils.binding_args(sql, kwargs) if kwargs is not None else sql
+            )
+
+            raw_connection = self._unwrap_db_connection()
+
+            if hasattr(raw_connection, "execute_simple"):
+                context = raw_connection.execute_simple(sql_to_run)
+                rows = self._context_rows_to_dict(context)
+                return len(rows), rows
+
+            cursor = raw_connection.cursor()
+            cursor.execute(sql_to_run)
+            rows = self._cursor_rows_to_dict(cursor)
+            return len(rows), rows
+
+        except:
+            if new_transaction:
+                self.rollback()
+            raise
+        finally:
+            if cursor is not None:
+                cursor.close()
+            if new_transaction:
+                self.commit()
+
+    def _unwrap_db_connection(self):
+        """
+        Obtém a conexão DBAPI real, independentemente de estar encapsulada
+        por SQLAlchemy ou não.
+        """
+        connection = self._db
+        visited = set()
+
+        while True:
+            candidate = None
+
+            for attr in ("driver_connection", "connection", "dbapi_connection"):
+                if hasattr(connection, attr):
+                    attr_value = getattr(connection, attr)
+                    if attr_value is not None and attr_value is not connection:
+                        candidate = attr_value
+                        break
+
+            if candidate is None or id(candidate) in visited:
+                return connection
+
+            visited.add(id(candidate))
+            connection = candidate
+
+    @staticmethod
+    def _context_rows_to_dict(context) -> List[dict]:
+        rows = getattr(context, "rows", None)
+        columns = getattr(context, "columns", None)
+
+        if not rows or not columns:
+            return []
+
+        column_names = [column.get("name") for column in columns]
+        return [
+            {column_names[idx]: row[idx] for idx in range(len(column_names))}
+            for row in rows
+        ]
+
+    @staticmethod
+    def _cursor_rows_to_dict(cursor) -> List[dict]:
+        description = getattr(cursor, "description", None)
+        if not description:
+            return []
+
+        column_names = [col[0] for col in description]
+        result_rows = cursor.fetchall()
+        return [
+            {column_names[idx]: row[idx] for idx in range(len(column_names))}
+            for row in result_rows
+        ]

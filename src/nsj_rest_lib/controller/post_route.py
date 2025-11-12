@@ -1,13 +1,14 @@
 import os
 
 from flask import request
-from typing import Callable
+from typing import Callable, Type
 
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.dto.queued_data_dto import QueuedDataDTO
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.entity.function_type_base import InsertFunctionTypeBase
 from nsj_rest_lib.exception import (
     MissingParameterException,
     ConflictException,
@@ -33,6 +34,7 @@ class PostRoute(RouteBase):
         custom_before_insert: Callable = None,
         custom_after_insert: Callable = None,
         retrieve_after_insert: bool = False,
+        insert_function_type_class: Type[InsertFunctionTypeBase] | None = None,
     ):
         super().__init__(
             url=url,
@@ -47,6 +49,14 @@ class PostRoute(RouteBase):
         self.custom_before_insert = custom_before_insert
         self.custom_after_insert = custom_after_insert
         self.retrieve_after_insert = retrieve_after_insert
+        self._insert_function_type_class = insert_function_type_class
+
+        if self._insert_function_type_class is not None and not issubclass(
+            self._insert_function_type_class, InsertFunctionTypeBase
+        ):
+            raise ValueError(
+                "A classe informada em insert_function_type_class deve herdar de InsertFunctionTypeBase."
+            )
 
     def _partition_filters(self, data):
         # Montando os filtros de particao de dados
@@ -97,6 +107,10 @@ class PostRoute(RouteBase):
 
                 # Construindo os objetos
                 service = self._get_service(factory)
+                if self._insert_function_type_class is not None:
+                    service.set_insert_function_type_class(
+                        self._insert_function_type_class
+                    )
 
                 if len(data_pack) == 1:
                     # Chamando o service (método insert)

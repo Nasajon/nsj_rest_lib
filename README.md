@@ -106,9 +106,16 @@ make code_tests
 ```
 
 Obsevações:
-* Este tipo de teste faz mock de BD e etc.
+* Este tipo de teste faz mock de BD e etc
   
 ## Histórico de versões
+
+### 5.1.0
+
+- Implementação do insert e update por meio de funções de banco (PL/PGSQL). Ver artefatos:
+    - InsertFunctionType
+    - UpdateFunctionType
+    - E seus usos no DTO, PostRoute e PutRoute.
 
 ### 5.0.2
 
@@ -178,3 +185,7 @@ Obsevações:
         ],
     )
 ```
+
+
+## TODO
+
