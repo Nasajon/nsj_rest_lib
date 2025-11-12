@@ -1,8 +1,12 @@
 import uuid
 
 from nsj_rest_lib.decorator.insert_function_type import InsertFunctionType
+from nsj_rest_lib.decorator.update_function_type import UpdateFunctionType
 from nsj_rest_lib.descriptor.function_field import FunctionField
-from nsj_rest_lib.entity.function_type_base import InsertFunctionTypeBase
+from nsj_rest_lib.entity.function_type_base import (
+    InsertFunctionTypeBase,
+    UpdateFunctionTypeBase,
+)
 
 
 @InsertFunctionType(
@@ -18,6 +22,25 @@ class ClassificacaoFinanceiraInsertType(InsertFunctionTypeBase):
     natureza: int = FunctionField()
     paiid: uuid.UUID = FunctionField(type_field_name="classificacaopai")
     grupoempresarial: uuid.UUID = FunctionField()
+    transferencia: bool = FunctionField()
+    repasse_deducao: bool = FunctionField()
+    rendimentos: bool = FunctionField()
+
+
+@UpdateFunctionType(
+    type_name="teste.tclassificacaofinanceiraalterar",
+    function_name="teste.api_classificacaofinanceiraalterar",
+)
+class ClassificacaoFinanceiraUpdateType(UpdateFunctionTypeBase):
+    classificacao: uuid.UUID = FunctionField()
+    classificacaopai: uuid.UUID = FunctionField()
+    grupoempresarial: uuid.UUID = FunctionField()
+    codigo: str = FunctionField()
+    descricao: str = FunctionField()
+    codigocontabil: str = FunctionField()
+    resumo: str = FunctionField()
+    situacao: int = FunctionField()
+    natureza: int = FunctionField()
     transferencia: bool = FunctionField()
     repasse_deducao: bool = FunctionField()
     rendimentos: bool = FunctionField()

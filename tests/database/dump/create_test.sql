@@ -704,3 +704,97 @@ BEGIN
 END;
 $function$
 ;
+
+--------------------------------------------------
+-- Classificação Financeira UPDATE
+--------------------------------------------------
+
+CREATE TYPE teste.tclassificacaofinanceiraalterar AS (
+	classificacao text,
+	classificacaopai text,
+	grupoempresarial text,
+	codigo varchar(16),
+	descricao varchar(150),
+	codigocontabil varchar(20),
+	resumo varchar(30),
+	situacao int4,
+	natureza int4,
+	transferencia bool,
+	repasse_deducao bool,
+	rendimentos bool);
+
+CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiraalterar(a_objeto teste.tclassificacaofinanceiraalterar)
+ RETURNS teste.trecibo
+ LANGUAGE plpgsql
+AS $function$
+	DECLARE VAR_GRUPOEMPRESARIAL UUID;
+	DECLARE VAR_ID UUID;
+	DECLARE VAR_CLASSIFICACAO_PAI_ID UUID;
+	DECLARE VAR_RECIBO teste.TRECIBO;
+BEGIN      
+
+	--VERIFICA CAMPOS OBRIGATORIOS
+	IF ( a_objeto.codigo IS NULL ) OR ( a_objeto.codigo = '' ) THEN
+		VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('FALHA', 'Código não informado.' );
+		RETURN VAR_RECIBO;
+        END IF;
+
+	IF ( a_objeto.classificacao IS NULL ) OR ( a_objeto.classificacao = '' ) THEN
+		VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('FALHA', 'Identificador da classificação não informado.' );
+		RETURN VAR_RECIBO;
+	END IF;
+
+	IF a_objeto.grupoempresarial IS NOT NULL THEN
+		VAR_GRUPOEMPRESARIAL := a_objeto.grupoempresarial::uuid;
+	ELSE
+		VAR_GRUPOEMPRESARIAL := NULL;
+	END IF;
+
+	VAR_ID := a_objeto.classificacao::uuid;
+
+	IF ( a_objeto.situacao IS NULL ) THEN
+		VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('FALHA', 'Situação não informada.' );
+		RETURN VAR_RECIBO;
+	END IF;
+
+	IF NOT ( a_objeto.situacao IS NULL ) AND ( a_objeto.situacao NOT IN (0,1) ) THEN
+		VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('FALHA', 'Situação da classificação deve ser informada com um dos seguintes valores[0,1].' );
+		RETURN VAR_RECIBO;
+        END IF;
+
+	IF ( a_objeto.natureza IS NULL ) THEN
+		VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('FALHA', 'Natureza não informada.' );
+		RETURN VAR_RECIBO;
+	END IF;
+
+	IF NOT ( a_objeto.natureza IS NULL ) AND ( a_objeto.natureza NOT IN (0,1,2) ) THEN
+		VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('FALHA', 'Natureza da classificação deve ser informadas com um dos seguintes valores[0,1,2].' );
+		RETURN VAR_RECIBO;
+        END IF;
+
+        IF a_objeto.classificacaopai IS NOT NULL THEN
+		VAR_CLASSIFICACAO_PAI_ID := a_objeto.classificacaopai::uuid;
+	ELSE
+		VAR_CLASSIFICACAO_PAI_ID := NULL;
+	END IF;
+
+	--ALTERA A CLASSIFICACAO FINANCEIRA
+	UPDATE teste.CLASSIFICACOESFINANCEIRAS SET 
+		CODIGO = a_objeto.codigo, 
+		DESCRICAO = COALESCE( a_objeto.descricao, NULL ), 
+		CODIGOCONTABIL = COALESCE( a_objeto.codigocontabil, NULL ), 
+		RESUMO = COALESCE( a_objeto.resumo, NULL ), 
+		SITUACAO = a_objeto.situacao, 
+		NATUREZA = a_objeto.natureza, 
+		PAIID = VAR_CLASSIFICACAO_PAI_ID,
+		TRANSFERENCIA = COALESCE(a_objeto.transferencia, FALSE),
+		REPASSE_DEDUCAO = COALESCE(a_objeto.repasse_deducao, FALSE),
+		RENDIMENTOS = COALESCE(a_objeto.rendimentos, FALSE)
+        WHERE CLASSIFICACAOFINANCEIRA = VAR_ID
+          AND GRUPOEMPRESARIAL = VAR_GRUPOEMPRESARIAL; 
+		
+	VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('OK', 'Classificação financeira alterada com sucesso.' );
+	RETURN VAR_RECIBO;
+END;
+$function$
+;
