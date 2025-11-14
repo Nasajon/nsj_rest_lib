@@ -14,7 +14,6 @@ from nsj_rest_lib.exception import (
     DTOListFieldConfigException,
     NotFoundException,
 )
-from nsj_rest_lib.util.fields_util import FieldsTree
 
 from .service_base_partial_of import ServiceBasePartialOf, PartialExtensionWriteData
 
@@ -294,7 +293,7 @@ class ServiceBaseSave(ServiceBasePartialOf):
                     **obj_values, seq=next_value
                 )
 
-                if field.expected_type == int:
+                if field.expected_type is int:
                     setattr(dto, field.name, int(value))
                 else:
                     setattr(dto, field.name, value)
@@ -442,7 +441,7 @@ class ServiceBaseSave(ServiceBasePartialOf):
                     item["is_detail_insert"],
                     item["detail_dto"],
                     False,
-                    partial_update,
+                    partial_update if not item["is_detail_insert"] else False,
                     relation_field_map,
                     item["detail_pk"],
                     aditional_filters=aditional_filters,
