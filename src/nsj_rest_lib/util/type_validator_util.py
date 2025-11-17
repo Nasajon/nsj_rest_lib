@@ -158,6 +158,12 @@ class TypeValidatorUtil:
             # Date
             # Desprezando hora , minuto e segundo (quanto é recebida uma data + hora, para campo de data)
             value = datetime.date(value.year, value.month, value.day)
+        elif obj.expected_type is datetime.time and isinstance(
+            value, datetime.datetime
+        ):
+            # Time
+            # Desprezando data (quanto é recebida uma data + hora, para campo de hora)
+            value = datetime.time(value.hour, value.minute, value.second)
         elif obj.expected_type is uuid.UUID and isinstance(value, str):
             # UUID
             # Verificando se pode ser alterado de str para UUID
