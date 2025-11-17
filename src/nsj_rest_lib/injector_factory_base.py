@@ -22,7 +22,7 @@ class NsjInjectorFactoryBase:
         self._db_connection.close()
 
     def db_adapter(self):
-        from nsj_rest_lib.util.db_adapter2 import DBAdapter2
+        from nsj_gcf_utils.db_adapter2 import DBAdapter2
 
         return DBAdapter2(self._db_connection)
 

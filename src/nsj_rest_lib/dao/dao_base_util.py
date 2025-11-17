@@ -4,12 +4,12 @@ import uuid
 
 from typing import Any, Dict, List, Tuple, Type
 
+from nsj_gcf_utils.db_adapter2 import DBAdapter2
 
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.entity.filter import Filter
 from nsj_rest_lib.settings import REST_LIB_AUTO_INCREMENT_TABLE
-from nsj_rest_lib.util.db_adapter2 import DBAdapter2
 from nsj_rest_lib.util.join_aux import JoinAux
 from nsj_rest_lib.util.order_spec import (
     OrderFieldSource,

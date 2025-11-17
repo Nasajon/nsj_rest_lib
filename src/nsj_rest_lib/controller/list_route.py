@@ -13,9 +13,9 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger, DEFAULT_PAGE_SIZE
-from nsj_rest_lib.util.log_time import log_time
 
 from nsj_gcf_utils.json_util import json_dumps
+from nsj_gcf_utils.log_time import log_time
 from nsj_gcf_utils.pagination_util import page_body, PaginationException
 from nsj_gcf_utils.rest_error_util import format_json_error
 
@@ -80,7 +80,7 @@ class ListRoute(RouteBase):
                     )
                 )
 
-                expands = RouteBase.parse_expands(self._dto_class, args.get('expand'))
+                expands = RouteBase.parse_expands(self._dto_class, args.get("expand"))
 
                 # Tratando dos filters e search_query
                 filters = {}
@@ -121,14 +121,11 @@ class ListRoute(RouteBase):
                     None,
                     filters,
                     search_query=search_query,
-                    expands=expands
+                    expands=expands,
                 )
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                dict_data = [
-                    dto.convert_to_dict(fields, expands)
-                    for dto in data
-                ]
+                dict_data = [dto.convert_to_dict(fields, expands) for dto in data]
 
                 # Recuperando o campo referente à chave primária do DTO
                 pk_field = self._dto_class.pk_field

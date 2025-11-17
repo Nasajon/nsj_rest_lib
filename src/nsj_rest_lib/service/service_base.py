@@ -1,5 +1,7 @@
 import typing as ty
 
+from nsj_gcf_utils.db_adapter2 import DBAdapter2
+
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
@@ -8,7 +10,6 @@ from nsj_rest_lib.entity.function_type_base import (
     UpdateFunctionTypeBase,
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
-from nsj_rest_lib.util.db_adapter2 import DBAdapter2
 
 from .service_base_delete import ServiceBaseDelete
 from .service_base_get import ServiceBaseGet
@@ -38,12 +39,8 @@ class ServiceBase(
         dto_class: ty.Type[DTOBase],
         entity_class: ty.Type[EntityBase],
         dto_post_response_class: DTOBase = None,
-        insert_function_type_class: ty.Optional[
-            ty.Type[InsertFunctionTypeBase]
-        ] = None,
-        update_function_type_class: ty.Optional[
-            ty.Type[UpdateFunctionTypeBase]
-        ] = None,
+        insert_function_type_class: ty.Optional[ty.Type[InsertFunctionTypeBase]] = None,
+        update_function_type_class: ty.Optional[ty.Type[UpdateFunctionTypeBase]] = None,
     ):
         self._injector_factory = injector_factory
         self._dao = dao
@@ -64,12 +61,8 @@ class ServiceBase(
         dto_class: ty.Type[DTOBase],
         entity_class: ty.Type[EntityBase],
         dto_post_response_class: DTOBase = None,
-        insert_function_type_class: ty.Optional[
-            ty.Type[InsertFunctionTypeBase]
-        ] = None,
-        update_function_type_class: ty.Optional[
-            ty.Type[UpdateFunctionTypeBase]
-        ] = None,
+        insert_function_type_class: ty.Optional[ty.Type[InsertFunctionTypeBase]] = None,
+        update_function_type_class: ty.Optional[ty.Type[UpdateFunctionTypeBase]] = None,
     ):
         """
         Esse construtor alternativo, evita a necessidade de passar um InjectorFactory,

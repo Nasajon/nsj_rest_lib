@@ -3,6 +3,8 @@ import uuid
 
 from typing import Dict, List, Tuple
 
+from nsj_gcf_utils.log_time import log_time
+
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.entity.filter import Filter
@@ -11,7 +13,6 @@ from nsj_rest_lib.exception import (
     NotFoundException,
 )
 from nsj_rest_lib.util.join_aux import JoinAux
-from nsj_rest_lib.util.log_time import log_time
 from nsj_rest_lib.util.order_spec import (
     OrderFieldSource,
     OrderFieldSpec,
