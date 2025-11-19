@@ -639,7 +639,8 @@ class DTOBase(abc.ABC):
             else:
                 if isinstance(getattr(self, field), oto_field.expected_type):
                     result[field] = getattr(self, field).convert_to_dict(
-                        fields_tree[field] if field in fields_tree else None
+                        fields_tree[field] if field in fields_tree else None,
+                        expands[field] if field in expands else None
                     )
                     pass
                 pass

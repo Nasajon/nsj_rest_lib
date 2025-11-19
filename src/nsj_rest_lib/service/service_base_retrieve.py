@@ -746,7 +746,7 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
             )
 
             related_map: ty.Dict[str, ty.Dict[str, ty.Any]] = {
-                str(getattr(x, pk_field)): x.convert_to_dict(local_fields)
+                str(getattr(x, pk_field)): x
                 for x in related_dto_list
             }
             # NOTE: I'm assuming pk_field of x will never be NULL, because
