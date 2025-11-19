@@ -541,6 +541,7 @@ class DTO:
                     validator=attr.validator,
                     partition_data=attr.partition_data,
                 )
+                attr.field.name = str(key)
 
                 cls.fields_map[key] = attr.field
                 if attr.field.entity_field is not None:
