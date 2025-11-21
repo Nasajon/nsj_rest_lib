@@ -89,6 +89,14 @@ class ServiceBaseGet(ServiceBaseRetrieve):
                 partition_fields,
             )
 
+        # NOTE: This has to be done first so the DTOAggregator can have
+        #           the same name as a field in the entity
+        for k, v in self._dto_class.aggregator_fields_map.items():
+            if k not in fields["root"]:
+                continue
+            setattr(entity, k, v.expected_type(entity, escape_validator=True))
+            pass
+
         # Convertendo para DTO
         if not override_data:
             dto = self._dto_class(entity, escape_validator=True)
@@ -105,12 +113,6 @@ class ServiceBaseGet(ServiceBaseRetrieve):
                 )
 
             dto = dto_list[0]
-
-        for k, v in self._dto_class.aggregator_fields_map.items():
-            if k not in fields["root"]:
-                continue
-            setattr(dto, k, v.expected_type(entity, escape_validator=True))
-            pass
 
         # Tratando das propriedades de lista
         if len(self._dto_class.list_fields_map) > 0:
