@@ -1,4 +1,5 @@
 import os
+import typing as ty
 
 from flask import request
 from typing import Callable
@@ -48,6 +49,7 @@ class PatchRoute(RouteBase):
         id: str,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
+        **kwargs: ty.Any
     ):
         """
         Tratando requisições HTTP Put para inserir uma instância de uma entidade.
@@ -60,6 +62,9 @@ class PatchRoute(RouteBase):
                     data = request.json
                 else:
                     data = body
+
+                if len(kwargs) > 0:
+                    data.update(kwargs)
 
                 # Convertendo os dados para o DTO
                 data = self._dto_class(
@@ -75,7 +80,7 @@ class PatchRoute(RouteBase):
                         setattr(data, field_name, getattr(data, field_name))
 
                 # Montando os filtros de particao de dados
-                partition_filters = {}
+                partition_filters = kwargs.copy()
 
                 for field in data.partition_fields:
                     value = getattr(data, field)
