@@ -1,4 +1,5 @@
 import os
+import typing as ty
 from flask import request
 from typing import Callable
 
@@ -98,6 +99,7 @@ class DeleteRoute(RouteBase):
         id: str = None,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
+        **kwargs: ty.Any
     ):
         """
         Tratando requisições HTTP Delete para excluir uma instância de uma entidade.
@@ -119,6 +121,7 @@ class DeleteRoute(RouteBase):
                         request_data = [request_data]
 
                 partition_filters = self._partition_filters(args)
+                partition_filters.update(kwargs)
 
                 # Construindo os objetos
                 service = self._get_service(factory)
