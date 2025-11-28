@@ -39,10 +39,11 @@ class DeleteRoute(RouteBase):
         )
         self.custom_before_delete = custom_before_delete
 
-    def _partition_filters(self, args):
+    def _partition_filters(self, args, dto_class: DTOBase = None):
+        dto_class = dto_class or self._dto_class
         partition_filters = {}
         # Tratando campos de particionamento
-        for field in self._dto_class.partition_fields:
+        for field in dto_class.partition_fields:
             value = args.get(field)
             if value is None:
                 raise MissingParameterException(field)
@@ -98,6 +99,7 @@ class DeleteRoute(RouteBase):
         id: str = None,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
+        **kwargs,
     ):
         """
         Tratando requisições HTTP Delete para excluir uma instância de uma entidade.
@@ -105,6 +107,23 @@ class DeleteRoute(RouteBase):
 
         with self._injector_factory() as factory:
             try:
+                ctx = self._resolve_nested_route_context(id, kwargs)
+
+                dto_class = ctx["dto_class"]
+                entity_class = ctx["entity_class"]
+                service_name = ctx["service_name"]
+                relation_filters = ctx["relation_filters"]
+                child_id = ctx["target_id"]
+
+                if ctx["matched"]:
+                    relation_field_name = ctx["relation_field_name"]
+                    relation_value = ctx["relation_value"]
+                    if relation_field_name is not None and relation_value is None:
+                        raise MissingParameterException(relation_field_name)
+                else:
+                    relation_field_name = None
+                    relation_value = None
+
                 # Recuperando os parâmetros básicos
                 if os.getenv("ENV", "").lower() != "erp_sql":
                     args = request.args
@@ -118,14 +137,24 @@ class DeleteRoute(RouteBase):
                     if not isinstance(request_data, list):
                         request_data = [request_data]
 
-                partition_filters = self._partition_filters(args)
+                partition_filters = self._partition_filters(args, dto_class)
+
+                for rel_field, rel_value in relation_filters.items():
+                    if rel_value is not None:
+                        partition_filters[rel_field] = rel_value
 
                 # Construindo os objetos
-                service = self._get_service(factory)
+                service = self._get_service(
+                    factory,
+                    dto_class=dto_class,
+                    entity_class=entity_class,
+                    service_name=service_name,
+                )
 
-                if id is not None:
+                target_id = child_id if ctx["matched"] else id
+                if target_id is not None:
                     service.delete(
-                        id,
+                        target_id,
                         partition_filters,
                         custom_before_delete=self.custom_before_delete,
                     )

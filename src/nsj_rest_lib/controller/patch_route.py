@@ -48,6 +48,7 @@ class PatchRoute(RouteBase):
         id: str,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
+        **kwargs,
     ):
         """
         Tratando requisições HTTP Put para inserir uma instância de uma entidade.
@@ -55,14 +56,38 @@ class PatchRoute(RouteBase):
 
         with self._injector_factory() as factory:
             try:
+                ctx = self._resolve_nested_route_context(id, kwargs)
+
+                dto_class = ctx["dto_class"]
+                entity_class = ctx["entity_class"]
+                dto_response_class = ctx["dto_response_class"]
+                service_name = ctx["service_name"]
+                relation_filters = ctx["relation_filters"]
+                child_id = ctx["target_id"]
+
+                if ctx["matched"]:
+                    relation_field_name = ctx["relation_field_name"]
+                    relation_value = ctx["relation_value"]
+                    if relation_field_name is not None and relation_value is None:
+                        raise MissingParameterException(relation_field_name)
+                else:
+                    relation_field_name = None
+                    relation_value = None
+
                 # Recuperando os dados do corpo da requisição
                 if os.getenv("ENV", "").lower() != "erp_sql":
                     data = request.json
                 else:
                     data = body
 
+                if isinstance(data, dict):
+                    data = dict(data)
+                    for rel_field, rel_value in relation_filters.items():
+                        if rel_value is not None and rel_field not in data:
+                            data[rel_field] = rel_value
+
                 # Convertendo os dados para o DTO
-                data = self._dto_class(
+                data = dto_class(
                     validate_read_only=True,
                     escape_validator=True,
                     **data,
@@ -84,13 +109,31 @@ class PatchRoute(RouteBase):
                     elif value is not None:
                         partition_filters[field] = value
 
+                for rel_field, rel_value in relation_filters.items():
+                    if rel_value is not None:
+                        partition_filters = {**partition_filters}
+                        partition_filters[rel_field] = rel_value
+
                 # Construindo os objetos
-                service = self._get_service(factory)
+                service = self._get_service(
+                    factory,
+                    dto_class=dto_class,
+                    entity_class=entity_class,
+                    dto_response_class=dto_response_class,
+                    service_name=service_name,
+                )
+
+                if ctx["matched"]:
+                    target_id = child_id or getattr(data, data.pk_field)
+                    if target_id is None:
+                        raise MissingParameterException(dto_class.pk_field)
+                else:
+                    target_id = id
 
                 # Chamando o service (método insert)
                 data = service.partial_update(
                     dto=data,
-                    id=id,
+                    id=target_id,
                     aditional_filters=partition_filters,
                     custom_before_update=self.custom_before_update,
                     custom_after_update=self.custom_after_update,

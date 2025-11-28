@@ -75,6 +75,7 @@ class PutRoute(RouteBase):
         id: str = None,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
+        **kwargs,
     ):
         """
         Tratando requisições HTTP Put para inserir uma instância de uma entidade.
@@ -82,6 +83,25 @@ class PutRoute(RouteBase):
 
         with self._injector_factory() as factory:
             try:
+                ctx = self._resolve_nested_route_context(id, kwargs)
+
+                dto_class = ctx["dto_class"]
+                entity_class = ctx["entity_class"]
+                dto_response_class = ctx["dto_response_class"]
+                service_name = ctx["service_name"]
+                update_function_type_class = ctx["update_function_type"] or self._update_function_type_class
+                relation_filters = ctx["relation_filters"]
+                child_id = ctx["target_id"]
+
+                if ctx["matched"]:
+                    relation_field_name = ctx["relation_field_name"]
+                    relation_value = ctx["relation_value"]
+                    if relation_field_name is not None and relation_value is None:
+                        raise MissingParameterException(relation_field_name)
+                else:
+                    relation_field_name = None
+                    relation_value = None
+
                 # Recuperando os dados do corpo da requisição
                 if os.getenv("ENV", "").lower() != "erp_sql":
                     request_data = request.json
@@ -102,11 +122,16 @@ class PutRoute(RouteBase):
                 lst_data = []
                 partition_filters = None
                 for item in request_data:
+                    item_data = dict(item)
 
-                    item["generate_default_pk_value"] = False
+                    item_data["generate_default_pk_value"] = False
+
+                    for rel_field, rel_value in relation_filters.items():
+                        if rel_value is not None and rel_field not in item_data:
+                            item_data[rel_field] = rel_value
 
                     # Convertendo os dados para o DTO
-                    data = self._dto_class(**item)
+                    data = dto_class(**item_data)
 
                     # Montando os filtros de particao de dados
                     if partition_filters is None:
@@ -114,19 +139,36 @@ class PutRoute(RouteBase):
 
                     data_pack.append(data)
 
+                aditional_filters = {**partition_filters}
+                for rel_field, rel_value in relation_filters.items():
+                    if rel_value is not None and rel_field not in aditional_filters:
+                        aditional_filters[rel_field] = rel_value
+
                 # Construindo os objetos
-                service = self._get_service(factory)
-                if self._update_function_type_class is not None:
-                    service.set_update_function_type_class(
-                        self._update_function_type_class
-                    )
+                service = self._get_service(
+                    factory,
+                    dto_class=dto_class,
+                    entity_class=entity_class,
+                    dto_response_class=dto_response_class,
+                    service_name=service_name,
+                    update_function_type_class=update_function_type_class,
+                )
+                if update_function_type_class is not None:
+                    service.set_update_function_type_class(update_function_type_class)
 
                 if len(data_pack) == 1:
+                    if ctx["matched"]:
+                        target_id = child_id or getattr(data, data.pk_field)
+                        if target_id is None:
+                            raise MissingParameterException(dto_class.pk_field)
+                    else:
+                        target_id = id if id is not None else getattr(data, data.pk_field)
+
                     # Chamando o service (método insert)
                     data = service.update(
                         dto=data,
-                        id=id if id is not None else getattr(data, data.pk_field),
-                        aditional_filters=partition_filters,
+                        id=target_id,
+                        aditional_filters=aditional_filters,
                         custom_before_update=self.custom_before_update,
                         custom_after_update=self.custom_after_update,
                         upsert=is_upsert,
@@ -147,7 +189,7 @@ class PutRoute(RouteBase):
                 else:
                     data = service.update_list(
                         dtos=data_pack,
-                        aditional_filters=partition_filters,
+                        aditional_filters=aditional_filters,
                         custom_before_update=self.custom_before_update,
                         custom_after_update=self.custom_after_update,
                         upsert=is_upsert,

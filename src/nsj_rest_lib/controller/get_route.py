@@ -47,6 +47,7 @@ class GetRoute(RouteBase):
         id: str,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
+        **kwargs,
     ):
         """
         Tratando requisições HTTP Get para recuperar uma instância de uma entidade.
@@ -54,6 +55,18 @@ class GetRoute(RouteBase):
 
         with self._injector_factory() as factory:
             try:
+                ctx = self._resolve_nested_route_context(id, kwargs)
+
+                dto_class = ctx["dto_class"]
+                entity_class = ctx["entity_class"]
+                dto_response_class = ctx["dto_response_class"]
+                service_name = ctx["service_name"]
+                target_id = ctx["target_id"]
+                relation_filters = ctx["relation_filters"]
+
+                if ctx["matched"] and target_id is None:
+                    raise MissingParameterException(dto_class.pk_field)
+
                 # Recuperando os parâmetros básicos
                 if os.getenv("ENV", "").lower() != "erp_sql":
                     args = request.args
@@ -62,37 +75,46 @@ class GetRoute(RouteBase):
 
                 # Tratando dos fields
                 fields = args.get("fields")
-                fields = RouteBase.parse_fields(self._dto_class, fields)
+                fields = RouteBase.parse_fields(dto_class, fields)
 
-                expands = RouteBase.parse_expands(self._dto_class, args.get('expand'))
+                expands = RouteBase.parse_expands(dto_class, args.get('expand'))
 
                 partition_fields = {}
                 # Tratando campos de particionamento
-                for field in self._dto_class.partition_fields:
+                for field in dto_class.partition_fields:
                     value = args.get(field)
                     if value is None:
                         raise MissingParameterException(field)
 
                     partition_fields[field] = value
 
+                if relation_filters:
+                    partition_fields.update(relation_filters)
+
                 # Tratando do filtro de conjunto
-                if self._dto_class.conjunto_field is not None:
-                    value = args.get(self._dto_class.conjunto_field)
+                if dto_class.conjunto_field is not None:
+                    value = args.get(dto_class.conjunto_field)
                     if value is None:
                         raise MissingParameterException(field)
                     elif value is not None:
-                        partition_fields[self._dto_class.conjunto_field] = value
+                        partition_fields[dto_class.conjunto_field] = value
 
                 # Tratando dos campos de data_override
-                self._validade_data_override_parameters(args)
+                self._validade_data_override_parameters(args, dto_class)
 
                 # Construindo os objetos
-                service = self._get_service(factory)
+                service = self._get_service(
+                    factory,
+                    dto_class=dto_class,
+                    entity_class=entity_class,
+                    dto_response_class=dto_response_class,
+                    service_name=service_name,
+                )
 
                 # Chamando o service (método get)
                 # TODO Rever parametro order_fields abaixo
                 data = service.get(
-                    id,
+                    target_id,
                     partition_fields,
                     fields,
                     expands=expands,
