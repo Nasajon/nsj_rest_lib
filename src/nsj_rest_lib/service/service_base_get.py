@@ -3,6 +3,7 @@ import typing as ty
 from typing import Any, Dict
 
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.exception import ConflictException
 from nsj_rest_lib.util.fields_util import FieldsTree
 
 from .service_base_retrieve import ServiceBaseRetrieve
