@@ -1,3 +1,4 @@
+import uuid
 import copy
 import functools
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
 from nsj_rest_lib.descriptor.dto_one_to_one_field import DTOOneToOneField
 from nsj_rest_lib.descriptor.conjunto_type import ConjuntoType
+from nsj_rest_lib.descriptor.dto_field_validators import DTOFieldValidators
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_left_join_field import DTOLeftJoinField, LeftJoinQuery
@@ -554,6 +556,29 @@ class DTO:
                     cls.partition_fields.add(key)
                     pass
                 pass
+
+        for k, v in cls.list_fields_map.items():
+            # TODO: Check if child already has a field with same name
+            key_in_child: str = v.related_entity_field
+            child_dto: DTOBase = v.dto_type
+
+            # TODO: Add suport for PKs that are not uuid.UUID
+            field = DTOField(
+                resume=False, validator=DTOFieldValidators().validate_uuid
+            )
+
+            field.storage_name = key_in_child
+            field.name = key_in_child
+
+            # TODO: Add suport for PKs that are not uuid.UUID
+            field.expected_type = uuid.UUID
+
+            self._check_filters(child_dto, key_in_child, field)
+
+            child_dto.fields_map[key_in_child] = field
+            child_dto.search_fields.add(key_in_child)
+            child_dto.integrity_check_fields_map[key_in_child] = attr
+            pass
 
         # Setting fixed filters
         setattr(cls, "fixed_filters", self._fixed_filters)
