@@ -1,4 +1,5 @@
 import os
+import typing as ty
 from flask import request
 from typing import Callable, Type
 
@@ -75,6 +76,7 @@ class PutRoute(RouteBase):
         id: str = None,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
+        **kwargs: ty.Any
     ):
         """
         Tratando requisições HTTP Put para inserir uma instância de uma entidade.
@@ -102,6 +104,8 @@ class PutRoute(RouteBase):
                 lst_data = []
                 partition_filters = None
                 for item in request_data:
+                    if len(kwargs) > 0:
+                        item.update(kwargs)
 
                     item["generate_default_pk_value"] = False
 
@@ -113,6 +117,12 @@ class PutRoute(RouteBase):
                         partition_filters = self._partition_filters(data)
 
                     data_pack.append(data)
+
+                if partition_filters is None:
+                    if len(kwargs) > 0:
+                        partition_filters = kwargs.copy()
+                else:
+                    partition_filters.update(kwargs)
 
                 # Construindo os objetos
                 service = self._get_service(factory)
