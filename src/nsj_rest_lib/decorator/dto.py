@@ -562,16 +562,16 @@ class DTO:
             key_in_child: str = v.related_entity_field
             child_dto: DTOBase = v.dto_type
 
-            # TODO: Add suport for PKs that are not uuid.UUID
+            relation_field: DTOField = cls.fields_map[v.relation_key_field]
+
             field = DTOField(
-                resume=False, validator=DTOFieldValidators().validate_uuid
+                resume=False, validator=relation_field.validator
             )
 
             field.storage_name = key_in_child
             field.name = key_in_child
 
-            # TODO: Add suport for PKs that are not uuid.UUID
-            field.expected_type = uuid.UUID
+            field.expected_type = relation_field.expected_type
 
             self._check_filters(child_dto, key_in_child, field)
 
