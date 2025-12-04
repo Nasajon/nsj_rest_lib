@@ -666,10 +666,12 @@ class DTOBase(abc.ABC):
             value = getattr(self, field, None)
             if value is None:
                 value = []
-
+            internal_expands =expands[field] if field in expands else None
+            if internal_expands is not None:
+                internal_expands = clone_fields_tree(internal_expands)
             # Convetendo a lista de DTOs aninhados
             result[field] = [
-                item.convert_to_dict(clone_fields_tree(internal_fields), just_resume)
+                item.convert_to_dict(clone_fields_tree(internal_fields),  internal_expands, just_resume)
                 for item in value
             ]
 
