@@ -144,14 +144,20 @@ class DTOBase(abc.ABC):
             entity_field = field
             if entity is not None or kwargs_as_entity:
                 if (
-                    not aux_dto_field.related_dto_field
-                    in aux_dto_field.dto_type.fields_map
+                    aux_dto_field.related_dto_field
+                    not in aux_dto_field.dto_type.fields_map
                 ):
                     continue
-
-                entity_field = aux_dto_field.dto_type.fields_map[
-                    aux_dto_field.related_dto_field
-                ].get_entity_field_name()
+                alias = self.__class__.sql_join_fields_map_to_query[
+                    f"{aux_dto_field.dto_type}____{aux_dto_field.entity_type}____{aux_dto_field.entity_relation_owner}____{aux_dto_field.join_type}"
+                ]
+                entity_field = (
+                    alias.sql_alias
+                    + "_"
+                    + aux_dto_field.dto_type.fields_map[
+                        aux_dto_field.related_dto_field
+                    ].get_entity_field_name()
+                )
 
                 # Verificando se o campo carece de conversão customizada
                 if aux_dto_field.convert_from_entity is not None:

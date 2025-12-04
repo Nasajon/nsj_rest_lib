@@ -196,7 +196,7 @@ class ServiceBaseList(ServiceBaseRetrieve):
                     setattr(entity, k, v.expected_type(entity, escape_validator=True))
                     pass
 
-                with log_time_context(f"Convertendo um único DTO"):
+                with log_time_context("Convertendo um único DTO"):
                     dto = self._dto_class(entity, escape_validator=True)  # type: ignore
 
                     # FIXME GAMBIARRA! A ideia aqui foi recuperar propriedades diretamente da Entity
