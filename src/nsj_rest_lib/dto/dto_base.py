@@ -195,10 +195,8 @@ class DTOBase(abc.ABC):
             aux_dto_field = self.__class__.object_fields_map[field]
 
             # Atribuindo o valor à propriedade do DTO
-            if field in kwargs:
-                if kwargs[field] is None:
-                    setattr(self, field, None)
-                elif not isinstance(kwargs[field], dict):
+            if field in kwargs and kwargs[field] is not None:
+                if not isinstance(kwargs[field], dict):
                     raise ValueError(
                         f"O campo {field} deveria ser um dicionário com os campos da classe {aux_dto_field.dto_type}."
                     )
