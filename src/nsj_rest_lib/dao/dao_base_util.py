@@ -70,8 +70,11 @@ class DAOBaseUtil:
             ]
 
         if table_alias != "t0":
-            for idx, field in enumerate(fields):
-                fields[idx] += f" as {table_alias}_{field}"
+            # O fields_temp é necessário para evitar modificar o fields original
+            fields_temp = []
+            for field in fields:
+                fields_temp.append(f"{field} as {table_alias}_{field}")
+            fields = fields_temp
 
         resp = f", {table_alias}.".join(fields)
         return f"{table_alias}.{resp}"
@@ -289,7 +292,7 @@ class DAOBaseUtil:
             # Ajustando os fields
             if join_aux.fields:
                 fields_sql = self._sql_fields(
-                    fields=join_aux.fields.copy(), table_alias=join_aux.alias
+                    fields=join_aux.fields, table_alias=join_aux.alias
                 )
 
                 # Adicionando os fields no SQL geral
