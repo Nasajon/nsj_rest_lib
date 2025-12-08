@@ -14,6 +14,7 @@ from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
 from nsj_rest_lib.descriptor.dto_sql_join_field import DTOSQLJoinField, SQLJoinQuery
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.settings import ENV_MULTIDB
+from nsj_rest_lib.util.sql_utils import montar_chave_map_sql_join
 
 
 @dataclass
@@ -727,9 +728,8 @@ class DTO:
 
         # Verificando se o objeto de query, relativo a esse campo,
         # já estava no mapa (e colocando, caso negativo)
-        map_key = f"{attr.dto_type}____{attr.entity_type}____{attr.entity_relation_owner}____{attr.join_type}"
         sql_join_query = sql_join_fields_map_to_query.setdefault(
-            map_key, SQLJoinQuery()
+            montar_chave_map_sql_join(attr), SQLJoinQuery()
         )
 
         # Preenchendo as propriedades que serão úteis para as queries

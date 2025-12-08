@@ -18,6 +18,7 @@ from nsj_rest_lib.util.fields_util import (
     merge_fields_tree,
     normalize_fields_tree,
 )
+from nsj_rest_lib.util.sql_utils import montar_chave_map_sql_join
 
 
 class DTOBase(abc.ABC):
@@ -149,7 +150,7 @@ class DTOBase(abc.ABC):
                 ):
                     continue
                 alias = self.__class__.sql_join_fields_map_to_query[
-                    f"{aux_dto_field.dto_type}____{aux_dto_field.entity_type}____{aux_dto_field.entity_relation_owner}____{aux_dto_field.join_type}"
+                    montar_chave_map_sql_join(aux_dto_field)
                 ]
                 entity_field = (
                     alias.sql_alias
