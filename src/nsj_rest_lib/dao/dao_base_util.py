@@ -69,6 +69,13 @@ class DAOBaseUtil:
                 if not callable(getattr(entity, k, None)) and not k.startswith("_")
             ]
 
+        if table_alias != "t0":
+            # O fields_temp é necessário para evitar modificar o fields original
+            fields_temp = []
+            for field in fields:
+                fields_temp.append(f"{field} as {table_alias}_{field}")
+            fields = fields_temp
+
         resp = f", {table_alias}.".join(fields)
         return f"{table_alias}.{resp}"
 

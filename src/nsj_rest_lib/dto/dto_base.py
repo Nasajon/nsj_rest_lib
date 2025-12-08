@@ -18,6 +18,7 @@ from nsj_rest_lib.util.fields_util import (
     merge_fields_tree,
     normalize_fields_tree,
 )
+from nsj_rest_lib.util.sql_utils import montar_chave_map_sql_join
 
 
 class DTOBase(abc.ABC):
@@ -144,14 +145,20 @@ class DTOBase(abc.ABC):
             entity_field = field
             if entity is not None or kwargs_as_entity:
                 if (
-                    not aux_dto_field.related_dto_field
-                    in aux_dto_field.dto_type.fields_map
+                    aux_dto_field.related_dto_field
+                    not in aux_dto_field.dto_type.fields_map
                 ):
                     continue
-
-                entity_field = aux_dto_field.dto_type.fields_map[
-                    aux_dto_field.related_dto_field
-                ].get_entity_field_name()
+                alias = self.__class__.sql_join_fields_map_to_query[
+                    montar_chave_map_sql_join(aux_dto_field)
+                ]
+                entity_field = (
+                    alias.sql_alias
+                    + "_"
+                    + aux_dto_field.dto_type.fields_map[
+                        aux_dto_field.related_dto_field
+                    ].get_entity_field_name()
+                )
 
                 # Verificando se o campo carece de conversão customizada
                 if aux_dto_field.convert_from_entity is not None:
@@ -189,10 +196,8 @@ class DTOBase(abc.ABC):
             aux_dto_field = self.__class__.object_fields_map[field]
 
             # Atribuindo o valor à propriedade do DTO
-            if field in kwargs:
-                if kwargs[field] is None:
-                    continue
-                elif not isinstance(kwargs[field], dict):
+            if field in kwargs and kwargs[field] is not None:
+                if not isinstance(kwargs[field], dict):
                     raise ValueError(
                         f"O campo {field} deveria ser um dicionário com os campos da classe {aux_dto_field.dto_type}."
                     )

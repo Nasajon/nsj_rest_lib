@@ -183,6 +183,11 @@ class DAOBaseList(DAOBaseSearch):
         # Montando a clausula dos fields vindos dos joins
         sql_join_fields, sql_join = self._make_joins_sql(joins_aux)
 
+        if joins_aux:
+            for join in joins_aux:
+                for field in join.fields:
+                    setattr(self._entity_class, f"{join.alias}_{field}", None)
+
         partial_exists_sql = ""
         if partial_exists_clause is not None:
             (
