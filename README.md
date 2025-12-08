@@ -110,6 +110,10 @@ Obsevações:
   
 ## Histórico de versões
 
+### 5.2.0
+
+- Capacidade de pegar campos de SQLJoin, mesmo que não declarados no Entity atual.
+
 ### 5.1.0
 
 - Implementação do insert e update por meio de funções de banco (PL/PGSQL). Ver artefatos:
