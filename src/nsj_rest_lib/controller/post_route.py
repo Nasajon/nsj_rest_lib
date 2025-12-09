@@ -164,7 +164,7 @@ class PostRoute(RouteBase):
                             return ("", 202, resp_headers)
 
                         # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                        lst_data.append(data.convert_to_dict())
+                        lst_data.append(data.convert_to_dict(fields))
                 else:
                     data = service.insert_list(
                         dtos=data_pack,
@@ -177,7 +177,7 @@ class PostRoute(RouteBase):
 
                     if data is not None or not len(data) > 0:
                         # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                        lst_data = [item.convert_to_dict() for item in data]
+                        lst_data = [item.convert_to_dict(fields) for item in data]
 
                 if len(lst_data) == 1:
                     # Retornando a resposta da requisição

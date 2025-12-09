@@ -538,61 +538,20 @@ class DTOBase(abc.ABC):
             else:
                 return dto_field.expected_type(value)
 
-    @classmethod
-    def _build_default_fields_tree(cls) -> FieldsTree:
-        """
-        Constrói a estrutura de fields para o DTO, com base nos campos
-        configurados como resumo.
-
-        A estrutura de fields é uma árvore, onde cada chave é o nome do campo
-        e o valor é um conjunto de campos que são resumos.
-
-        :return: Uma estrutura de fields em formato de árvore.
-        :rtype: FieldsTree
-        """
-        tree: FieldsTree = {"root": set(cls.resume_fields)}
-
-        for field_name, descriptor in cls.list_fields_map.items():
-            if len(descriptor.resume_fields_tree.get("root", set())) <= 0:
-                continue
-
-            tree["root"].add(field_name)
-            tree[field_name] = clone_fields_tree(descriptor.resume_fields_tree)
-
-        for field_name, descriptor in cls.object_fields_map.items():
-            if descriptor.resume or len(descriptor.resume_fields) > 0:
-                tree["root"].add(field_name)
-
-                if len(descriptor.resume_fields_tree.get("root", set())) > 0:
-                    tree[field_name] = clone_fields_tree(descriptor.resume_fields_tree)
-
-        for field_name, descriptor in cls.aggregator_fields_map.items():
-            if field_name in tree["root"]:
-                tree["root"] |= descriptor.expected_type.resume_fields
-
-        for field_name, descriptor in cls.one_to_one_fields_map.items():
-            if descriptor.field.resume:
-                tree["root"].add(field_name)
-
-        return tree
-
     def convert_to_dict(
         self,
-        fields: Optional[FieldsTree] = None,
+        fields: FieldsTree,
         expands: Optional[Dict[str, Set[str]]] = None,
     ):
         """
         Converte DTO para dict
         """
 
-        if fields is None:
-            fields_tree = self.__class__._build_default_fields_tree()
-        else:
-            fields_tree = normalize_fields_tree(fields)
-            merge_fields_tree(
-                fields_tree,
-                self.__class__._build_default_fields_tree(),
-            )
+        fields_tree = normalize_fields_tree(fields)
+        merge_fields_tree(
+            fields_tree,
+            self.__class__._build_default_fields_tree(),
+        )
 
         if expands is None:
             expands = {"root": set()}

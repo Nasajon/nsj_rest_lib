@@ -39,7 +39,6 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
         """
 
         result = normalize_fields_tree(fields)
-        merge_fields_tree(result, self._dto_class._build_default_fields_tree())
 
         # Tratamento especial para campos agregadores
         for field_name, descriptor in self._dto_class.aggregator_fields_map.items():
