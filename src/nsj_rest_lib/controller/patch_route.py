@@ -112,7 +112,7 @@ class PatchRoute(RouteBase):
                         return ("", 202, resp_headers)
 
                     # Convertendo para o formato de dicionário
-                    dict_data = data.convert_to_dict()
+                    dict_data = data.convert_to_dict(fields)
 
                     # Retornando a resposta da requuisição
                     return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})
