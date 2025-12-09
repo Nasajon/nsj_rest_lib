@@ -11,7 +11,12 @@ from nsj_rest_lib.exception import DataOverrideParameterException
 from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.service.service_base import ServiceBase
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
-from nsj_rest_lib.util.fields_util import FieldsTree, parse_fields_expression
+from nsj_rest_lib.util.fields_util import (
+    FieldsTree,
+    clone_fields_tree,
+    merge_fields_tree,
+    parse_fields_expression,
+)
 
 
 class RouteBase:
@@ -150,6 +155,38 @@ class RouteBase:
         """
 
         fields_tree = parse_fields_expression(fields)
+
+        for field_name, descriptor in dto_class.aggregator_fields_map.items():
+            if field_name not in fields_tree['root']:
+                continue
+
+            if field_name not in fields_tree:
+                fields_tree[field_name] = {
+                    'root': getattr(
+                        descriptor.expected_type, f"{verb.lower()}_resume_fields"
+                    )
+                }
+                pass
+
+            child_tree = fields_tree[field_name]
+            if not isinstance(child_tree, dict):
+                continue
+
+            fields_tree['root'] |= child_tree.get('root')
+
+            for nested_field, nested_tree in child_tree.items():
+                if nested_field == 'root':
+                    continue
+
+                existing = fields_tree.get(nested_field)
+                if not isinstance(existing, dict):
+                    fields_tree[nested_field] = clone_fields_tree(nested_tree)
+                else:
+                    merge_fields_tree(existing, nested_tree)
+                    pass
+                pass
+            pass
+
         fields_tree["root"] |= getattr(
             dto_class, f"{verb.lower()}_resume_fields"
         )

@@ -39,31 +39,6 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
         """
 
         result = normalize_fields_tree(fields)
-
-        # Tratamento especial para campos agregadores
-        for field_name, descriptor in self._dto_class.aggregator_fields_map.items():
-            if field_name not in result["root"]:
-                continue
-
-            result["root"] |= descriptor.expected_type.resume_fields
-
-            if field_name not in result:
-                continue
-
-            child_tree = result.pop(field_name)
-            if isinstance(child_tree, dict):
-                result["root"] |= child_tree.get("root", set())
-
-                for nested_field, nested_tree in child_tree.items():
-                    if nested_field == "root":
-                        continue
-
-                    existing = result.get(nested_field)
-                    if not isinstance(existing, dict):
-                        result[nested_field] = clone_fields_tree(nested_tree)
-                    else:
-                        merge_fields_tree(existing, nested_tree)
-
         return result
 
     def _add_overide_data_filters(self, all_filters):
