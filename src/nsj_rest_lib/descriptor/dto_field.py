@@ -6,6 +6,7 @@ from typing import Any
 
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
+from nsj_rest_lib.util import ResumableVerbsTy
 
 
 class DTOFieldFilter:
@@ -62,7 +63,7 @@ class DTOField:
         self,
         type: object = None,
         not_null: bool = False,
-        resume: bool = False,
+        resume: typing.Union[bool, typing.List[ResumableVerbsTy]] = False,
         min: int = None,
         max: int = None,
         validator: typing.Callable = None,
@@ -99,7 +100,9 @@ class DTOField:
 
         - not_null: O campo não poderá ser None, ou vazio, no caso de strings.
 
-        - resume: O campo será usado como resumo, isto é, será sempre rotornado num HTTP GET que liste os dados (mesmo que não seja solicitado por meio da query string "fields").
+        - resume: Quando um boolean indica que o campo retornara como padrao em
+                      todos o Verbos, Se for uma Lista de Verbos ele indica em
+                      quais Verbos ele deve ser retornado por padrao.
 
         - min: Menor valor permitido (ou menor comprimento, para strings).
 

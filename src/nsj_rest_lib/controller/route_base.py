@@ -143,14 +143,16 @@ class RouteBase:
             )
 
     @staticmethod
-    def parse_fields(dto_class: DTOBase, fields: str) -> FieldsTree:
+    def parse_fields(dto_class: DTOBase, fields: str, verb: str) -> FieldsTree:
         """
         Converte a expressão de fields recebida (query string) em uma estrutura
         em árvore, garantindo que os campos de resumo do DTO sejam considerados.
         """
 
         fields_tree = parse_fields_expression(fields)
-        fields_tree["root"] |= dto_class.resume_fields
+        fields_tree["root"] |= getattr(
+            dto_class, f"{verb.lower()}_resume_fields"
+        )
 
         return fields_tree
 

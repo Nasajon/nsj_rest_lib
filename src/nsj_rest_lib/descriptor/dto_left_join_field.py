@@ -5,6 +5,7 @@ from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import DTOListFieldConfigException
 
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
+from nsj_rest_lib.util import ResumableVerbsTy
 
 
 class EntityRelationOwner:
@@ -19,7 +20,7 @@ class DTOLeftJoinField:
 
     def __init__(
         self,
-        resume: bool,
+        resume: typing.Union[bool, typing.List[ResumableVerbsTy]],
         dto_type: DTOBase,
         entity_type: EntityBase,
         related_dto_field: str,
@@ -34,8 +35,9 @@ class DTOLeftJoinField:
         -----------
         Parameters:
         -----------
-        resume: O campo será usado como resumo, isto é, será sempre rotornado num HTTP GET que liste
-            os dados (mesmo que não seja solicitado por meio da query string "fields").
+        resume: Quando um boolean indica que o campo retornara como padrao em
+                    todos o verbos, Se for uma Lista de Verbos ele indica em
+                    quais verbos ele deve ser retornado por padrao.
         dto_type: Expected type for the related DTO (must be subclasse from DTOBase).
         entity_type: Expected entity type for the related DTO (must be subclasse from EntityBase).
         related_dto_field: Nome do campo, no DTO relacionado, a ser copiado para esse campo.

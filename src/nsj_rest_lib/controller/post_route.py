@@ -117,6 +117,12 @@ class PostRoute(RouteBase):
                 if not isinstance(request_data, list):
                     request_data = [request_data]
 
+                # NOTE: Maybe we should allow the caller to set what fields
+                #           to return when retrieve_after_insert=True
+                # fields_raw = args.get("fields")
+                fields_raw = ''
+                fields = RouteBase.parse_fields(self._dto_class, fields_raw, 'POST')
+
                 data_pack = []
                 lst_data = []
                 partition_filters = None
@@ -151,6 +157,7 @@ class PostRoute(RouteBase):
                         custom_after_insert=self.custom_after_insert,
                         retrieve_after_insert=self.retrieve_after_insert,
                         function_name=self._insert_function_name,
+                        fields=fields,
                     )
 
                     if data is not None:
@@ -173,6 +180,7 @@ class PostRoute(RouteBase):
                         custom_after_insert=self.custom_after_insert,
                         retrieve_after_insert=self.retrieve_after_insert,
                         function_name=self._insert_function_name,
+                        fields=fields,
                     )
 
                     if data is not None or not len(data) > 0:

@@ -116,6 +116,12 @@ class PutRoute(RouteBase):
                     request_data = body
                     args = query_args
 
+                # NOTE: Maybe we should allow the caller to set what fields
+                #           to return when retrieve_after_insert=True
+                # fields_raw = args.get("fields")
+                fields_raw = ''
+                fields = RouteBase.parse_fields(self._dto_class, fields_raw, 'PUT')
+
                 # Parâmetros da requisição
                 is_upsert = args.get(
                     "upsert", False, type=lambda value: value.lower() == "true"
@@ -161,6 +167,7 @@ class PutRoute(RouteBase):
                         custom_after_update=self.custom_after_update,
                         upsert=is_upsert,
                         function_name=self._update_function_name,
+                        fields=fields,
                     )
 
                     if data is not None:
@@ -183,6 +190,7 @@ class PutRoute(RouteBase):
                         custom_after_update=self.custom_after_update,
                         upsert=is_upsert,
                         function_name=self._update_function_name,
+                        fields=fields,
                     )
 
                     if data is not None or not len(data) > 0:

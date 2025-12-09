@@ -66,6 +66,12 @@ class PatchRoute(RouteBase):
                 if len(kwargs) > 0:
                     data.update(kwargs)
 
+                # NOTE: Maybe we should allow the caller to set what fields
+                #           to return when retrieve_after_insert=True
+                # fields_raw = args.get("fields")
+                fields_raw = ''
+                fields = RouteBase.parse_fields(self._dto_class, fields_raw, 'PATCH')
+
                 # Convertendo os dados para o DTO
                 data = self._dto_class(
                     validate_read_only=True,
@@ -99,6 +105,7 @@ class PatchRoute(RouteBase):
                     aditional_filters=partition_filters,
                     custom_before_update=self.custom_before_update,
                     custom_after_update=self.custom_after_update,
+                    fields=fields,
                 )
 
                 if data is not None:

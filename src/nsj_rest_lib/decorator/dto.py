@@ -2,7 +2,7 @@ import uuid
 import copy
 import functools
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Set, Type
+from typing import Any, Dict, Optional, Set, Type, List
 
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
@@ -17,6 +17,7 @@ from nsj_rest_lib.descriptor.dto_sql_join_field import DTOSQLJoinField, SQLJoinQ
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.settings import ENV_MULTIDB
 from nsj_rest_lib.util.sql_utils import montar_chave_map_sql_join
+from nsj_rest_lib.util import ResumableVerbsTy, AllResumableVerbs
 
 
 @dataclass
@@ -204,8 +205,12 @@ class DTO:
         # Mantém metadados da classe original
         functools.update_wrapper(self, cls)
 
-        # Creating resume_fields in cls, if needed
-        self._check_class_attribute(cls, "resume_fields", set())
+        for resumable_verb in AllResumableVerbs:
+            # NOTE: example of field: get_resume_fields
+            self._check_class_attribute(
+                cls, f"{resumable_verb.lower()}_resume_fields", set()
+            )
+            pass
 
         # Creating fields_map in cls, if needed
         self._check_class_attribute(cls, "fields_map", {})
@@ -367,11 +372,7 @@ class DTO:
                 if key in cls.__annotations__:
                     attr.expected_type = cls.__annotations__[key]
 
-                # Checking if it is a resume field (to store)
-                if attr.resume:
-                    resume_fields = getattr(cls, "resume_fields")
-                    if key not in resume_fields:
-                        resume_fields.add(key)
+                self._handle_resume_field(key, attr, cls)
 
                 # TODO Refatorar para suportar PKs compostas
                 # Setting PK info
@@ -466,11 +467,7 @@ class DTO:
                 if key in cls.__annotations__:
                     attr.expected_type = cls.__annotations__[key]
 
-                # Checking if it is a resume field (to store)
-                if attr.resume:
-                    resume_fields = getattr(cls, "resume_fields")
-                    if key not in resume_fields:
-                        resume_fields.add(key)
+                self._handle_resume_field(key, attr, cls)
 
                 # Montando o mapa de controle das queries (para o service_base)
                 self.set_left_join_fields_map_to_query(key, attr, cls)
@@ -487,11 +484,7 @@ class DTO:
                 if key in cls.__annotations__:
                     attr.expected_type = cls.__annotations__[key]
 
-                # Checking if it is a resume field (to store)
-                if attr.resume:
-                    resume_fields = getattr(cls, "resume_fields")
-                    if key not in resume_fields:
-                        resume_fields.add(key)
+                self._handle_resume_field(key, attr, cls)
 
                 if attr.partition_data is True:
                     cls.partition_fields.add(key)
@@ -512,11 +505,7 @@ class DTO:
                 if key in cls.__annotations__:
                     attr.expected_type = cls.__annotations__[key]
 
-                # Checking if it is a resume field (to store)
-                if attr.resume or len(attr.resume_fields) > 0:
-                    resume_fields = getattr(cls, "resume_fields")
-                    if key not in resume_fields:
-                        resume_fields.add(key)
+                self._handle_resume_field(key, attr, cls)
 
             elif isinstance(attr, DTOOneToOneField):
                 cls.one_to_one_fields_map[key] = attr
@@ -553,9 +542,7 @@ class DTO:
                 if attr.field.entity_field is not None:
                     attr.entity_field = attr.field.entity_field
                     pass
-                if attr.field.resume is True:
-                    cls.resume_fields.add(key)
-                    pass
+                self._handle_resume_field(key, attr.field, cls)
                 if attr.field.partition_data is True:
                     cls.partition_fields.add(key)
                     pass
@@ -632,6 +619,25 @@ class DTO:
             self._build_function_field_lookup(cls, operation=operation)
 
         return cls
+
+    def _handle_resume_field(self, field: str, attr: Any, cls: DTOBase) -> None:
+        if not (attr.resume is True
+                or (isinstance(attr.resume, list) and len(attr.resume) > 0)):
+            return
+        verbs: List[ResumableVerbsTy]
+        if isinstance(attr.resume, list):
+            verbs = attr.resume
+        else:
+            verbs = AllResumableVerbs
+            pass
+
+        for resumable_verb in AllResumableVerbs:
+            if resumable_verb not in verbs:
+                continue
+            # NOTE: example of field: get_resume_fields
+            getattr(cls, f"{resumable_verb.lower()}_resume_fields").add(field)
+            pass
+        pass
 
     def _validate_data_override_properties(self, cls):
         for field in self._data_override_fields:

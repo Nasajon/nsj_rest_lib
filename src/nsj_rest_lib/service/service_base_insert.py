@@ -1,6 +1,7 @@
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.util.fields_util import FieldsTree
 
 from .service_base_save import ServiceBaseSave
 
@@ -16,6 +17,7 @@ class ServiceBaseInsert(ServiceBaseSave):
         retrieve_after_insert: bool = False,
         manage_transaction: bool = True,
         function_name: str | None = None,
+        fields: Optional[FieldsTree] = None,
     ) -> DTOBase:
         return self._save(
             insert=True,
@@ -27,6 +29,7 @@ class ServiceBaseInsert(ServiceBaseSave):
             custom_after_insert=custom_after_insert,
             retrieve_after_insert=retrieve_after_insert,
             function_name=function_name,
+            fields=fields,
         )
 
     def insert_list(
@@ -38,6 +41,7 @@ class ServiceBaseInsert(ServiceBaseSave):
         retrieve_after_insert: bool = False,
         manage_transaction: bool = True,
         function_name: str | None = None,
+        fields: Optional[FieldsTree] = None,
     ) -> List[DTOBase]:
         _lst_return = []
         try:
@@ -55,6 +59,7 @@ class ServiceBaseInsert(ServiceBaseSave):
                     custom_after_insert=custom_after_insert,
                     retrieve_after_insert=retrieve_after_insert,
                     function_name=function_name,
+                    fields=fields,
                 )
 
                 if _return_object is not None:
