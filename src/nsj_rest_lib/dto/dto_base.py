@@ -548,10 +548,6 @@ class DTOBase(abc.ABC):
         """
 
         fields_tree = normalize_fields_tree(fields)
-        merge_fields_tree(
-            fields_tree,
-            self.__class__._build_default_fields_tree(),
-        )
 
         if expands is None:
             expands = {"root": set()}
