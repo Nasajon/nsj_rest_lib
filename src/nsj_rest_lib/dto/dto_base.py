@@ -22,8 +22,15 @@ from nsj_rest_lib.util.sql_utils import montar_chave_map_sql_join
 
 
 class DTOBase(abc.ABC):
-    resume_fields: Set[str] = set()
+    # NOTE: If you're going to add a new resumable verb don't forget to add it
+    #           to the constants in util/__init__.py
+    list_resume_fields: Set[str] = set()
+    get_resume_fields: Set[str] = set()
+    post_resume_fields: Set[str] = set()
+    patch_resume_fields: Set[str] = set()
+    put_resume_fields: Set[str] = set()
     partition_fields: Set[str] = set()
+
     fields_map: Dict[str, DTOField] = {}
     insert_function_field_lookup: Dict[str, Tuple[str, Any]] = {}
     update_function_field_lookup: Dict[str, Tuple[str, Any]] = {}
