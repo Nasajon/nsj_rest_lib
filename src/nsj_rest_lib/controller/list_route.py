@@ -111,7 +111,9 @@ class ListRoute(RouteBase):
 
                 # Tratando dos fields
                 fields = args.get("fields")
-                fields = RouteBase.parse_fields(self._dto_class, fields, 'LIST')
+                fields, expands = RouteBase.parse_fields_and_expands(
+                    self._dto_class, fields, args.get('expand', ''), 'LIST'
+                )
                 url_args = (
                     base_url
                     + "?"
@@ -123,8 +125,6 @@ class ListRoute(RouteBase):
                         ]
                     )
                 )
-
-                expands = RouteBase.parse_expands(self._dto_class, args.get("expand"))
 
                 # Tratando dos filters e search_query
                 filters = kwargs.copy()

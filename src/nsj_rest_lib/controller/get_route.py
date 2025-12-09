@@ -107,9 +107,9 @@ class GetRoute(RouteBase):
 
                 # Tratando dos fields
                 fields = args.get("fields")
-                fields = RouteBase.parse_fields(self._dto_class, fields, 'GET')
-
-                expands = RouteBase.parse_expands(self._dto_class, args.get('expand'))
+                fields, expands = RouteBase.parse_fields_and_expands(
+                    self._dto_class, fields, args.get('expand', ''), 'GET'
+                )
 
                 partition_fields = kwargs.copy()
                 # Tratando campos de particionamento

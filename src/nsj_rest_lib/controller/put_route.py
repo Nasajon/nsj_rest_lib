@@ -120,7 +120,9 @@ class PutRoute(RouteBase):
                 #           to return when retrieve_after_insert=True
                 # fields_raw = args.get("fields")
                 fields_raw = ''
-                fields = RouteBase.parse_fields(self._dto_class, fields_raw, 'PUT')
+                fields, _ = RouteBase.parse_fields_and_expands(
+                    self._dto_class, fields_raw, '', 'PUT'
+                )
 
                 # Parâmetros da requisição
                 is_upsert = args.get(

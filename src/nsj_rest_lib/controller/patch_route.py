@@ -70,7 +70,9 @@ class PatchRoute(RouteBase):
                 #           to return when retrieve_after_insert=True
                 # fields_raw = args.get("fields")
                 fields_raw = ''
-                fields = RouteBase.parse_fields(self._dto_class, fields_raw, 'PATCH')
+                fields, _ = RouteBase.parse_fields_and_expands(
+                    self._dto_class, fields_raw, '', 'PATCH'
+                )
 
                 # Convertendo os dados para o DTO
                 data = self._dto_class(

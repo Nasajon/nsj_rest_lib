@@ -121,7 +121,9 @@ class PostRoute(RouteBase):
                 #           to return when retrieve_after_insert=True
                 # fields_raw = args.get("fields")
                 fields_raw = ''
-                fields = RouteBase.parse_fields(self._dto_class, fields_raw, 'POST')
+                fields, _ = RouteBase.parse_fields_and_expands(
+                    self._dto_class, fields_raw, '', 'POST'
+                )
 
                 data_pack = []
                 lst_data = []

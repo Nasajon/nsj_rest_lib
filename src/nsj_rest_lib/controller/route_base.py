@@ -1,7 +1,7 @@
 import re
 import collections
 
-from typing import Callable, Dict, List, Set, Optional, Any
+from typing import Callable, Dict, List, Set, Optional, Tuple, Type, Any
 
 from nsj_rest_lib.controller.funtion_route_wrapper import FunctionRouteWrapper
 from nsj_rest_lib.dao.dao_base import DAOBase
@@ -148,57 +148,143 @@ class RouteBase:
             )
 
     @staticmethod
-    def parse_fields(dto_class: DTOBase, fields: str, verb: str) -> FieldsTree:
+    def parse_fields_and_expands(
+        dto_class: DTOBase, fields: str, expands: str, verb: str
+    ) -> Tuple[FieldsTree, FieldsTree]:
         """
         Converte a expressão de fields recebida (query string) em uma estrutura
         em árvore, garantindo que os campos de resumo do DTO sejam considerados.
         """
 
         fields_tree = parse_fields_expression(fields)
-
-        for field_name, descriptor in dto_class.aggregator_fields_map.items():
-            if field_name not in fields_tree['root']:
-                continue
-
-            if field_name not in fields_tree:
-                fields_tree[field_name] = {
-                    'root': getattr(
-                        descriptor.expected_type, f"{verb.lower()}_resume_fields"
-                    )
-                }
-                pass
-
-            child_tree = fields_tree[field_name]
-            if not isinstance(child_tree, dict):
-                continue
-
-            fields_tree['root'] |= child_tree.get('root')
-
-            for nested_field, nested_tree in child_tree.items():
-                if nested_field == 'root':
-                    continue
-
-                existing = fields_tree.get(nested_field)
-                if not isinstance(existing, dict):
-                    fields_tree[nested_field] = clone_fields_tree(nested_tree)
-                else:
-                    merge_fields_tree(existing, nested_tree)
-                    pass
-                pass
-            pass
-
+        expands_tree = parse_fields_expression(expands)
         fields_tree["root"] |= getattr(
             dto_class, f"{verb.lower()}_resume_fields"
         )
 
-        return fields_tree
+        def _handle_special_fields(
+            _fields_tree: FieldsTree, _expands_tree: FieldsTree,
+            _dto_class: Type[DTOBase], limit: int
+        ) -> None:
+            if limit <= 0:
+                return
 
-    @staticmethod
-    def parse_expands(_dto_class: DTOBase, expands: Optional[str]) -> FieldsTree:
-        expands_tree = parse_fields_expression(expands)
-        #expands_tree["root"] |= dto_class.resume_expands
+            for field_name, descriptor in _dto_class.aggregator_fields_map.items():
+                if field_name not in _fields_tree['root']:
+                    continue
 
-        return expands_tree
+                if field_name not in _fields_tree:
+                    _fields_tree[field_name] = {
+                        'root': getattr(
+                            descriptor.expected_type, f"{verb.lower()}_resume_fields"
+                        )
+                    }
+                    pass
+
+                child_fields_tree = _fields_tree[field_name]
+                child_expands_tree = _expands_tree[field_name]
+
+                _fields_tree['root'] |= child_fields_tree.get('root')
+                _expands_tree['root'] |= child_expands_tree.get('root')
+
+                for nested_field, nested_tree in child_fields_tree.items():
+                    if nested_field == 'root':
+                        continue
+
+                    existing = _fields_tree.get(nested_field)
+                    if not isinstance(existing, dict):
+                        _fields_tree[nested_field] = clone_fields_tree(nested_tree)
+                    else:
+                        merge_fields_tree(existing, nested_tree)
+                        pass
+                    pass
+
+                for nested_field, nested_tree in child_expands_tree.items():
+                    if nested_field == 'root':
+                        continue
+
+                    existing = _expands_tree.get(nested_field)
+                    if not isinstance(existing, dict):
+                        _expands_tree[nested_field] = clone_fields_tree(nested_tree)
+                    else:
+                        merge_fields_tree(existing, nested_tree)
+                        pass
+                    pass
+                pass
+
+            for field_name, l_field in _dto_class.list_fields_map.items():
+                if field_name not in _fields_tree['root']:
+                    continue
+                _dto_type = l_field.dto_type
+                if verb == 'POST':
+                    _dto_type = l_field.dto_post_response_type
+                    pass
+                _resume_fields: Set[str] = getattr(
+                    _dto_type, f"{verb.lower()}_resume_fields"
+                )
+
+                if field_name not in _fields_tree:
+                    _fields_tree[field_name] = {'root': _resume_fields}
+                else:
+                    _fields_tree[field_name]['root'] |= _resume_fields
+                    _handle_special_fields(
+                        _fields_tree[field_name],
+                        _expands_tree.setdefault(field_name, {'root': set()}),
+                        _dto_type,
+                        limit - 1
+                    )
+                    pass
+                pass
+
+            for field_name, obj_field in _dto_class.object_fields_map.items():
+                if field_name not in _fields_tree['root']:
+                    continue
+                _resume_fields = getattr(
+                    obj_field.expected_type, f"{verb.lower()}_resume_fields"
+                )
+                if field_name not in _fields_tree:
+                    _fields_tree[field_name] = { 'root': _resume_fields }
+                else:
+                    _fields_tree[field_name]['root'] |= _resume_fields
+                    _handle_special_fields(
+                        _fields_tree[field_name],
+                        _expands_tree.setdefault(field_name, {'root': set()}),
+                        obj_field.expected_type,
+                        limit - 1
+                    )
+                    pass
+                pass
+            pass
+
+            for field_name, oto_field in _dto_class.one_to_one_fields_map.items():
+                if (
+                    field_name not in _fields_tree['root']
+                    and field_name not in _expands_tree['root']
+                ):
+                    continue
+                _resume_fields = getattr(
+                    oto_field.expected_type, f"{verb.lower()}_resume_fields"
+                )
+                if field_name not in _fields_tree:
+                    _fields_tree[field_name] = {'root': _resume_fields}
+                else:
+                    _fields_tree[field_name]['root'] |= _resume_fields
+                    pass
+                if field_name not in _expands_tree:
+                    continue
+                _handle_special_fields(
+                    _fields_tree[field_name],
+                    _expands_tree[field_name],
+                    oto_field.expected_type,
+                    limit - 1
+                )
+                pass
+            pass
+        _handle_special_fields(
+            fields_tree, expands_tree, dto_class, 5 # type: ignore
+        )
+
+        return fields_tree, expands_tree
 
     def _validade_data_override_parameters(self, args):
         """
