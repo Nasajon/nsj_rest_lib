@@ -580,24 +580,19 @@ class DTOBase(abc.ABC):
         self,
         fields: Optional[FieldsTree] = None,
         expands: Optional[Dict[str, Set[str]]] = None,
-        just_resume: bool = False,
     ):
         """
         Converte DTO para dict
         """
 
-        # Resolving fields to use
-        if just_resume:
+        if fields is None:
             fields_tree = self.__class__._build_default_fields_tree()
         else:
-            if fields is None:
-                fields_tree = self.__class__._build_default_fields_tree()
-            else:
-                fields_tree = normalize_fields_tree(fields)
-                merge_fields_tree(
-                    fields_tree,
-                    self.__class__._build_default_fields_tree(),
-                )
+            fields_tree = normalize_fields_tree(fields)
+            merge_fields_tree(
+                fields_tree,
+                self.__class__._build_default_fields_tree(),
+            )
 
         if expands is None:
             expands = {"root": set()}
@@ -677,7 +672,7 @@ class DTOBase(abc.ABC):
 
             # Convetendo a lista de DTOs aninhados
             result[field] = [
-                item.convert_to_dict(clone_fields_tree(internal_fields), just_resume)
+                item.convert_to_dict(clone_fields_tree(internal_fields))
                 for item in value
             ]
 
