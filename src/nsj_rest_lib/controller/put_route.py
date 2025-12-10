@@ -35,6 +35,7 @@ class PutRoute(RouteBase):
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
         update_function_type_class: Type[UpdateFunctionTypeBase] | None = None,
+        update_function_name: str | None = None,
     ):
         super().__init__(
             url=url,
@@ -49,6 +50,7 @@ class PutRoute(RouteBase):
         self.custom_before_update = custom_before_update
         self.custom_after_update = custom_after_update
         self._update_function_type_class = update_function_type_class
+        self._update_function_name = update_function_name
 
         if (
             self._update_function_type_class is not None
@@ -130,6 +132,7 @@ class PutRoute(RouteBase):
                     service.set_update_function_type_class(
                         self._update_function_type_class
                     )
+                    service.set_update_function_name(self._update_function_name)
 
                 if len(data_pack) == 1:
                     # Chamando o service (método insert)

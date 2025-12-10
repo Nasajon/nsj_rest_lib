@@ -145,6 +145,7 @@ class ServiceBaseSave(ServiceBasePartialOf):
                     insert_function_object = self._build_insert_function_type_object(dto)
                     self._dao.insert_by_function(
                         insert_function_object,
+                        function_name=self._insert_function_name,
                     )
 
                 if partial_write_data is not None:
@@ -181,7 +182,10 @@ class ServiceBaseSave(ServiceBasePartialOf):
                     update_function_object = (
                         self._build_update_function_type_object(dto)
                     )
-                    self._dao.update_by_function(update_function_object)
+                    self._dao.update_by_function(
+                        update_function_object,
+                        function_name=self._update_function_name,
+                    )
 
                 if partial_write_data is not None:
                     self._handle_partial_extension_update(

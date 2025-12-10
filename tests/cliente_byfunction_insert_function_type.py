@@ -6,7 +6,6 @@ from nsj_rest_lib.entity.function_type_base import InsertFunctionTypeBase
 
 @InsertFunctionType(
     type_name="teste.tendereco",
-    function_name="teste.api_endereco",
 )
 class ClienteByfunctionEnderecoInsertType(InsertFunctionTypeBase):
     tipologradouro: str = FunctionField()
@@ -24,7 +23,6 @@ class ClienteByfunctionEnderecoInsertType(InsertFunctionTypeBase):
 
 @InsertFunctionType(
     type_name="teste.tclientenovo",
-    function_name="teste.api_clientenovo",
 )
 class ClienteByfunctionInsertType(InsertFunctionTypeBase):
     codigo: str = FunctionField()

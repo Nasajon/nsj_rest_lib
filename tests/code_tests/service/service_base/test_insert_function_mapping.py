@@ -44,19 +44,19 @@ class DummyEntity(EntityBase):
     valor: int = EntityField()
 
 
-@InsertFunctionType(type_name="teste.tdummy", function_name="teste.fn_dummy")
+@InsertFunctionType(type_name="teste.tdummy")
 class DummyInsertType(InsertFunctionTypeBase):
     valor_func: int = FunctionField()
     descricao_func: str = FunctionField()
 
 
-@InsertFunctionType(type_name="teste.tendereco", function_name="teste.fn_endereco")
+@InsertFunctionType(type_name="teste.tendereco")
 class AddressInsertType(InsertFunctionTypeBase):
     rua: str = FunctionField()
     numero: str = FunctionField()
 
 
-@InsertFunctionType(type_name="teste.tdocumento", function_name="teste.fn_documento")
+@InsertFunctionType(type_name="teste.tdocumento")
 class DocumentInsertType(InsertFunctionTypeBase):
     numero: str = FunctionField()
     tipo: str = FunctionField()
@@ -64,7 +64,6 @@ class DocumentInsertType(InsertFunctionTypeBase):
 
 @InsertFunctionType(
     type_name="teste.tcliente_relacionado",
-    function_name="teste.fn_cliente_relacionado",
 )
 class CustomerWithRelationsInsertType(InsertFunctionTypeBase):
     nome: str = FunctionField()
@@ -72,14 +71,14 @@ class CustomerWithRelationsInsertType(InsertFunctionTypeBase):
     documento: DocumentInsertType = FunctionRelationField()
 
 
-@UpdateFunctionType(type_name="teste.tdummy_upd", function_name="teste.fn_dummy_upd")
+@UpdateFunctionType(type_name="teste.tdummy_upd")
 class DummyUpdateType(UpdateFunctionTypeBase):
     valor_update: int = FunctionField()
     descricao_func: str = FunctionField()
 
 
 @UpdateFunctionType(
-    type_name="teste.tendereco_upd", function_name="teste.fn_endereco_upd"
+    type_name="teste.tendereco_upd"
 )
 class AddressUpdateType(UpdateFunctionTypeBase):
     rua: str = FunctionField()
@@ -87,7 +86,7 @@ class AddressUpdateType(UpdateFunctionTypeBase):
 
 
 @UpdateFunctionType(
-    type_name="teste.tdocumento_upd", function_name="teste.fn_documento_upd"
+    type_name="teste.tdocumento_upd"
 )
 class DocumentUpdateType(UpdateFunctionTypeBase):
     numero: str = FunctionField()
@@ -96,7 +95,6 @@ class DocumentUpdateType(UpdateFunctionTypeBase):
 
 @UpdateFunctionType(
     type_name="teste.tcliente_relacionado_upd",
-    function_name="teste.fn_cliente_relacionado_upd",
 )
 class CustomerWithRelationsUpdateType(UpdateFunctionTypeBase):
     nome: str = FunctionField()
@@ -156,6 +154,7 @@ def test_build_insert_function_type_object_with_mapped_fields():
         DummyDTO,
         DummyEntity,
         insert_function_type_class=DummyInsertType,
+        insert_function_name="teste.fn_dummy",
     )
 
     dto = DummyDTO()
@@ -175,6 +174,7 @@ def test_build_insert_function_type_object_with_relations():
         CustomerWithRelationsDTO,
         DummyEntity,
         insert_function_type_class=CustomerWithRelationsInsertType,
+        insert_function_name="teste.fn_cliente_relacionado",
     )
 
     dto = CustomerWithRelationsDTO()
@@ -216,6 +216,7 @@ def test_build_update_function_type_object_with_mapped_fields():
         DummyDTO,
         DummyEntity,
         update_function_type_class=DummyUpdateType,
+        update_function_name="teste.fn_dummy_upd",
     )
 
     dto = DummyDTO()
@@ -235,6 +236,7 @@ def test_build_update_function_type_object_with_relations():
         CustomerWithRelationsDTO,
         DummyEntity,
         update_function_type_class=CustomerWithRelationsUpdateType,
+        update_function_name="teste.fn_cliente_relacionado_upd",
     )
 
     dto = CustomerWithRelationsDTO()

@@ -8,6 +8,7 @@ from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import DataOverrideParameterException
+from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.service.service_base import ServiceBase
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.util.fields_util import FieldsTree, parse_fields_expression
@@ -184,3 +185,14 @@ class RouteBase:
             # Ensure that if a field has a value, its preceding field must also have a value
             if value_field is not None and previous_value_field is None:
                 raise DataOverrideParameterException(field, previous_field)
+
+    @staticmethod
+    def build_function_type_from_args(
+        function_type_class: type[FunctionTypeBase],
+        args: dict[str, any],
+        id_value: any = None,
+    ) -> FunctionTypeBase:
+        """
+        Constrói um FunctionType a partir dos args da requisição, incluindo a PK.
+        """
+        return function_type_class.build_from_params(args, id_value=id_value)

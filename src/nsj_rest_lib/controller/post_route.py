@@ -36,6 +36,7 @@ class PostRoute(RouteBase):
         custom_after_insert: Callable = None,
         retrieve_after_insert: bool = False,
         insert_function_type_class: Type[InsertFunctionTypeBase] | None = None,
+        insert_function_name: str | None = None,
     ):
         super().__init__(
             url=url,
@@ -51,6 +52,7 @@ class PostRoute(RouteBase):
         self.custom_after_insert = custom_after_insert
         self.retrieve_after_insert = retrieve_after_insert
         self._insert_function_type_class = insert_function_type_class
+        self._insert_function_name = insert_function_name
 
         if self._insert_function_type_class is not None and not issubclass(
             self._insert_function_type_class, InsertFunctionTypeBase
@@ -121,6 +123,7 @@ class PostRoute(RouteBase):
                     service.set_insert_function_type_class(
                         self._insert_function_type_class
                     )
+                    service.set_insert_function_name(self._insert_function_name)
 
                 if len(data_pack) == 1:
                     # Chamando o service (método insert)

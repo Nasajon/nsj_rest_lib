@@ -31,6 +31,9 @@ class ListRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
+        list_function_type_class: type | None = None,
+        list_function_name: str | None = None,
+        function_response_dto_class: type | None = None,
     ):
         super().__init__(
             url=url,
@@ -41,6 +44,11 @@ class ListRoute(RouteBase):
             injector_factory=injector_factory,
             service_name=service_name,
             handle_exception=handle_exception,
+        )
+        self._list_function_type_class = list_function_type_class
+        self._list_function_name = list_function_name
+        self._function_response_dto_class = (
+            function_response_dto_class or dto_class
         )
 
     @log_time
@@ -113,6 +121,22 @@ class ListRoute(RouteBase):
 
                 # Construindo os objetos
                 service = self._get_service(factory)
+                if self._list_function_type_class is not None:
+                    service.set_list_function_type_class(
+                        self._list_function_type_class
+                    )
+                if self._list_function_name is not None:
+                    service.set_list_function_name(self._list_function_name)
+                if self._function_response_dto_class is not None:
+                    service.set_list_function_response_dto_class(
+                        self._function_response_dto_class
+                    )
+
+                function_object = None
+                if self._list_function_type_class is not None:
+                    function_object = RouteBase.build_function_type_from_args(
+                        self._list_function_type_class, args
+                    )
 
                 # Chamando o service (método list)
                 # TODO Rever parametro order_fields abaixo
@@ -124,6 +148,8 @@ class ListRoute(RouteBase):
                     filters,
                     search_query=search_query,
                     expands=expands,
+                    function_params=None if function_object is not None else args,
+                    function_object=function_object,
                 )
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)

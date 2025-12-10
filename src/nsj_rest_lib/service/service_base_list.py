@@ -38,7 +38,20 @@ class ServiceBaseList(ServiceBaseRetrieve):
         search_query: str = None,
         return_hidden_fields: set[str] = None,
         expands: ty.Optional[FieldsTree] = None,
+        function_params: Dict[str, Any] | None = None,
+        function_object=None,
     ) -> List[DTOBase]:
+        if (
+            getattr(self, "_list_function_type_class", None) is not None
+            or getattr(self, "_list_function_name", None) is not None
+            or function_object is not None
+        ):
+            return self._list_by_function(
+                fields,
+                expands or {"root": set()},
+                function_params or {},
+                function_object,
+            )
         # Resolving fields
         fields = self._resolving_fields(fields)
 
@@ -238,3 +251,43 @@ class ServiceBaseList(ServiceBaseRetrieve):
 
         # Returning
         return dto_list
+
+    def _list_by_function(
+        self,
+        fields: FieldsTree,
+        expands: FieldsTree,
+        function_params: Dict[str, Any],
+        function_object=None,
+    ) -> List[DTOBase]:
+        params = dict(function_params or {})
+        dto_class = getattr(
+            self, "_list_function_response_dto_class", self._dto_class
+        )
+
+        if function_object is None and getattr(self, "_list_function_type_class", None) is not None:
+            function_object = self._build_function_type_from_params(
+                params,
+                self._list_function_type_class,
+            )
+        if function_object is not None:
+            rows = self._dao._call_function_with_type(
+                function_object, self._list_function_name
+            )
+            return self._map_function_rows_to_dtos(
+                rows,
+                dto_class,
+                self._list_function_type_class,
+            )
+
+        rows = self._dao._call_function_raw(
+            self._list_function_name,
+            [],
+            params,
+        )
+
+        return self._map_function_rows_to_dtos(
+            rows,
+            dto_class,
+            None,
+            operation="list",
+        )

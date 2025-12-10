@@ -7,10 +7,16 @@ class FunctionField:
 
     _ref_counter = 0
 
-    def __init__(self, type_field_name: str | None = None, description: str = ""):
+    def __init__(
+        self,
+        type_field_name: str | None = None,
+        description: str = "",
+        pk: bool = False,
+    ):
         self.type_field_name = type_field_name
         self.description = description
         self.expected_type = None
+        self.pk = pk
         self.name: str | None = None
 
         self.storage_name = (
@@ -25,7 +31,7 @@ class FunctionField:
         if instance is None:
             return self
 
-        return instance.__dict__[self.storage_name]
+        return instance.__dict__.get(self.storage_name)
 
     def __set__(self, instance, value):
         instance.__dict__[self.storage_name] = value

@@ -32,6 +32,7 @@ def get_classificacoes_financeiras(request, response):
     dto_class=ClassificacaoFinanceiraDTO,
     entity_class=ClassificacaoFinanceiraEntity,
     insert_function_type_class=ClassificacaoFinanceiraInsertType,
+    insert_function_name="teste.api_classificacaofinanceiranovo",
 )
 def post_classificacoes_financeiras(request, response):
     return response
@@ -44,6 +45,7 @@ def post_classificacoes_financeiras(request, response):
     dto_class=ClassificacaoFinanceiraDTO,
     entity_class=ClassificacaoFinanceiraEntity,
     update_function_type_class=ClassificacaoFinanceiraUpdateType,
+    update_function_name="teste.api_classificacaofinanceiraalterar",
 )
 def put_classificacoes_financeiras(request, response):
     return response

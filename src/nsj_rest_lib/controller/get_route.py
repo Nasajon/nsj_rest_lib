@@ -31,6 +31,9 @@ class GetRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
+        get_function_type_class: type | None = None,
+        get_function_name: str | None = None,
+        function_response_dto_class: type | None = None,
     ):
         super().__init__(
             url=url,
@@ -41,6 +44,11 @@ class GetRoute(RouteBase):
             injector_factory=injector_factory,
             service_name=service_name,
             handle_exception=handle_exception,
+        )
+        self._get_function_type_class = get_function_type_class
+        self._get_function_name = get_function_name
+        self._function_response_dto_class = (
+            function_response_dto_class or dto_class
         )
 
     def handle_request(
@@ -90,6 +98,20 @@ class GetRoute(RouteBase):
 
                 # Construindo os objetos
                 service = self._get_service(factory)
+                if self._get_function_type_class is not None:
+                    service.set_get_function_type_class(self._get_function_type_class)
+                if self._get_function_name is not None:
+                    service.set_get_function_name(self._get_function_name)
+                if self._function_response_dto_class is not None:
+                    service.set_get_function_response_dto_class(
+                        self._function_response_dto_class
+                    )
+
+                function_object = None
+                if self._get_function_type_class is not None:
+                    function_object = RouteBase.build_function_type_from_args(
+                        self._get_function_type_class, args, id_value=id
+                    )
 
                 # Chamando o service (método get)
                 # TODO Rever parametro order_fields abaixo
@@ -98,6 +120,8 @@ class GetRoute(RouteBase):
                     partition_fields,
                     fields,
                     expands=expands,
+                    function_params=None if function_object is not None else args,
+                    function_object=function_object,
                 )
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)

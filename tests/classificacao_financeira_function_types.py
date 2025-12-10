@@ -11,7 +11,6 @@ from nsj_rest_lib.entity.function_type_base import (
 
 @InsertFunctionType(
     type_name="teste.tclassificacaofinanceiranovo",
-    function_name="teste.api_classificacaofinanceiranovo",
 )
 class ClassificacaoFinanceiraInsertType(InsertFunctionTypeBase):
     id: uuid.UUID = FunctionField(type_field_name="idclassificacao")
@@ -29,7 +28,6 @@ class ClassificacaoFinanceiraInsertType(InsertFunctionTypeBase):
 
 @UpdateFunctionType(
     type_name="teste.tclassificacaofinanceiraalterar",
-    function_name="teste.api_classificacaofinanceiraalterar",
 )
 class ClassificacaoFinanceiraUpdateType(UpdateFunctionTypeBase):
     classificacao: uuid.UUID = FunctionField()

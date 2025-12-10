@@ -244,6 +244,9 @@ class DTO:
         self._check_class_attribute(cls, "aggregator_fields_map", {})
         self._check_class_attribute(cls, "insert_function_field_lookup", {})
         self._check_class_attribute(cls, "update_function_field_lookup", {})
+        self._check_class_attribute(cls, "get_function_field_lookup", {})
+        self._check_class_attribute(cls, "list_function_field_lookup", {})
+        self._check_class_attribute(cls, "delete_function_field_lookup", {})
 
         # Creating pk_field in cls, if needed
         # TODO Refatorar para suportar PKs compostas
@@ -615,8 +618,8 @@ class DTO:
         else:
             setattr(cls, "partial_dto_config", None)
 
-        self._build_function_field_lookup(cls, operation="insert")
-        self._build_function_field_lookup(cls, operation="update")
+        for operation in ("insert", "update", "get", "list", "delete"):
+            self._build_function_field_lookup(cls, operation=operation)
 
         return cls
 
@@ -673,12 +676,25 @@ class DTO:
             if descriptor.get_function_type(operation) is not None
         }
 
-        operation_label = "InsertFunctionType" if operation == "insert" else "UpdateFunctionType"
-        lookup_attr = (
-            "insert_function_field_lookup"
-            if operation == "insert"
-            else "update_function_field_lookup"
-        )
+        operation_labels = {
+            "insert": "InsertFunctionType",
+            "update": "UpdateFunctionType",
+            "get": "GetFunctionType",
+            "list": "ListFunctionType",
+            "delete": "DeleteFunctionType",
+        }
+        lookup_attr_map = {
+            "insert": "insert_function_field_lookup",
+            "update": "update_function_field_lookup",
+            "get": "get_function_field_lookup",
+            "list": "list_function_field_lookup",
+            "delete": "delete_function_field_lookup",
+        }
+
+        operation_label = operation_labels.get(operation, operation)
+        lookup_attr = lookup_attr_map.get(operation)
+        if lookup_attr is None:
+            return
 
         def add_lookup_entry(target_name: str, field_name: str, descriptor: Any):
             if target_name in lookup:
