@@ -194,7 +194,10 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
 
             # Resolvendo os fields da entidade aninhada
             fields_to_list = extract_child_tree(fields, master_dto_attr)
-            expands_to_list = extract_child_tree(expands, master_dto_attr)
+            expands_to_list = {"root": set()}
+            
+            if expands: 
+                expands_to_list = extract_child_tree(expands, master_dto_attr)
 
             # Busca todos os relacionados de uma vez
             related_dto_list = service.list(
