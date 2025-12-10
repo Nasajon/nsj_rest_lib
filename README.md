@@ -110,6 +110,10 @@ Obsevações:
   
 ## Histórico de versões
 
+### 5.3.0
+
+- Possibilidade de mapear rotas de mais de um nível de profundidade, sendo que todos os IDs intermediários serão usados como filtros adicionais para as queries. Além disso, os relacionamentos do tipo DTOListField são uasdos para que o campo de relacionamento entre as entidades, possa ser usado como filtro na entidade detalhe (relacionamento Mestre X Detalhe), mesmo quando não explícitamente mapeado na classe detalhe.
+
 ### 5.2.0
 
 - Capacidade de pegar campos de SQLJoin, mesmo que não declarados no Entity atual.
