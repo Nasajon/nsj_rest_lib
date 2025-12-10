@@ -1,4 +1,5 @@
 import os
+import typing as ty
 
 from flask import request
 from typing import Callable
@@ -47,6 +48,7 @@ class ListRoute(RouteBase):
         self,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
+        **kwargs: ty.Any
     ):
         """
         Tratando requisições HTTP Get (para listar entidades, e não para recuperar pelo ID).
@@ -83,7 +85,7 @@ class ListRoute(RouteBase):
                 expands = RouteBase.parse_expands(self._dto_class, args.get("expand"))
 
                 # Tratando dos filters e search_query
-                filters = {}
+                filters = kwargs.copy()
                 search_query = None
                 for arg in args:
                     if arg.lower() == "search":

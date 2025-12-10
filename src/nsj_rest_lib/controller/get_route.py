@@ -1,4 +1,5 @@
 import os
+import typing as ty
 
 from flask import request
 from typing import Callable
@@ -47,6 +48,7 @@ class GetRoute(RouteBase):
         id: str,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
+        **kwargs: ty.Any
     ):
         """
         Tratando requisições HTTP Get para recuperar uma instância de uma entidade.
@@ -66,7 +68,7 @@ class GetRoute(RouteBase):
 
                 expands = RouteBase.parse_expands(self._dto_class, args.get('expand'))
 
-                partition_fields = {}
+                partition_fields = kwargs.copy()
                 # Tratando campos de particionamento
                 for field in self._dto_class.partition_fields:
                     value = args.get(field)
