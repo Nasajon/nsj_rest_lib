@@ -243,6 +243,8 @@ class ServiceBase(
                     new_value = row.get(
                         source_field_name, row.get(function_field_name)
                     )
+                    if new_value is None:
+                        new_value = row.get(dto_field_name)
                     existing_value = dto_kwargs.get(dto_field_name)
                     if existing_value is not None and new_value is None:
                         continue

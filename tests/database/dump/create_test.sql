@@ -803,11 +803,18 @@ $function$
 -- Classificação Financeira GET/LIST/DELETE (FUNCTION TYPES)
 --------------------------------------------------
 
+DROP FUNCTION IF EXISTS teste.api_classificacaofinanceiraget(teste.tclassificacaofinanceiraget);
+DROP FUNCTION IF EXISTS teste.api_classificacaofinanceiralist(teste.tclassificacaofinanceiralist);
+DROP FUNCTION IF EXISTS teste.api_classificacaofinanceiraexcluir(teste.tclassificacaofinanceiraexcluir);
+DROP TYPE IF EXISTS teste.tclassificacaofinanceiraget;
+DROP TYPE IF EXISTS teste.tclassificacaofinanceiralist;
+DROP TYPE IF EXISTS teste.tclassificacaofinanceiraexcluir;
+
 CREATE TYPE teste.tclassificacaofinanceiraget AS (
     classificacao text,
     codigo varchar(16),
     descricao_func varchar(150),
-    grupoempresarial uuid
+    grupo_empresarial uuid
 );
 
 CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiraget(a_objeto teste.tclassificacaofinanceiraget)
@@ -816,15 +823,15 @@ LANGUAGE plpgsql
 AS $function$
 BEGIN
     RETURN QUERY
-        SELECT 'ffe29dad-e33d-4e9c-9803-5eb926e5bc21'::uuid,
-               'teste-04'::varchar,
-               'Classificação para teste do insert por funcao'::varchar,
-               '3964bfdc-e09e-4386-9655-5296062e632d'::uuid;
+        SELECT CAST('ffe29dad-e33d-4e9c-9803-5eb926e5bc21' AS uuid),
+               'teste-04',
+               'Classificação para teste do insert por funcao',
+               CAST('3964bfdc-e09e-4386-9655-5296062e632d' AS uuid);
 END;
 $function$;
 
 CREATE TYPE teste.tclassificacaofinanceiralist AS (
-    grupoempresarial uuid,
+    grupo_empresarial uuid,
     codigo varchar(16)
 );
 
@@ -834,16 +841,16 @@ LANGUAGE plpgsql
 AS $function$
 BEGIN
     RETURN QUERY
-        SELECT 'ffe29dad-e33d-4e9c-9803-5eb926e5bc21'::uuid,
-               COALESCE(a_objeto.codigo, 'teste-04')::varchar,
-               'Classificação para teste do insert por funcao'::varchar,
-               a_objeto.grupoempresarial;
+        SELECT CAST('ffe29dad-e33d-4e9c-9803-5eb926e5bc21' AS uuid),
+               CAST(COALESCE(a_objeto.codigo, 'teste-04') AS varchar),
+               'Classificação para teste do insert por funcao',
+               a_objeto.grupo_empresarial;
 END;
 $function$;
 
 CREATE TYPE teste.tclassificacaofinanceiraexcluir AS (
     classificacao text,
-    grupoempresarial text
+    grupo_empresarial text
 );
 
 CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiraexcluir(a_objeto teste.tclassificacaofinanceiraexcluir)

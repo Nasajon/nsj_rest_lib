@@ -706,15 +706,23 @@ class DTO:
         if lookup_attr is None:
             return
 
+        # Mantém um controle para evitar conflitos de mapeamento pelo nome de campo de função
+        target_to_field: dict[str, str] = {}
+
         def add_lookup_entry(target_name: str, field_name: str, descriptor: Any):
-            if target_name in lookup:
-                existing_field, _ = lookup[target_name]
-                if existing_field != field_name:
-                    raise ValueError(
-                        f"O campo '{target_name}' no {operation_label} está mapeado por mais de um campo no DTO '{cls.__name__}'."
-                    )
-                return
-            lookup[target_name] = (field_name, descriptor)
+            existing = target_to_field.get(target_name)
+            if existing is not None and existing != field_name:
+                raise ValueError(
+                    f"O campo '{target_name}' no {operation_label} está mapeado por mais de um campo no DTO '{cls.__name__}'."
+                )
+
+            target_to_field[target_name] = field_name
+
+            # Incluímos tanto o nome do campo do DTO (usado pelos FunctionTypes)
+            # quanto o nome configurado para a função, garantindo compatibilidade
+            # com cenários com ou sem FunctionType explícito.
+            for key in {field_name, target_name}:
+                lookup[key] = (field_name, descriptor)
 
         def get_target_names(descriptor: Any) -> list[str]:
             """
