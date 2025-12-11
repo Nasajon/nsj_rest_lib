@@ -566,7 +566,17 @@ class DTO:
             key_in_child: str = v.related_entity_field
             child_dto: DTOBase = v.dto_type
 
-            relation_field: DTOField = cls.fields_map[v.relation_key_field]
+            relation_key_field = v.relation_key_field or getattr(cls, "pk_field", None)
+            if relation_key_field is None:
+                raise ValueError(
+                    f"É necessário informar 'relation_key_field' em DTOListField '{k}' ou definir 'pk_field' no DTO '{cls.__name__}'."
+                )
+
+            relation_field: DTOField = cls.fields_map.get(relation_key_field)
+            if relation_field is None:
+                raise ValueError(
+                    f"O campo '{relation_key_field}' não existe no DTO '{cls.__name__}' para ser usado como relation_key_field de '{k}'."
+                )
 
             field = DTOField(
                 resume=False, validator=relation_field.validator
