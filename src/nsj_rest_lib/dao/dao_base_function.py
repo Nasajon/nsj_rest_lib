@@ -46,7 +46,7 @@ class DAOBaseFunction(DAOBaseUtil):
 
             VAR_RETORNO = (
                 SELECT coalesce(jsonb_agg(row_to_json(r)), '[]'::jsonb)
-                FROM {target_function_name}(VAR_TIPO) r
+                FROM {function_name}(VAR_TIPO) r
             );
             PERFORM set_config('retorno.bloco', VAR_RETORNO::varchar, true);
         END $DOFUNC$;
