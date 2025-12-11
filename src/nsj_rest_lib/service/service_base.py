@@ -240,9 +240,13 @@ class ServiceBase(
                         source_field_name = fields_map[
                             function_field_name
                         ].get_type_field_name()
-                    dto_kwargs[dto_field_name] = row.get(
+                    new_value = row.get(
                         source_field_name, row.get(function_field_name)
                     )
+                    existing_value = dto_kwargs.get(dto_field_name)
+                    if existing_value is not None and new_value is None:
+                        continue
+                    dto_kwargs[dto_field_name] = new_value
             else:
                 dto_kwargs.update(row)
 

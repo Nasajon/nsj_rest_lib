@@ -87,6 +87,8 @@ class DTOField:
         insert_function_field: str = None,
         update_function_field: str = None,
         convert_to_function: typing.Callable = None,
+        get_function_field: str = None,
+        delete_function_field: str = None,
     ):
         """
         -----------
@@ -112,6 +114,10 @@ class DTOField:
         - insert_function_field: Nome do campo correspondente no InsertFunctionType utilizado para inserts por função (default: o próprio nome do campo no DTO).
 
         - update_function_field: Nome do campo correspondente no UpdateFunctionType utilizado para updates por função (default: herdado de insert_function_field ou o próprio nome do campo no DTO).
+
+        - get_function_field: Nome do campo correspondente no Get/ListFunctionType utilizado para consultas por função (default: o próprio nome do campo no DTO).
+
+        - delete_function_field: Nome do campo correspondente no DeleteFunctionType utilizado para exclusões por função (default: o próprio nome do campo no DTO).
 
         - filters: Lista de filtros adicionais suportados para esta propriedade (adicionais, porque todos as propriedades, por padrão, suportam filtros de igualdade, que podem ser passados por meio de uma query string, com mesmo nome da proriedade, e um valor qualquer a ser comparado).
             Essa lista de filtros consiste em objetos do DTOFieldFilter (veja a documentação da classe para enteder a estrutura de declaração dos filtros).
@@ -189,6 +195,8 @@ class DTOField:
         self.entity_field = entity_field
         self.insert_function_field = insert_function_field
         self.update_function_field = update_function_field
+        self.get_function_field = get_function_field
+        self.delete_function_field = delete_function_field
         self.filters = filters
         self.pk = pk
         self.use_default_validator = use_default_validator
@@ -350,6 +358,14 @@ class DTOField:
         return self.get_insert_function_field_name()
 
     def get_function_field_name(self, operation: str) -> str:
+        if operation in ("get", "list"):
+            if self.get_function_field is not None:
+                return self.get_function_field
+            return self.name
+        if operation == "delete":
+            if self.delete_function_field is not None:
+                return self.delete_function_field
+            return self.name
         if operation == "update":
             return self.get_update_function_field_name()
         return self.get_insert_function_field_name()

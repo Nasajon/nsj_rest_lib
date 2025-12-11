@@ -708,34 +708,59 @@ class DTO:
 
         def add_lookup_entry(target_name: str, field_name: str, descriptor: Any):
             if target_name in lookup:
-                raise ValueError(
-                    f"O campo '{target_name}' no {operation_label} está mapeado por mais de um campo no DTO '{cls.__name__}'."
-                )
+                existing_field, _ = lookup[target_name]
+                if existing_field != field_name:
+                    raise ValueError(
+                        f"O campo '{target_name}' no {operation_label} está mapeado por mais de um campo no DTO '{cls.__name__}'."
+                    )
+                return
             lookup[target_name] = (field_name, descriptor)
+
+        def get_target_names(descriptor: Any) -> list[str]:
+            """
+            Determina quais nomes de campo entram no lookup, de acordo com a operação:
+            - insert: apenas o alias de insert (ou nome do campo).
+            - update: alias de update (ou de insert) e nome do campo.
+            - get/list: nome específico configurado para GET (get_function_field) ou o nome do campo.
+            - delete: nome específico configurado para DELETE (delete_function_field) ou o nome do campo.
+            """
+            targets = [descriptor.get_function_field_name(operation)]
+
+            if operation == "insert":
+                return targets
+            if operation == "update":
+                update_alias = descriptor.get_update_function_field_name()
+                if update_alias not in targets:
+                    targets.append(update_alias)
+                return targets
+
+            # GET/LIST/DELETE usam apenas o nome específico configurado (ou o nome do campo)
+            return targets
+
+        def process_descriptor(field_name: str, descriptor: Any):
+            target_names = get_target_names(descriptor)
+            for target_name in target_names:
+                add_lookup_entry(target_name, field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "fields_map").items():
             if field_name in relation_oto_fields:
                 continue
-            target_name = descriptor.get_function_field_name(operation)
-            add_lookup_entry(target_name, field_name, descriptor)
+            process_descriptor(field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "list_fields_map").items():
             if descriptor.get_function_type(operation) is None:
                 continue
-            target_name = descriptor.get_function_field_name(operation)
-            add_lookup_entry(target_name, field_name, descriptor)
+            process_descriptor(field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "object_fields_map").items():
             if descriptor.get_function_type(operation) is None:
                 continue
-            target_name = descriptor.get_function_field_name(operation)
-            add_lookup_entry(target_name, field_name, descriptor)
+            process_descriptor(field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "one_to_one_fields_map").items():
             if descriptor.get_function_type(operation) is None:
                 continue
-            target_name = descriptor.get_function_field_name(operation)
-            add_lookup_entry(target_name, field_name, descriptor)
+            process_descriptor(field_name, descriptor)
 
         setattr(cls, lookup_attr, lookup)
 

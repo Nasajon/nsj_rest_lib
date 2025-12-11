@@ -816,7 +816,7 @@ CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiraget(a_objeto teste.t
 AS $function$
 BEGIN
     RETURN QUERY
-        SELECT a_objeto.classificacao::uuid, 'teste-04', 'Classificação para teste do insert por funcao', a_objeto.grupoempresarial;
+        SELECT a_objeto.classificacao::uuid, 'teste-04', 'Classificação para teste do insert por funcao'::varchar, a_objeto.grupoempresarial;
 END;
 $function$;
 
@@ -831,7 +831,7 @@ CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiralist(a_objeto teste.
 AS $function$
 BEGIN
     RETURN QUERY
-        SELECT 'ffe29dad-e33d-4e9c-9803-5eb926e5bc21'::uuid, COALESCE(a_objeto.codigo, 'teste-04'), 'Classificação para teste do insert por funcao', a_objeto.grupoempresarial;
+        SELECT 'ffe29dad-e33d-4e9c-9803-5eb926e5bc21'::uuid, COALESCE(a_objeto.codigo, 'teste-04'), 'Classificação para teste do insert por funcao'::varchar, a_objeto.grupoempresarial;
 END;
 $function$;
 

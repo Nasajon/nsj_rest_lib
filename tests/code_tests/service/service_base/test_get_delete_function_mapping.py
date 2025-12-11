@@ -55,10 +55,20 @@ class FakeInjector:
 
 @DTO()
 class DummyDTO(DTOBase):
-    id: int = DTOField(insert_function_field="id_func")
-    nome: str = DTOField(insert_function_field="nome_func")
-    motivo: str = DTOField()
-
+    id: int = DTOField(
+        insert_function_field="id_func",
+        get_function_field="id_func",
+        delete_function_field="id_func",
+    )
+    nome: str = DTOField(
+        insert_function_field="nome_func",
+        get_function_field="nome_func",
+        delete_function_field="nome_func",
+    )
+    motivo: str = DTOField(
+        get_function_field="motivo",
+        delete_function_field="motivo",
+    )
 
 @Entity(table_name="teste.entity", pk_field="id", default_order_fields=["id"])
 class DummyEntity(EntityBase):

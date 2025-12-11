@@ -77,13 +77,14 @@ class CFEntity(EntityBase):
 class CFGetType(GetFunctionTypeBase):
     id: uuid.UUID = FunctionField(pk=True, type_field_name="classificacao")
     codigo: str = FunctionField()
-    descricao_func: str = FunctionField()
+    descricao: str = FunctionField(type_field_name="descricao_func")
 
 
 @ListFunctionType(type_name="teste.tcf_list")
 class CFListType(ListFunctionTypeBase):
     grupoempresarial: uuid.UUID = FunctionField(pk=True)
     codigo: str = FunctionField()
+    descricao: str = FunctionField(type_field_name="descricao_func")
 
 
 @DeleteFunctionType(type_name="teste.tcf_delete")

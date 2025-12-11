@@ -60,6 +60,8 @@ class DTOOneToOneField:
         update_function_field: ty.Optional[str] = None,
         update_function_type: ty.Optional[ty.Type[UpdateFunctionTypeBase]] = None,
         convert_to_function: ty.Optional[ty.Callable[..., ty.Any]] = None,
+        get_function_field: ty.Optional[str] = None,
+        delete_function_field: ty.Optional[str] = None,
     ):
         """Descriptor used for One to One relations.
         ---------
@@ -128,6 +130,10 @@ class DTOOneToOneField:
             documentation.
 
         - convert_to_function: Função usada para converter o valor antes de popular o InsertFunctionType. Recebe (valor, dict_com_valores_do_dto) e deve retornar um dicionário com os campos/resultados a atribuir.
+
+        - get_function_field: Nome do campo equivalente no Get/ListFunctionType (default: o próprio nome do campo no DTO).
+
+        - delete_function_field: Nome do campo equivalente no DeleteFunctionType (default: o próprio nome do campo no DTO).
         """
         self.entity_type = entity_type
         self.relation_type = relation_type
@@ -143,6 +149,8 @@ class DTOOneToOneField:
         self.validator = validator
         self.description = description
         self.convert_to_function = convert_to_function
+        self.get_function_field = get_function_field
+        self.delete_function_field = delete_function_field
 
         self.name = None
         self.expected_type = ty.cast(ty.Type['DTOBase'], type)
@@ -276,6 +284,14 @@ class DTOOneToOneField:
         return self.get_insert_function_field_name()
 
     def get_function_field_name(self, operation: str) -> str:
+        if operation in ("get", "list"):
+            if self.get_function_field is not None:
+                return self.get_function_field
+            return self.name
+        if operation == "delete":
+            if self.delete_function_field is not None:
+                return self.delete_function_field
+            return self.name
         if operation == "update":
             return self.get_update_function_field_name()
         return self.get_insert_function_field_name()

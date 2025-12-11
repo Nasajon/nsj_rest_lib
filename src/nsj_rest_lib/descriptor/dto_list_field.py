@@ -38,6 +38,8 @@ class DTOListField:
         update_function_field: str = None,
         update_function_type: typing.Optional[type[UpdateFunctionTypeBase]] = None,
         convert_to_function: typing.Callable = None,
+        get_function_field: str = None,
+        delete_function_field: str = None,
     ):
         """
         -----------
@@ -67,6 +69,10 @@ class DTOListField:
         - insert_function_field: Nome da propriedade equivalente no InsertFunctionType quando o campo lista precisar apontar para um nome diferente (default: o nome do campo no DTO).
 
         - update_function_field: Nome da propriedade equivalente no UpdateFunctionType.
+
+        - get_function_field: Nome do campo equivalente no Get/ListFunctionType (default: o próprio nome do campo no DTO).
+
+        - delete_function_field: Nome do campo equivalente no DeleteFunctionType (default: o próprio nome do campo no DTO).
 
         - service_name: Nome do serviço customizado, caso se deseje que as operações sobre esse tipo de lista se façam
             de um modo customizado (e não usando o service_base do próprio RestLib).
@@ -100,6 +106,8 @@ class DTOListField:
         self.resume_fields = list(resume_fields or [])
         self.resume_fields_tree: FieldsTree = build_fields_tree(self.resume_fields)
         self.convert_to_function = convert_to_function
+        self.get_function_field = get_function_field
+        self.delete_function_field = delete_function_field
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -165,6 +173,14 @@ class DTOListField:
         return self.get_insert_function_field_name()
 
     def get_function_field_name(self, operation: str) -> str:
+        if operation in ("get", "list"):
+            if self.get_function_field is not None:
+                return self.get_function_field
+            return self.name
+        if operation == "delete":
+            if self.delete_function_field is not None:
+                return self.delete_function_field
+            return self.name
         if operation == "update":
             return self.get_update_function_field_name()
         return self.get_insert_function_field_name()
