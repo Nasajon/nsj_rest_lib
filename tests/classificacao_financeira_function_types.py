@@ -55,16 +55,20 @@ class ClassificacaoFinanceiraGetType(GetFunctionTypeBase):
     id: uuid.UUID = FunctionField(pk=True, type_field_name="classificacao")
     codigo: str = FunctionField()
     descricao: str = FunctionField(type_field_name="descricao_func")
+    grupoempresarial: uuid.UUID = FunctionField(type_field_name="grupo_empresarial")
 
 
 @ListFunctionType(type_name="teste.tclassificacaofinanceiralist")
 class ClassificacaoFinanceiraListType(ListFunctionTypeBase):
     id: uuid.UUID = FunctionField(type_field_name="classificacao")
     codigo: str = FunctionField()
-    grupoempresarial: uuid.UUID = FunctionField(pk=True)
+    descricao: str = FunctionField(type_field_name="descricao_func")
+    grupoempresarial: uuid.UUID = FunctionField(
+        pk=True, type_field_name="grupo_empresarial"
+    )
 
 
 @DeleteFunctionType(type_name="teste.tclassificacaofinanceiraexcluir")
 class ClassificacaoFinanceiraDeleteType(DeleteFunctionTypeBase):
     id: str = FunctionField(pk=True, type_field_name="classificacao")
-    grupoempresarial: str = FunctionField()
+    grupoempresarial: str = FunctionField(type_field_name="grupo_empresarial")

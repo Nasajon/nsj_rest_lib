@@ -812,11 +812,14 @@ CREATE TYPE teste.tclassificacaofinanceiraget AS (
 
 CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiraget(a_objeto teste.tclassificacaofinanceiraget)
  RETURNS TABLE (classificacao uuid, codigo varchar, descricao_func varchar, grupoempresarial uuid)
- LANGUAGE plpgsql
+LANGUAGE plpgsql
 AS $function$
 BEGIN
     RETURN QUERY
-        SELECT a_objeto.classificacao::uuid, 'teste-04', 'Classificação para teste do insert por funcao'::varchar, a_objeto.grupoempresarial;
+        SELECT 'ffe29dad-e33d-4e9c-9803-5eb926e5bc21'::uuid,
+               'teste-04'::varchar,
+               'Classificação para teste do insert por funcao'::varchar,
+               '3964bfdc-e09e-4386-9655-5296062e632d'::uuid;
 END;
 $function$;
 
@@ -827,11 +830,14 @@ CREATE TYPE teste.tclassificacaofinanceiralist AS (
 
 CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiralist(a_objeto teste.tclassificacaofinanceiralist)
  RETURNS TABLE (classificacao uuid, codigo varchar, descricao_func varchar, grupoempresarial uuid)
- LANGUAGE plpgsql
+LANGUAGE plpgsql
 AS $function$
 BEGIN
     RETURN QUERY
-        SELECT 'ffe29dad-e33d-4e9c-9803-5eb926e5bc21'::uuid, COALESCE(a_objeto.codigo, 'teste-04'), 'Classificação para teste do insert por funcao'::varchar, a_objeto.grupoempresarial;
+        SELECT 'ffe29dad-e33d-4e9c-9803-5eb926e5bc21'::uuid,
+               COALESCE(a_objeto.codigo, 'teste-04')::varchar,
+               'Classificação para teste do insert por funcao'::varchar,
+               a_objeto.grupoempresarial;
 END;
 $function$;
 

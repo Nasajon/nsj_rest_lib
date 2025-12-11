@@ -9,13 +9,14 @@
 	"grupo_empresarial": "8e92ae13-992b-437d-b006-90da41999b04",
 	"tenant": 99999,
 	"emails": [
-		{
-			"id": "8faf6f78-3b31-4199-af73-79f081c31030",
-			"email": "V7t5B@example.com",
-			"criado_em": "2023-08-12T00:00:00",
-			"criado_por": "teste@teste.com",
-			"atualizado_em": "2023-08-12T00:00:00",
-			"atualizado_por": "teste@teste.com"
-		}
-	]
+        {
+            "id": "8faf6f78-3b31-4199-af73-79f081c31030",
+            "email": "V7t5B@example.com",
+            "criado_em": "2023-08-12T00:00:00",
+            "criado_por": "teste@teste.com",
+            "atualizado_em": "2023-08-12T00:00:00",
+            "atualizado_por": "teste@teste.com",
+            "cliente_id": "e0e0c939-d757-4c3b-99b3-643da2117ffe"
+        }
+    ]
 }
