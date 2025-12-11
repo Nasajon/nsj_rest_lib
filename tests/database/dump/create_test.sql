@@ -798,3 +798,61 @@ BEGIN
 END;
 $function$
 ;
+
+--------------------------------------------------
+-- Classificação Financeira GET/LIST/DELETE (FUNCTION TYPES)
+--------------------------------------------------
+
+CREATE TYPE teste.tclassificacaofinanceiraget AS (
+    classificacao text,
+    codigo varchar(16),
+    descricao_func varchar(150),
+    grupoempresarial uuid
+);
+
+CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiraget(a_objeto teste.tclassificacaofinanceiraget)
+ RETURNS TABLE (classificacao uuid, codigo varchar, descricao_func varchar, grupoempresarial uuid)
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    RETURN QUERY
+        SELECT a_objeto.classificacao::uuid, 'teste-04', 'Classificação para teste do insert por funcao', a_objeto.grupoempresarial;
+END;
+$function$;
+
+CREATE TYPE teste.tclassificacaofinanceiralist AS (
+    grupoempresarial uuid,
+    codigo varchar(16)
+);
+
+CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiralist(a_objeto teste.tclassificacaofinanceiralist)
+ RETURNS TABLE (classificacao uuid, codigo varchar, descricao_func varchar, grupoempresarial uuid)
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    RETURN QUERY
+        SELECT 'ffe29dad-e33d-4e9c-9803-5eb926e5bc21'::uuid, COALESCE(a_objeto.codigo, 'teste-04'), 'Classificação para teste do insert por funcao', a_objeto.grupoempresarial;
+END;
+$function$;
+
+CREATE TYPE teste.tclassificacaofinanceiraexcluir AS (
+    classificacao text,
+    grupoempresarial text
+);
+
+CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiraexcluir(a_objeto teste.tclassificacaofinanceiraexcluir)
+ RETURNS teste.trecibo
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    VAR_RECIBO teste.TRECIBO;
+BEGIN
+    IF a_objeto.classificacao IS NULL THEN
+        VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('FALHA', 'Identificador da classificação não informado.');
+        RETURN VAR_RECIBO;
+    END IF;
+
+    VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('OK', 'Classificação financeira removida com sucesso.');
+    RETURN VAR_RECIBO;
+END;
+$function$;

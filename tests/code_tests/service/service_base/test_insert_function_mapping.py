@@ -116,12 +116,14 @@ class DocumentDTO(DTOBase):
 
 @DTO()
 class CustomerWithRelationsDTO(DTOBase):
+    id: int = DTOField(pk=True)
     nome: str = DTOField()
 
     enderecos: list[AddressDTO] = DTOListField(
         dto_type=AddressDTO,
         entity_type=DummyEntity,
         related_entity_field="cliente_id",
+        relation_key_field="id",
         insert_function_field="enderecos",
         insert_function_type=AddressInsertType,
         update_function_field="enderecos_update",

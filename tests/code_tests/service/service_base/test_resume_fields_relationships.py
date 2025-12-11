@@ -46,11 +46,13 @@ class DocumentoDTO(DTOBase):
 
 @DTO()
 class ContatoDTO(DTOBase):
+    id: int = DTOField(pk=True)
     nome: str = DTOField(resume=True)
     telefones: list = DTOListField(
         dto_type=TelefoneDTO,
         entity_type=TelefoneEntity,
         related_entity_field="contato_id",
+        relation_key_field="id",
     )
 
 
@@ -65,6 +67,7 @@ class PessoaDTO(DTOBase):
         dto_type=ContatoDTO,
         entity_type=ContatoEntity,
         related_entity_field="pessoa_id",
+        relation_key_field="id",
         resume_fields=["nome", "telefones.numero"],
     )
     documento_principal: DocumentoDTO = DTOObjectField(
