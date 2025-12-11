@@ -107,7 +107,65 @@ make code_tests
 
 Obsevações:
 * Este tipo de teste faz mock de BD e etc
-  
+
+## Examplo de SubRotas
+
+Tendo um DTO Filho:
+```python
+@DTO
+class FilhoDTO(DTOBAse):
+    id: uuid.UUID = DTOField()
+    id_pai: uuid.UUID = DTOField()
+```
+E um DTO Pai:
+```python
+@DTO
+class PaiDTO(DTOBAse):
+    id: uuid.UUID = DTOField()
+```
+O Controller seria:
+```python
+@application.route('/pai/<id_pai>/filho/<id>', methods=['GET'])
+@ListRoute(
+    url='/pai/<id_pai>/filho/<id>',
+    http_method='GET',
+    dto_class=FilhoDTO,
+    entity_class=FilhoEntity
+)
+def lista_filhos(_, response):
+    return response
+```
+
+A parte da rota `<id_pai>` deve ser o nome do campo no FilhoDTO que faz FK com o PaiDTO,
+ou seja, se a relação do FilhoDTO com o PaiDTO é feita pelo campo `pai` a rota ficaria:
+`/pai/<pai>/filho/<id>`
+
+*Observacao*: No momento a subrota apenas suporta o campo FK no FilhoDTO, e nao usando
+o campos candidatos do PaiDTO.
+
+Se no PaiDTO conter um `DTOListField` pro FilhoDTO
+```python
+@DTO
+class PaiDTO(DTOBAse):
+    id: uuid.UUID = DTOField()
+    filhos: ty.List[FilhoDTO] = DTOListField(
+        dto_type=FilhoDTO,
+        entity_type=FilhoEntity,
+        relation_key_field='id',
+        related_entity_field='id_pai',
+    )
+```
+No FilhoDTO o campo de relacionamento é desnecessário:
+```python
+@DTO
+class FilhoDTO(DTOBAse):
+    id: uuid.UUID = DTOField()
+```
+O campo de relacionamento será criado automaticamente, usando o nome passado no
+atributo `related_entity_field`, nesse exemplo o campo de relacionamento teria o nome `id_pai`.
+
+E em torno na rota ficaria: `/pai/<id_pai>/filho/<id>`
+
 ## Histórico de versões
 
 ### 5.3.0
