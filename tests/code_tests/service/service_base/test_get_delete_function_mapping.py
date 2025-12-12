@@ -2,18 +2,9 @@ import pytest
 
 from nsj_rest_lib.decorator.dto import DTO
 from nsj_rest_lib.decorator.entity import Entity
-from nsj_rest_lib.decorator.get_function_type import GetFunctionType
-from nsj_rest_lib.decorator.list_function_type import ListFunctionType
-from nsj_rest_lib.decorator.delete_function_type import DeleteFunctionType
 from nsj_rest_lib.descriptor.dto_field import DTOField
-from nsj_rest_lib.descriptor.function_field import FunctionField
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.entity.function_type_base import (
-    GetFunctionTypeBase,
-    ListFunctionTypeBase,
-    DeleteFunctionTypeBase,
-)
 from nsj_rest_lib.service.service_base import ServiceBase
 
 
@@ -76,24 +67,26 @@ class DummyEntity(EntityBase):
     nome: str
 
 
-@GetFunctionType(type_name="teste.tdummy_get")
-class DummyGetType(GetFunctionTypeBase):
-    id_func: int = FunctionField(pk=True)
-    nome_func: str = FunctionField()
+@DTO()
+class DummyGetParams(DTOBase):
+    pk_field = "id_func"
+
+    id_func: int = DTOField()
+    nome_func: str = DTOField()
 
 
-@ListFunctionType(type_name="teste.tdummy_list")
-class DummyListType(ListFunctionTypeBase):
-    id_func: int = FunctionField(pk=True)
-    nome_func: str = FunctionField()
+@DTO()
+class DummyListParams(DTOBase):
+    id_func: int = DTOField()
+    nome_func: str = DTOField()
 
 
-@DeleteFunctionType(
-    type_name="teste.tdummy_delete"
-)
-class DummyDeleteType(DeleteFunctionTypeBase):
-    id_func: int = FunctionField(pk=True)
-    motivo: str = FunctionField()
+@DTO()
+class DummyDeleteParams(DTOBase):
+    pk_field = "id_func"
+
+    id_func: int = DTOField()
+    motivo: str = DTOField()
 
 
 def build_service(dao: FakeDAO):
@@ -102,31 +95,34 @@ def build_service(dao: FakeDAO):
         dao,
         DummyDTO,
         DummyEntity,
-        get_function_type_class=DummyGetType,
-        list_function_type_class=DummyListType,
-        delete_function_type_class=DummyDeleteType,
         get_function_name="teste.fn_dummy_get",
         list_function_name="teste.fn_dummy_list",
         delete_function_name="teste.fn_dummy_delete",
     )
 
 
-def test_get_by_function_type_maps_pk_and_result():
+def test_get_by_function_params_dto_maps_pk_and_result():
     dao = FakeDAO()
     service = build_service(dao)
+
+    params_dto = DummyGetParams(id_func=10)
 
     dto = service.get(
         10,
         partition_fields={},
         fields={"root": set()},
-        function_params={"id_func": 10},
-        function_object=None,
+        function_params=None,
+        function_object=params_dto,
+        function_name=None,
     )
 
-    assert isinstance(dao.called_with_type, DummyGetType)
-    assert dao.called_with_type.id_func == 10
+    assert dao.called_raw[0] == "teste.fn_dummy_get"
+    # positional id
+    assert dao.called_raw[1] == [10]
+    # pk_field mapeado para id_func nos parâmetros nomeados
+    assert dao.called_raw[2]["id_func"] == 10
     assert dto.id == 10
-    assert dto.nome == "by_type"
+    assert dto.nome == "raw"
 
 
 def test_get_by_function_raw():
@@ -154,29 +150,38 @@ def test_list_by_function_type():
     dao = FakeDAO()
     service = build_service(dao)
 
+    params_dto = DummyListParams(id_func=1, nome_func="x")
+
     dtos = service.list(
         None,
         None,
         {"root": set()},
         None,
-        {},
-        function_object=DummyListType(),
+        {},  # filters
+        function_object=params_dto,
+        function_name=None,
     )
 
     assert len(dtos) == 1
-    assert dtos[0].nome == "by_type"
+    assert dtos[0].nome == "raw"
 
 
 def test_delete_by_function_type_uses_pk_field():
     dao = FakeDAO()
     service = build_service(dao)
 
+    params_dto = DummyDeleteParams(id_func=99, motivo="x")
+
     service.delete(
         99,
         additional_filters=None,
-        function_object=None,
-        function_params={"id_func": 99},
+        function_object=params_dto,
+        function_params=None,
+        function_name=None,
     )
 
-    assert isinstance(dao.called_with_type, DummyDeleteType)
-    assert dao.called_with_type.id_func == 99
+    assert dao.called_raw[0] == "teste.fn_dummy_delete"
+    # positional id
+    assert dao.called_raw[1] == [99]
+    # pk_field mapeado para id_func nos parâmetros nomeados
+    assert dao.called_raw[2]["id_func"] == 99

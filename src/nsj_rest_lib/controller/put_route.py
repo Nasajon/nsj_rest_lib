@@ -5,6 +5,7 @@ from typing import Callable, Type
 
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
+from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.dto.queued_data_dto import QueuedDataDTO
 from nsj_rest_lib.entity.entity_base import EntityBase
@@ -59,6 +60,27 @@ class PutRoute(RouteBase):
             raise ValueError(
                 "A classe informada em update_function_type_class deve herdar de UpdateFunctionTypeBase."
             )
+
+    def _get_service(self, factory: NsjInjectorFactoryBase):
+        """
+        Sobrescreve o _get_service padrão para permitir configurar
+        o UpdateFunctionType e o nome da função diretamente no Service.
+        """
+
+        if self._service_name is not None:
+            return factory.get_service_by_name(self._service_name)
+
+        from nsj_rest_lib.service.service_base import ServiceBase
+
+        return ServiceBase(
+            factory,
+            DAOBase(factory.db_adapter(), self._entity_class),
+            self._dto_class,
+            self._entity_class,
+            self._dto_response_class,
+            update_function_type_class=self._update_function_type_class,
+            update_function_name=self._update_function_name,
+        )
 
     def _partition_filters(self, data):
         # Montando os filtros de particao de dados
@@ -128,11 +150,6 @@ class PutRoute(RouteBase):
 
                 # Construindo os objetos
                 service = self._get_service(factory)
-                if self._update_function_type_class is not None:
-                    service.set_update_function_type_class(
-                        self._update_function_type_class
-                    )
-                    service.set_update_function_name(self._update_function_name)
 
                 if len(data_pack) == 1:
                     # Chamando o service (método insert)
@@ -143,6 +160,7 @@ class PutRoute(RouteBase):
                         custom_before_update=self.custom_before_update,
                         custom_after_update=self.custom_after_update,
                         upsert=is_upsert,
+                        function_name=self._update_function_name,
                     )
 
                     if data is not None:
@@ -164,6 +182,7 @@ class PutRoute(RouteBase):
                         custom_before_update=self.custom_before_update,
                         custom_after_update=self.custom_after_update,
                         upsert=is_upsert,
+                        function_name=self._update_function_name,
                     )
 
                     if data is not None or not len(data) > 0:

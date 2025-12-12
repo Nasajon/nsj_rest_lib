@@ -3,9 +3,7 @@ from tests.classificacao_financeira_entity import ClassificacaoFinanceiraEntity
 from tests.classificacao_financeira_function_types import (
     ClassificacaoFinanceiraInsertType,
     ClassificacaoFinanceiraUpdateType,
-    ClassificacaoFinanceiraGetType,
     ClassificacaoFinanceiraListType,
-    ClassificacaoFinanceiraDeleteType,
 )
 from nsj_rest_lib.settings import application, APP_NAME, MOPE_CODE
 
@@ -25,7 +23,6 @@ GET_PUT_ROUTE = f"/{APP_NAME}/{MOPE_CODE}/classificacoes-financeiras/<id>"
     http_method="GET",
     dto_class=ClassificacaoFinanceiraDTO,
     entity_class=ClassificacaoFinanceiraEntity,
-    list_function_type_class=ClassificacaoFinanceiraListType,
     list_function_name="teste.api_classificacaofinanceiralist",
 )
 def get_classificacoes_financeiras(request, response):
@@ -64,7 +61,6 @@ def put_classificacoes_financeiras(request, response):
     http_method="GET",
     dto_class=ClassificacaoFinanceiraDTO,
     entity_class=ClassificacaoFinanceiraEntity,
-    get_function_type_class=ClassificacaoFinanceiraGetType,
     get_function_name="teste.api_classificacaofinanceiraget",
 )
 def get_classificacao_financeira(request, response):
@@ -77,7 +73,6 @@ def get_classificacao_financeira(request, response):
     http_method="DELETE",
     dto_class=ClassificacaoFinanceiraDTO,
     entity_class=ClassificacaoFinanceiraEntity,
-    delete_function_type_class=ClassificacaoFinanceiraDeleteType,
     delete_function_name="teste.api_classificacaofinanceiraexcluir",
 )
 def delete_classificacao_financeira(request, response):

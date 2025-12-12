@@ -18,6 +18,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         custom_before_delete=None,
         function_params: Dict[str, Any] | None = None,
         function_object=None,
+        function_name: str | None = None,
     ) -> DTOBase:
         self._delete(
             id,
@@ -26,6 +27,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
             custom_before_delete=custom_before_delete,
             function_params=function_params,
             function_object=function_object,
+            function_name=function_name,
         )
 
     def delete_list(
@@ -34,6 +36,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         additional_filters: Dict[str, Any] = None,
         function_params: Dict[str, Any] | None = None,
         function_object=None,
+        function_name: str | None = None,
     ):
         _returns = {}
         for _id in ids:
@@ -44,6 +47,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
                     additional_filters=additional_filters,
                     function_params=function_params,
                     function_object=function_object,
+                    function_name=function_name,
                 )
             except Exception as e:
                 _returns[_id] = e
@@ -58,6 +62,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         custom_before_delete=None,
         function_params: Dict[str, Any] | None = None,
         function_object=None,
+        function_name: str | None = None,
     ) -> DTOBase:
         try:
             if manage_transaction:
@@ -68,13 +73,14 @@ class ServiceBaseDelete(ServiceBasePartialOf):
                 dto = self.get(id, additional_filters, None)
                 custom_before_delete(self._dao._db, dto)
 
-            if (
-                getattr(self, "_delete_function_type_class", None) is not None
-                or getattr(self, "_delete_function_name", None) is not None
-                or function_object is not None
-            ):
+            fn_name = function_name
+            if fn_name is not None or function_params or function_object is not None:
                 self._delete_by_function(
-                    id, additional_filters, function_params or {}, function_object
+                    id,
+                    additional_filters,
+                    function_params or {},
+                    function_object,
+                    function_name=fn_name,
                 )
                 return
 
@@ -121,6 +127,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         additional_filters: Dict[str, Any] = None,
         custom_before_delete=None,
         function_params: Dict[str, Any] | None = None,
+        function_name: str | None = None,
     ) -> DTOBase:
 
         if not ids:
@@ -142,12 +149,13 @@ class ServiceBaseDelete(ServiceBasePartialOf):
                     dto = self.get(_id, additional_filters, None)
                     custom_before_delete(self._dao._db, dto)
 
-                if (
-                    getattr(self, "_delete_function_type_class", None) is not None
-                    or getattr(self, "_delete_function_name", None) is not None
-                ):
+                fn_name = function_name
+                if fn_name is not None or function_params:
                     self._delete_by_function(
-                        _id, additional_filters, function_params or {}
+                        _id,
+                        additional_filters,
+                        function_params or {},
+                        function_name=fn_name,
                     )
                     continue
 
@@ -190,28 +198,30 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         additional_filters: Dict[str, Any] | None,
         function_params: Dict[str, Any],
         function_object=None,
+        function_name: str | None = None,
     ):
-        params = dict(function_params or {})
+        params: Dict[str, Any] = dict(function_params or {})
         if additional_filters:
             params.update(additional_filters)
 
-        if function_object is None and getattr(self, "_delete_function_type_class", None) is not None:
-            function_object = self._build_function_type_from_params(
-                params,
-                self._delete_function_type_class,
-                id_value=id,
-            )
+        fn_name = function_name
+        if not fn_name:
+            raise ValueError("Nome da função DELETE não informado.")
+
         if function_object is not None:
-            self._dao._call_function_with_type(
-                function_object, self._delete_function_name
-            )
-            return
+            from nsj_rest_lib.dto.dto_base import DTOBase as _DTOBase
+
+            if not isinstance(function_object, _DTOBase):
+                raise TypeError(
+                    "function_object deve ser um DTOBase em _delete_by_function."
+                )
+            params = self._extract_params_from_dto(function_object)
 
         positional_values = []
         if id is not None:
             positional_values.append(id)
         self._dao._call_function_raw(
-            self._delete_function_name,
+            fn_name,
             positional_values,
             params,
         )

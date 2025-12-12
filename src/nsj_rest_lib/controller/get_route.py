@@ -6,6 +6,7 @@ from typing import Callable
 
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
+from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import (
@@ -31,9 +32,9 @@ class GetRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
-        get_function_type_class: type | None = None,
+        get_function_parameters_dto: type | None = None,
         get_function_name: str | None = None,
-        function_response_dto_class: type | None = None,
+        get_function_response_dto_class: type | None = None,
     ):
         super().__init__(
             url=url,
@@ -45,10 +46,30 @@ class GetRoute(RouteBase):
             service_name=service_name,
             handle_exception=handle_exception,
         )
-        self._get_function_type_class = get_function_type_class
+        self._get_function_parameters_dto = get_function_parameters_dto
         self._get_function_name = get_function_name
-        self._function_response_dto_class = (
-            function_response_dto_class or dto_class
+        self._get_function_response_dto_class = (
+            get_function_response_dto_class or dto_class
+        )
+
+    def _get_service(self, factory: NsjInjectorFactoryBase):
+        """
+        Sobrescreve o _get_service padrão para permitir configurar
+        o DTO de resposta de função diretamente no construtor do Service.
+        """
+
+        if self._service_name is not None:
+            return factory.get_service_by_name(self._service_name)
+
+        from nsj_rest_lib.service.service_base import ServiceBase
+
+        return ServiceBase(
+            factory,
+            DAOBase(factory.db_adapter(), self._entity_class),
+            self._dto_class,
+            self._entity_class,
+            self._dto_response_class,
+            get_function_response_dto_class=self._get_function_response_dto_class,
         )
 
     def handle_request(
@@ -98,20 +119,13 @@ class GetRoute(RouteBase):
 
                 # Construindo os objetos
                 service = self._get_service(factory)
-                if self._get_function_type_class is not None:
-                    service.set_get_function_type_class(self._get_function_type_class)
-                if self._get_function_name is not None:
-                    service.set_get_function_name(self._get_function_name)
-                if self._function_response_dto_class is not None:
-                    service.set_get_function_response_dto_class(
-                        self._function_response_dto_class
-                    )
-
-                function_object = None
-                if self._get_function_type_class is not None:
-                    function_object = RouteBase.build_function_type_from_args(
-                        self._get_function_type_class, args, id_value=id
-                    )
+                function_object = RouteBase.build_function_object_from_args(
+                    self._get_function_parameters_dto,
+                    args,
+                    extra_params=partition_fields,
+                    id_value=id,
+                )
+                function_params = None if function_object is not None else args
 
                 # Chamando o service (método get)
                 # TODO Rever parametro order_fields abaixo
@@ -120,8 +134,9 @@ class GetRoute(RouteBase):
                     partition_fields,
                     fields,
                     expands=expands,
-                    function_params=None if function_object is not None else args,
+                    function_params=function_params,
                     function_object=function_object,
+                    function_name=self._get_function_name,
                 )
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)

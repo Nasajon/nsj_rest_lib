@@ -19,16 +19,14 @@ class ServiceBaseGet(ServiceBaseRetrieve):
         expands: ty.Optional[FieldsTree] = None,
         function_params: Dict[str, Any] | None = None,
         function_object=None,
+        function_name: str | None = None,
     ) -> DTOBase:
 
         if expands is None:
             expands = {"root": set()}
 
-        if (
-            getattr(self, "_get_function_type_class", None) is not None
-            or getattr(self, "_get_function_name", None) is not None
-            or function_object is not None
-        ):
+        fn_name = function_name
+        if fn_name is not None or function_params or function_object is not None:
             return self._get_by_function(
                 id,
                 partition_fields,
@@ -36,6 +34,7 @@ class ServiceBaseGet(ServiceBaseRetrieve):
                 expands,
                 function_params or {},
                 function_object,
+                function_name=fn_name,
             )
 
         # Resolving fields
@@ -160,45 +159,53 @@ class ServiceBaseGet(ServiceBaseRetrieve):
         expands: FieldsTree,
         function_params: Dict[str, Any],
         function_object=None,
+        function_name: str | None = None,
     ) -> DTOBase:
         from nsj_rest_lib.exception import NotFoundException
 
-        all_params = {}
+        all_params: Dict[str, Any] = {}
         if partition_fields:
             all_params.update(partition_fields)
         all_params.update(function_params or {})
 
-        rows = []
-        dto_class = getattr(self, "_get_function_response_dto_class", self._dto_class)
+        rows: list[dict] = []
+        dto_class = self._get_function_response_dto_class
 
-        if function_object is None and getattr(self, "_get_function_type_class", None) is not None:
-            function_object = self._build_function_type_from_params(
-                all_params,
-                self._get_function_type_class,
-                id_value=id,
-            )
+        fn_name = function_name
+        if not fn_name:
+            raise ValueError("Nome da função GET não informado.")
+
         if function_object is not None:
-            rows = self._dao._call_function_with_type(
-                function_object, self._get_function_name
+            # Suporta apenas DTOBase como objeto de parâmetros
+            from nsj_rest_lib.dto.dto_base import DTOBase as _DTOBase
+
+            if not isinstance(function_object, _DTOBase):
+                raise TypeError(
+                    "function_object deve ser um DTOBase em _get_by_function."
+                )
+            params_for_call = self._extract_params_from_dto(function_object)
+            rows = self._dao._call_function_raw(
+                fn_name,
+                [],
+                params_for_call,
             )
             dtos = self._map_function_rows_to_dtos(
                 rows,
                 dto_class,
-                self._get_function_type_class,
+                operation="get",
             )
         else:
             positional_values = []
             if id is not None:
                 positional_values.append(id)
             rows = self._dao._call_function_raw(
-                self._get_function_name,
+                fn_name,
                 positional_values,
                 all_params,
             )
             dtos = self._map_function_rows_to_dtos(
                 rows,
                 dto_class,
-                None,
                 operation="get",
             )
 
