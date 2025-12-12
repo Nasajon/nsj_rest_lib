@@ -238,6 +238,8 @@ class ServiceBase(
 
         dto_fields_map = getattr(dto_class, "fields_map", {}) or {}
 
+        dto_fields_map = getattr(dto_class, "fields_map", {}) or {}
+
         dtos: list[DTOBase] = []
         for row in rows:
             dto_kwargs: dict[str, ty.Any] = {}
@@ -251,11 +253,46 @@ class ServiceBase(
                     source_field_name = descriptor.get_function_field_name(operation)
                     dto_kwargs[dto_field_name] = row.get(source_field_name)
             else:
-                # Mantém um comportamento genérico para outros cenários,
-                # caso venham a reutilizar esse helper no futuro.
-                dto_kwargs.update(row)
+                dto_kwargs = self._map_generic_row_to_dto_kwargs(
+                    row,
+                    dto_class,
+                    operation=operation,
+                )
 
             dto_instance = dto_class(escape_validator=True, **dto_kwargs)
             dtos.append(dto_instance)
 
         return dtos
+
+    def _map_generic_row_to_dto_kwargs(
+        self,
+        row: dict[str, ty.Any],
+        dto_class: ty.Type[DTOBase],
+        operation: str | None = None,
+    ) -> dict[str, ty.Any]:
+        """
+        Mapeamento genérico de um row para kwargs de DTO.
+
+        - Começa assumindo que as chaves do row já correspondem ao DTO.
+        - Em seguida, faz um fallback procurando, no row, os nomes esperados
+          pelo tipo de retorno (DTO), usando os descritores do DTO.
+        """
+        dto_kwargs: dict[str, ty.Any] = dict(row)
+
+        dto_fields_map = getattr(dto_class, "fields_map", {}) or {}
+        op = operation or ""
+
+        for dto_field_name, descriptor in dto_fields_map.items():
+            if dto_kwargs.get(dto_field_name) is not None:
+                continue
+
+            for candidate in (
+                dto_field_name,
+                descriptor.get_entity_field_name(),
+                descriptor.get_function_field_name(op),
+            ):
+                if candidate and candidate in row and row[candidate] is not None:
+                    dto_kwargs[dto_field_name] = row[candidate]
+                    break
+
+        return dto_kwargs
