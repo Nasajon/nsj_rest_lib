@@ -10,6 +10,31 @@ class FunctionType:
     type_base_class: Type[FunctionTypeBase] = FunctionTypeBase
 
     def __init__(self, type_name: str) -> None:
+        """
+        Cria um decorator para declarar um *FunctionType* associado
+        a um TYPE composto do banco de dados (PL/pgSQL).
+
+        O parâmetro ``type_name`` deve conter o nome totalmente
+        qualificado do TYPE no banco (por exemplo
+        ``\"teste.tclassificacaofinanceiranovo\"``). Esse valor é
+        copiado para o atributo de classe ``type_name`` da classe
+        decorada, e é usado posteriormente pelo DAO para montar o
+        bloco PL/pgSQL que instancia o TYPE e chama a função:
+
+        - em ``InsertFunctionType`` e ``UpdateFunctionType`` o
+          ``type_name`` indica o TYPE aceito pelas funções de
+          INSERT/UPDATE (ex.: ``a_objeto teste.tminhafuncaoinsert``),
+          permitindo que o Service construa um registro desse TYPE a
+          partir do DTO e delegue a operação para uma função PL/pgSQL.
+        - para GET/LIST/DELETE por função **não** é utilizada
+          ``FunctionTypeBase``; nesses cenários o mapeamento de
+          parâmetros é feito diretamente com DTOs específicos
+          (parâmetros ``*_function_parameters_dto`` das rotas/serviços),
+          e o ``type_name`` aqui não participa do fluxo.
+
+        Em resumo:
+        - ``type_name`` é **sempre** o nome do TYPE, não da função;
+        """
         if not type_name:
             raise ValueError("O parâmetro 'type_name' é obrigatório.")
 
@@ -25,9 +50,7 @@ class FunctionType:
 
         self._check_class_attribute(cls, "type_name", self.type_name)
         self._check_class_attribute(cls, "fields_map", {})
-        self._check_class_attribute(
-            cls, "_dto_function_mapping_cache", {}
-        )
+        self._check_class_attribute(cls, "_dto_function_mapping_cache", {})
 
         annotations = dict(getattr(cls, "__annotations__", {}) or {})
 
@@ -38,9 +61,7 @@ class FunctionType:
                 descriptor = attr
             elif key in annotations:
                 descriptor = attr
-                if not isinstance(
-                    attr, (FunctionField, FunctionRelationField)
-                ):
+                if not isinstance(attr, (FunctionField, FunctionRelationField)):
                     descriptor = FunctionField()
 
             if descriptor:
