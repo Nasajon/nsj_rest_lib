@@ -4,6 +4,7 @@ from nsj_rest_lib.descriptor.dto_left_join_field import EntityRelationOwner
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.util.type_validator_util import TypeValidatorUtil
+from nsj_rest_lib.util import ResumableVerbsTy
 
 
 class DTOJoinFieldType:
@@ -36,7 +37,7 @@ class DTOSQLJoinField:
         join_type: DTOJoinFieldType = DTOJoinFieldType.INNER,
         type: object = None,
         not_null: bool = False,
-        resume: bool = False,
+        resume: typing.Union[bool, typing.List[ResumableVerbsTy]] = False,
         convert_from_entity: typing.Callable = None,
         validator: typing.Callable = None,
         use_default_validator: bool = True,
@@ -68,7 +69,9 @@ class DTOSQLJoinField:
 
         - not_null: O campo não poderá ser None, ou vazio, no caso de strings.
 
-        - resume: O campo será usado como resumo, isto é, será sempre rotornado num HTTP GET que liste os dados (mesmo que não seja solicitado por meio da query string "fields").
+        - resume: Quando um boolean indica que o campo retornara como padrao em
+                      todos o Verbos, Se for uma Lista de Verbos ele indica em
+                      quais Verbos ele deve ser retornado por padrao.
 
         - convert_from_entity: Função para converter o valor contido na Entity, para o(s) valor(es) a serem gravados no objeto DTO (durante a conversão). É útil para casos onde não há equivalência um para um entre um campo do DTO e um da entidade
             (por exemplo, uma chave de cnpj que pode ser guardada em mais de um campo do BD). Outro caso de uso, é quando um campo tem formatação diferente entre o DTO e a entidade, carecendo de conversão customizada.
