@@ -222,51 +222,40 @@ class ServiceBase(
         if rows is None:
             return []
 
-        fields_map = None
-        if mapping is None and function_type_class is not None:
-            mapping = function_type_class.get_function_mapping(dto_class)
-            fields_map = function_type_class.get_fields_map()
-        elif mapping is None and operation is not None:
-            lookup_attr = f"{operation}_function_field_lookup"
-            mapping = getattr(dto_class, lookup_attr, None)
+        # Determina a operação quando não for informada explicitamente.
+        # Para GET/LIST por FunctionType, a operação é derivada da classe.
+        if operation is None and function_type_class is not None:
+            from nsj_rest_lib.entity.function_type_base import (
+                GetFunctionTypeBase,
+                ListFunctionTypeBase,
+            )
 
-        dtos = []
+            if isinstance(function_type_class, type):
+                if issubclass(function_type_class, GetFunctionTypeBase):
+                    operation = "get"
+                elif issubclass(function_type_class, ListFunctionTypeBase):
+                    operation = "list"
+
+        dto_fields_map = getattr(dto_class, "fields_map", {}) or {}
+
+        dtos: list[DTOBase] = []
         for row in rows:
-            dto_kwargs = {}
-            if mapping:
-                for function_field_name, (dto_field_name, _) in mapping.items():
-                    source_field_name = function_field_name
-                    if fields_map and function_field_name in fields_map:
-                        source_field_name = fields_map[
-                            function_field_name
-                        ].get_type_field_name()
-                    new_value = row.get(source_field_name, row.get(function_field_name))
-                    if new_value is None:
-                        new_value = row.get(dto_field_name)
-                    existing_value = dto_kwargs.get(dto_field_name)
-                    if existing_value is not None and new_value is None:
-                        continue
-                    dto_kwargs[dto_field_name] = new_value
+            dto_kwargs: dict[str, ty.Any] = {}
+
+            # Para GET/LIST, o contrato é:
+            # - o nome da coluna no retorno SEMPRE é igual a:
+            #   - o valor de get_function_field, se configurado; ou
+            #   - o nome do campo no DTO (descriptor.name), quando get_function_field é None.
+            if operation in ("get", "list"):
+                for dto_field_name, descriptor in dto_fields_map.items():
+                    source_field_name = descriptor.get_function_field_name(operation)
+                    dto_kwargs[dto_field_name] = row.get(source_field_name)
             else:
+                # Mantém um comportamento genérico para outros cenários,
+                # caso venham a reutilizar esse helper no futuro.
                 dto_kwargs.update(row)
 
-            # Fallback: completa campos ainda vazios usando nomes conhecidos do DTO
-            dto_fields_map = getattr(dto_class, "fields_map", {}) or {}
-            for dto_field_name, descriptor in dto_fields_map.items():
-                if dto_kwargs.get(dto_field_name) is not None:
-                    continue
-                for candidate in (
-                    dto_field_name,
-                    descriptor.get_entity_field_name(),
-                    descriptor.get_function_field_name(operation or ""),
-                ):
-                    if candidate and candidate in row and row[candidate] is not None:
-                        dto_kwargs[dto_field_name] = row[candidate]
-                        break
-
-            dto_instance = dto_class(
-                escape_validator=True,
-                **dto_kwargs,
-            )
+            dto_instance = dto_class(escape_validator=True, **dto_kwargs)
             dtos.append(dto_instance)
+
         return dtos
