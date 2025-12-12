@@ -21,21 +21,16 @@ class FakeDAO:
     def commit(self): ...
     def rollback(self): ...
 
-    def _call_function_with_type(self, obj, function_name):
-        self.called_with_type = obj
-        self.called_function_name = function_name
-        # retorna objeto compatível com DTO
-        return [
-            {
-                "classificacao": getattr(obj, "id", None),
-                "codigo": getattr(obj, "codigo", None) or "COD",
-                "descricao_func": getattr(obj, "descricao_func", None) or "DESC",
-            }
-        ]
-
     def _call_function_raw(self, name, positional, named):
         self.called_raw = (name, positional, named)
-        return []
+        # retorna objeto compatível com CFDTO via GET/LIST (campos com nomes de DTO)
+        return [
+            {
+                "id": None,
+                "codigo": "COD",
+                "descricao": "DESC",
+            }
+        ]
 
     def delete(self, *_args, **_kwargs): ...
     def _delete_related_lists(self, *_args, **_kwargs): ...
@@ -74,6 +69,11 @@ class CFListType(ListFunctionTypeBase):
     descricao: str = FunctionField(type_field_name="descricao_func")
 
 
+@DTO()
+class CFListParams(DTOBase):
+    grupoempresarial: uuid.UUID = DTOField()
+
+
 def _build_service(dao: FakeDAO):
     return ServiceBase(
         FakeInjector(),
@@ -90,17 +90,21 @@ def test_list_by_function_builds_from_params():
     dao = FakeDAO()
     service = _build_service(dao)
 
+    import uuid as _uuid
+    grupo = _uuid.uuid4()
+    params_dto = CFListParams(grupoempresarial=grupo)
+
     dto_list = service.list(
         after=None,
         limit=None,
         fields={"root": set()},
         order_fields=None,
         filters={},
-        function_object=CFListType.build_from_params({"grupoempresarial": "grp"}),
+        function_object=params_dto,
+        function_name="teste.fn_cf_list",
     )
 
-    assert isinstance(dao.called_with_type, CFListType)
-    assert dao.called_function_name == "teste.fn_cf_list"
-    assert dao.called_with_type.grupoempresarial == "grp"
+    assert dao.called_raw[0] == "teste.fn_cf_list"
+    assert dao.called_raw[2]["grupoempresarial"] == grupo
     assert len(dto_list) == 1
     assert dto_list[0].codigo == "COD"

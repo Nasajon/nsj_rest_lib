@@ -30,7 +30,8 @@ class FakeDAO:
 
     def _call_function_raw(self, name, positional, named):
         self.called_raw = (name, positional, named)
-        return [{"id_func": positional[0] if positional else None, "nome_func": "raw"}]
+        id_value = positional[0] if positional else named.get("id_func")
+        return [{"id_func": id_value, "nome_func": "raw"}]
 
     def delete(self, *_args, **_kwargs):
         return None
@@ -113,12 +114,12 @@ def test_get_by_function_params_dto_maps_pk_and_result():
         fields={"root": set()},
         function_params=None,
         function_object=params_dto,
-        function_name=None,
+        function_name="teste.fn_dummy_get",
     )
 
     assert dao.called_raw[0] == "teste.fn_dummy_get"
-    # positional id
-    assert dao.called_raw[1] == [10]
+    # sem posicionais quando usamos DTO de parâmetros
+    assert dao.called_raw[1] == []
     # pk_field mapeado para id_func nos parâmetros nomeados
     assert dao.called_raw[2]["id_func"] == 10
     assert dto.id == 10
@@ -139,6 +140,7 @@ def test_get_by_function_raw():
         7,
         partition_fields={},
         fields={"root": set()},
+        function_name="teste.fn_raw",
     )
 
     assert dao.called_raw[0] == "teste.fn_raw"
@@ -159,7 +161,7 @@ def test_list_by_function_type():
         None,
         {},  # filters
         function_object=params_dto,
-        function_name=None,
+        function_name="teste.fn_dummy_list",
     )
 
     assert len(dtos) == 1
@@ -177,7 +179,7 @@ def test_delete_by_function_type_uses_pk_field():
         additional_filters=None,
         function_object=params_dto,
         function_params=None,
-        function_name=None,
+        function_name="teste.fn_dummy_delete",
     )
 
     assert dao.called_raw[0] == "teste.fn_dummy_delete"
