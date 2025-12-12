@@ -43,7 +43,9 @@ class ServiceBaseList(ServiceBaseRetrieve):
         function_name: str | None = None,
     ) -> List[DTOBase]:
         fn_name = function_name
-        if fn_name is not None or function_params or function_object is not None:
+        # LIST por função só deve ocorrer quando o nome da função
+        # for informado explicitamente.
+        if fn_name is not None:
             return self._list_by_function(
                 fields,
                 expands or {"root": set()},

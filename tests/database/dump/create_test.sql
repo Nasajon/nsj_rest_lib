@@ -68,6 +68,20 @@ CREATE TABLE teste.classificacoesfinanceiras (
 	CONSTRAINT "PK_classificacoesfinanceiras_classificacaofinanceira" PRIMARY KEY (classificacaofinanceira)
 );
 
+-- Registro base de classificação financeira usado pelos testes
+INSERT INTO teste.classificacoesfinanceiras (
+    codigo,
+    descricao,
+    classificacaofinanceira,
+    grupoempresarial
+)
+VALUES (
+    'teste-04',
+    'Classificação para teste do insert por funcao',
+    'ffe29dad-e33d-4e9c-9803-5eb926e5bc21',
+    '3964bfdc-e09e-4386-9655-5296062e632d'
+);
+
 CREATE TYPE teste.tclassificacaofinanceiranovo AS (
 	idclassificacao uuid,
 	classificacaopai text,
@@ -830,6 +844,21 @@ BEGIN
 END;
 $function$;
 
+-- Versão auxiliar para facilitar chamadas com parâmetro simples (id),
+-- mantendo o uso do TYPE composto nos testes quando necessário.
+CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiraget(p_classificacao text)
+ RETURNS TABLE (classificacao uuid, codigo varchar, descricao_func varchar, grupoempresarial uuid)
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    a_objeto teste.tclassificacaofinanceiraget;
+BEGIN
+    a_objeto.classificacao := p_classificacao;
+    RETURN QUERY
+        SELECT * FROM teste.api_classificacaofinanceiraget(a_objeto);
+END;
+$function$;
+
 CREATE TYPE teste.tclassificacaofinanceiralist AS (
     grupo_empresarial uuid,
     codigo varchar(16)
@@ -845,6 +874,24 @@ BEGIN
                CAST(COALESCE(a_objeto.codigo, 'teste-04') AS varchar(16)),
                CAST('Classificação para teste do insert por funcao' AS varchar(150)),
                CAST('3964bfdc-e09e-4386-9655-5296062e632d' AS uuid);
+END;
+$function$;
+
+-- Versão auxiliar para facilitar chamadas com parâmetro simples (grupo_empresarial),
+-- mantendo o uso do TYPE composto nos testes quando necessário.
+CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiralist(
+    p_grupo_empresarial text
+)
+ RETURNS TABLE (classificacao uuid, codigo varchar, descricao_func varchar, grupoempresarial uuid)
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    a_objeto teste.tclassificacaofinanceiralist;
+BEGIN
+    a_objeto.grupo_empresarial := p_grupo_empresarial::uuid;
+    a_objeto.codigo := NULL;
+    RETURN QUERY
+        SELECT * FROM teste.api_classificacaofinanceiralist(a_objeto);
 END;
 $function$;
 
@@ -867,5 +914,20 @@ BEGIN
 
     VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('OK', 'Classificação financeira removida com sucesso.');
     RETURN VAR_RECIBO;
+END;
+$function$;
+
+-- Versão auxiliar para facilitar chamadas com parâmetro simples (classificacao),
+-- mantendo o uso do TYPE composto nos testes quando necessário.
+CREATE OR REPLACE FUNCTION teste.api_classificacaofinanceiraexcluir(p_classificacao text)
+ RETURNS teste.trecibo
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    a_objeto teste.tclassificacaofinanceiraexcluir;
+BEGIN
+    a_objeto.classificacao := p_classificacao;
+    a_objeto.grupo_empresarial := NULL;
+    RETURN teste.api_classificacaofinanceiraexcluir(a_objeto);
 END;
 $function$;

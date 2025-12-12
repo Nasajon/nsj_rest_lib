@@ -94,6 +94,6 @@ class DAOBaseFunction(DAOBaseUtil):
         args_sql = ", ".join(placeholders)
         sql = f"select * from {function_name}({args_sql});"
 
-        _, returning = self._db.execute(sql, **values_map)
+        returning = self._db.execute_query(sql, **values_map)
 
         return returning or []

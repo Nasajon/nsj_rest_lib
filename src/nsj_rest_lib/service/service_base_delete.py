@@ -74,7 +74,9 @@ class ServiceBaseDelete(ServiceBasePartialOf):
                 custom_before_delete(self._dao._db, dto)
 
             fn_name = function_name
-            if fn_name is not None or function_params or function_object is not None:
+            # DELETE por função só deve ocorrer quando o nome da função
+            # for informado explicitamente.
+            if fn_name is not None:
                 self._delete_by_function(
                     id,
                     additional_filters,
@@ -150,7 +152,9 @@ class ServiceBaseDelete(ServiceBasePartialOf):
                     custom_before_delete(self._dao._db, dto)
 
                 fn_name = function_name
-                if fn_name is not None or function_params:
+                # DELETE por função só deve ocorrer quando o nome da função
+                # for informado explicitamente.
+                if fn_name is not None:
                     self._delete_by_function(
                         _id,
                         additional_filters,

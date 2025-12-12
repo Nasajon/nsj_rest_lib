@@ -5,3 +5,4 @@ pylint==3.3.2
 build==1.2.2
 #twine==6.1.0
 packaging==21.3
+sqlalchemy==1.4.32

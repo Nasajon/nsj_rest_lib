@@ -26,7 +26,9 @@ class ServiceBaseGet(ServiceBaseRetrieve):
             expands = {"root": set()}
 
         fn_name = function_name
-        if fn_name is not None or function_params or function_object is not None:
+        # GET por função só deve ocorrer quando o nome da função
+        # for informado explicitamente.
+        if fn_name is not None:
             return self._get_by_function(
                 id,
                 partition_fields,
