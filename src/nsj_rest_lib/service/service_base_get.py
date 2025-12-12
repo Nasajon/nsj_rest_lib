@@ -17,10 +17,27 @@ class ServiceBaseGet(ServiceBaseRetrieve):
         partition_fields: Dict[str, Any],
         fields: FieldsTree,
         expands: ty.Optional[FieldsTree] = None,
+        function_params: Dict[str, Any] | None = None,
+        function_object=None,
+        function_name: str | None = None,
     ) -> DTOBase:
 
         if expands is None:
             expands = {"root": set()}
+
+        fn_name = function_name
+        # GET por função só deve ocorrer quando o nome da função
+        # for informado explicitamente.
+        if fn_name is not None:
+            return self._get_by_function(
+                id,
+                partition_fields,
+                fields,
+                expands,
+                function_params or {},
+                function_object,
+                function_name=fn_name,
+            )
 
         # Resolving fields
         fields = self._resolving_fields(fields)
@@ -134,4 +151,70 @@ class ServiceBaseGet(ServiceBaseRetrieve):
                 partition_fields,
             )
 
+        return dto
+
+    def _get_by_function(
+        self,
+        id: str,
+        partition_fields: Dict[str, Any],
+        fields: FieldsTree,
+        expands: FieldsTree,
+        function_params: Dict[str, Any],
+        function_object=None,
+        function_name: str | None = None,
+    ) -> DTOBase:
+        from nsj_rest_lib.exception import NotFoundException
+
+        all_params: Dict[str, Any] = {}
+        if partition_fields:
+            all_params.update(partition_fields)
+        all_params.update(function_params or {})
+
+        rows: list[dict] = []
+        dto_class = self._get_function_response_dto_class
+
+        fn_name = function_name
+        if not fn_name:
+            raise ValueError("Nome da função GET não informado.")
+
+        if function_object is not None:
+            # Suporta apenas DTOBase como objeto de parâmetros
+            from nsj_rest_lib.dto.dto_base import DTOBase as _DTOBase
+
+            if not isinstance(function_object, _DTOBase):
+                raise TypeError(
+                    "function_object deve ser um DTOBase em _get_by_function."
+                )
+            params_for_call = self._extract_params_from_dto(function_object)
+            rows = self._dao._call_function_raw(
+                fn_name,
+                [],
+                params_for_call,
+            )
+            dtos = self._map_function_rows_to_dtos(
+                rows,
+                dto_class,
+                operation="get",
+            )
+        else:
+            positional_values = []
+            if id is not None:
+                positional_values.append(id)
+            rows = self._dao._call_function_raw(
+                fn_name,
+                positional_values,
+                all_params,
+            )
+            dtos = self._map_function_rows_to_dtos(
+                rows,
+                dto_class,
+                operation="get",
+            )
+
+        if not dtos:
+            raise NotFoundException(
+                f"{self._entity_class.__name__} com id {id} não encontrado."
+            )
+
+        dto = dtos[0]
         return dto

@@ -29,6 +29,8 @@ class DTOObjectField:
         update_function_field: str = None,
         update_function_type: typing.Optional[type[UpdateFunctionTypeBase]] = None,
         convert_to_function: typing.Callable = None,
+        get_function_field: str = None,
+        delete_function_field: str = None,
     ):
         """
         DEPRECATED! Use DTOOneToOneField instead!
@@ -80,6 +82,10 @@ class DTOObjectField:
         - update_function_field: Nome do campo equivalente no UpdateFunctionType (default: herdado do insert_function_field).
 
         - convert_to_function: Função para converter o valor antes de preencher o InsertFunctionType. Recebe (valor, dict_com_valores_do_dto) e deve retornar um dicionário com os campos/resultados a serem atribuídos.
+
+        - get_function_field: Nome do campo equivalente no Get/ListFunctionType (default: o próprio nome do campo no DTO).
+
+        - delete_function_field: Nome do campo equivalente no DeleteFunctionType (default: o próprio nome do campo no DTO).
         """
         self.name = None
         self.description = description
@@ -97,6 +103,8 @@ class DTOObjectField:
         self.update_function_field = update_function_field
         self.update_function_type = update_function_type
         self.convert_to_function = convert_to_function
+        self.get_function_field = get_function_field
+        self.delete_function_field = delete_function_field
 
         self.storage_name = f"_{self.__class__.__name__}#{self.__class__._ref_counter}"
         self.__class__._ref_counter += 1
@@ -159,6 +167,14 @@ class DTOObjectField:
         return self.get_insert_function_field_name()
 
     def get_function_field_name(self, operation: str) -> str:
+        if operation in ("get", "list"):
+            if self.get_function_field is not None:
+                return self.get_function_field
+            return self.name
+        if operation == "delete":
+            if self.delete_function_field is not None:
+                return self.delete_function_field
+            return self.name
         if operation == "update":
             return self.get_update_function_field_name()
         return self.get_insert_function_field_name()

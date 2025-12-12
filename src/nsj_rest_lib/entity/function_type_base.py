@@ -20,17 +20,19 @@ class FunctionTypeBase(abc.ABC):
     fields_map: ty.Dict[str, FunctionField] = {}
     type_name: str = ""
     function_name: str = ""
+    pk_field_name: ty.Optional[str] = None
     dto_lookup_attribute: str = "function_field_lookup"
     _dto_function_mapping_cache: ty.Dict[
         ty.Type["DTOBase"], ty.Dict[str, ty.Tuple[str, ty.Any]]
     ] = {}
 
-    def get_fields_map(self) -> ty.Dict[str, FunctionField]:
-        if not hasattr(self.__class__, "fields_map"):
+    @classmethod
+    def get_fields_map(cls) -> ty.Dict[str, FunctionField]:
+        if not hasattr(cls, "fields_map"):
             raise NotImplementedError(
-                f"fields_map não definido em {self.__class__.__name__}"
+                f"fields_map não definido em {cls.__name__}"
             )
-        return self.__class__.fields_map
+        return cls.fields_map
 
     def get_type_name(self) -> str:
         if not hasattr(self.__class__, "type_name"):
@@ -45,6 +47,45 @@ class FunctionTypeBase(abc.ABC):
                 f"function_name não definido em {self.__class__.__name__}"
             )
         return self.__class__.function_name
+
+    @classmethod
+    def get_pk_field_name(cls) -> ty.Optional[str]:
+        """
+        Retorna o nome do campo marcado como pk no FunctionType, se houver.
+        """
+        return getattr(cls, "pk_field_name", None)
+
+    @classmethod
+    def build_from_params(
+        cls,
+        params: dict[str, ty.Any],
+        id_value: ty.Any = None,
+    ) -> "FunctionTypeBase":
+        """
+        Constrói uma instância preenchida a partir de um dicionário de parâmetros,
+        opcionalmente preenchendo o campo pk com id_value.
+        """
+        instance = cls()
+        fields_map = cls.get_fields_map()
+
+        pk_field = cls.get_pk_field_name()
+        if id_value is not None:
+            if pk_field is None:
+                raise ValueError(
+                    f"FunctionType '{cls.__name__}' não possui campo pk configurado."
+                )
+            setattr(instance, pk_field, id_value)
+
+        for key, value in params.items():
+            if key in fields_map:
+                setattr(instance, key, value)
+                continue
+            for field_name, descriptor in fields_map.items():
+                if descriptor.get_type_field_name() == key:
+                    setattr(instance, field_name, value)
+                    break
+
+        return instance
 
     @classmethod
     def get_function_mapping(
@@ -101,6 +142,39 @@ class UpdateFunctionTypeBase(FunctionTypeBase):
 
     @classmethod
     def get_update_function_mapping(
+        cls,
+        dto_class: ty.Type["DTOBase"],
+    ) -> ty.Dict[str, ty.Tuple[str, ty.Any]]:
+        return cls.get_function_mapping(dto_class)
+
+
+class GetFunctionTypeBase(FunctionTypeBase):
+    dto_lookup_attribute = "get_function_field_lookup"
+
+    @classmethod
+    def get_get_function_mapping(
+        cls,
+        dto_class: ty.Type["DTOBase"],
+    ) -> ty.Dict[str, ty.Tuple[str, ty.Any]]:
+        return cls.get_function_mapping(dto_class)
+
+
+class ListFunctionTypeBase(FunctionTypeBase):
+    dto_lookup_attribute = "list_function_field_lookup"
+
+    @classmethod
+    def get_list_function_mapping(
+        cls,
+        dto_class: ty.Type["DTOBase"],
+    ) -> ty.Dict[str, ty.Tuple[str, ty.Any]]:
+        return cls.get_function_mapping(dto_class)
+
+
+class DeleteFunctionTypeBase(FunctionTypeBase):
+    dto_lookup_attribute = "delete_function_field_lookup"
+
+    @classmethod
+    def get_delete_function_mapping(
         cls,
         dto_class: ty.Type["DTOBase"],
     ) -> ty.Dict[str, ty.Tuple[str, ty.Any]]:

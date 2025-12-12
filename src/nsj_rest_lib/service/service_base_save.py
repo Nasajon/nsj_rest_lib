@@ -34,6 +34,7 @@ class ServiceBaseSave(ServiceBasePartialOf):
         custom_after_update: Callable = None,
         upsert: bool = False,
         retrieve_after_insert: bool = False,
+        function_name: str | None = None,
     ) -> DTOBase:
         try:
             received_dto = dto
@@ -145,6 +146,7 @@ class ServiceBaseSave(ServiceBasePartialOf):
                     insert_function_object = self._build_insert_function_type_object(dto)
                     self._dao.insert_by_function(
                         insert_function_object,
+                        function_name=function_name,
                     )
 
                 if partial_write_data is not None:
@@ -181,7 +183,10 @@ class ServiceBaseSave(ServiceBasePartialOf):
                     update_function_object = (
                         self._build_update_function_type_object(dto)
                     )
-                    self._dao.update_by_function(update_function_object)
+                    self._dao.update_by_function(
+                        update_function_object,
+                        function_name=function_name,
+                    )
 
                 if partial_write_data is not None:
                     self._handle_partial_extension_update(

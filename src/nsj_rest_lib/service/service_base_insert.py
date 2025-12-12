@@ -15,6 +15,7 @@ class ServiceBaseInsert(ServiceBaseSave):
         custom_after_insert: Callable = None,
         retrieve_after_insert: bool = False,
         manage_transaction: bool = True,
+        function_name: str | None = None,
     ) -> DTOBase:
         return self._save(
             insert=True,
@@ -25,6 +26,7 @@ class ServiceBaseInsert(ServiceBaseSave):
             custom_before_insert=custom_before_insert,
             custom_after_insert=custom_after_insert,
             retrieve_after_insert=retrieve_after_insert,
+            function_name=function_name,
         )
 
     def insert_list(
@@ -35,6 +37,7 @@ class ServiceBaseInsert(ServiceBaseSave):
         custom_after_insert: Callable = None,
         retrieve_after_insert: bool = False,
         manage_transaction: bool = True,
+        function_name: str | None = None,
     ) -> List[DTOBase]:
         _lst_return = []
         try:
@@ -51,6 +54,7 @@ class ServiceBaseInsert(ServiceBaseSave):
                     custom_before_insert=custom_before_insert,
                     custom_after_insert=custom_after_insert,
                     retrieve_after_insert=retrieve_after_insert,
+                    function_name=function_name,
                 )
 
                 if _return_object is not None:

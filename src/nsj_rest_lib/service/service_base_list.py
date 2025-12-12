@@ -38,7 +38,21 @@ class ServiceBaseList(ServiceBaseRetrieve):
         search_query: str = None,
         return_hidden_fields: set[str] = None,
         expands: ty.Optional[FieldsTree] = None,
+        function_params: Dict[str, Any] | None = None,
+        function_object=None,
+        function_name: str | None = None,
     ) -> List[DTOBase]:
+        fn_name = function_name
+        # LIST por função só deve ocorrer quando o nome da função
+        # for informado explicitamente.
+        if fn_name is not None:
+            return self._list_by_function(
+                fields,
+                expands or {"root": set()},
+                function_params or {},
+                function_object,
+                function_name=fn_name,
+            )
         # Resolving fields
         fields = self._resolving_fields(fields)
 
@@ -238,3 +252,49 @@ class ServiceBaseList(ServiceBaseRetrieve):
 
         # Returning
         return dto_list
+
+    def _list_by_function(
+        self,
+        fields: FieldsTree,
+        expands: FieldsTree,
+        function_params: Dict[str, Any],
+        function_object=None,
+        function_name: str | None = None,
+    ) -> List[DTOBase]:
+        params: Dict[str, Any] = dict(function_params or {})
+        dto_class = self._list_function_response_dto_class
+
+        fn_name = function_name
+        if not fn_name:
+            raise ValueError("Nome da função LIST não informado.")
+
+        if function_object is not None:
+            from nsj_rest_lib.dto.dto_base import DTOBase as _DTOBase
+
+            if not isinstance(function_object, _DTOBase):
+                raise TypeError(
+                    "function_object deve ser um DTOBase em _list_by_function."
+                )
+            params_for_call = self._extract_params_from_dto(function_object)
+            rows = self._dao._call_function_raw(
+                fn_name,
+                [],
+                params_for_call,
+            )
+            return self._map_function_rows_to_dtos(
+                rows,
+                dto_class,
+                operation="list",
+            )
+
+        rows = self._dao._call_function_raw(
+            fn_name,
+            [],
+            params,
+        )
+
+        return self._map_function_rows_to_dtos(
+            rows,
+            dto_class,
+            operation="list",
+        )

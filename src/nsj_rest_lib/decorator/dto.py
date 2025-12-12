@@ -244,6 +244,9 @@ class DTO:
         self._check_class_attribute(cls, "aggregator_fields_map", {})
         self._check_class_attribute(cls, "insert_function_field_lookup", {})
         self._check_class_attribute(cls, "update_function_field_lookup", {})
+        self._check_class_attribute(cls, "get_function_field_lookup", {})
+        self._check_class_attribute(cls, "list_function_field_lookup", {})
+        self._check_class_attribute(cls, "delete_function_field_lookup", {})
 
         # Creating pk_field in cls, if needed
         # TODO Refatorar para suportar PKs compostas
@@ -563,7 +566,17 @@ class DTO:
             key_in_child: str = v.related_entity_field
             child_dto: DTOBase = v.dto_type
 
-            relation_field: DTOField = cls.fields_map[v.relation_key_field]
+            relation_key_field = v.relation_key_field or getattr(cls, "pk_field", None)
+            if relation_key_field is None:
+                raise ValueError(
+                    f"É necessário informar 'relation_key_field' em DTOListField '{k}' ou definir 'pk_field' no DTO '{cls.__name__}'."
+                )
+
+            relation_field: DTOField = cls.fields_map.get(relation_key_field)
+            if relation_field is None:
+                raise ValueError(
+                    f"O campo '{relation_key_field}' não existe no DTO '{cls.__name__}' para ser usado como relation_key_field de '{k}'."
+                )
 
             field = DTOField(
                 resume=False, validator=relation_field.validator
@@ -615,8 +628,8 @@ class DTO:
         else:
             setattr(cls, "partial_dto_config", None)
 
-        self._build_function_field_lookup(cls, operation="insert")
-        self._build_function_field_lookup(cls, operation="update")
+        for operation in ("insert", "update", "get", "list", "delete"):
+            self._build_function_field_lookup(cls, operation=operation)
 
         return cls
 
@@ -673,43 +686,89 @@ class DTO:
             if descriptor.get_function_type(operation) is not None
         }
 
-        operation_label = "InsertFunctionType" if operation == "insert" else "UpdateFunctionType"
-        lookup_attr = (
-            "insert_function_field_lookup"
-            if operation == "insert"
-            else "update_function_field_lookup"
-        )
+        operation_labels = {
+            "insert": "InsertFunctionType",
+            "update": "UpdateFunctionType",
+            "get": "GetFunctionType",
+            "list": "ListFunctionType",
+            "delete": "DeleteFunctionType",
+        }
+        lookup_attr_map = {
+            "insert": "insert_function_field_lookup",
+            "update": "update_function_field_lookup",
+            "get": "get_function_field_lookup",
+            "list": "list_function_field_lookup",
+            "delete": "delete_function_field_lookup",
+        }
+
+        operation_label = operation_labels.get(operation, operation)
+        lookup_attr = lookup_attr_map.get(operation)
+        if lookup_attr is None:
+            return
+
+        # Mantém um controle para evitar conflitos de mapeamento pelo nome de campo de função
+        target_to_field: dict[str, str] = {}
 
         def add_lookup_entry(target_name: str, field_name: str, descriptor: Any):
-            if target_name in lookup:
+            existing = target_to_field.get(target_name)
+            if existing is not None and existing != field_name:
                 raise ValueError(
                     f"O campo '{target_name}' no {operation_label} está mapeado por mais de um campo no DTO '{cls.__name__}'."
                 )
-            lookup[target_name] = (field_name, descriptor)
+
+            target_to_field[target_name] = field_name
+
+            # Incluímos tanto o nome do campo do DTO (usado pelos FunctionTypes)
+            # quanto o nome configurado para a função, garantindo compatibilidade
+            # com cenários com ou sem FunctionType explícito.
+            for key in {field_name, target_name}:
+                lookup[key] = (field_name, descriptor)
+
+        def get_target_names(descriptor: Any) -> list[str]:
+            """
+            Determina quais nomes de campo entram no lookup, de acordo com a operação:
+            - insert: apenas o alias de insert (ou nome do campo).
+            - update: alias de update (ou de insert) e nome do campo.
+            - get/list: nome específico configurado para GET (get_function_field) ou o nome do campo.
+            - delete: nome específico configurado para DELETE (delete_function_field) ou o nome do campo.
+            """
+            targets = [descriptor.get_function_field_name(operation)]
+
+            if operation == "insert":
+                return targets
+            if operation == "update":
+                update_alias = descriptor.get_update_function_field_name()
+                if update_alias not in targets:
+                    targets.append(update_alias)
+                return targets
+
+            # GET/LIST/DELETE usam apenas o nome específico configurado (ou o nome do campo)
+            return targets
+
+        def process_descriptor(field_name: str, descriptor: Any):
+            target_names = get_target_names(descriptor)
+            for target_name in target_names:
+                add_lookup_entry(target_name, field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "fields_map").items():
             if field_name in relation_oto_fields:
                 continue
-            target_name = descriptor.get_function_field_name(operation)
-            add_lookup_entry(target_name, field_name, descriptor)
+            process_descriptor(field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "list_fields_map").items():
             if descriptor.get_function_type(operation) is None:
                 continue
-            target_name = descriptor.get_function_field_name(operation)
-            add_lookup_entry(target_name, field_name, descriptor)
+            process_descriptor(field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "object_fields_map").items():
             if descriptor.get_function_type(operation) is None:
                 continue
-            target_name = descriptor.get_function_field_name(operation)
-            add_lookup_entry(target_name, field_name, descriptor)
+            process_descriptor(field_name, descriptor)
 
         for field_name, descriptor in getattr(cls, "one_to_one_fields_map").items():
             if descriptor.get_function_type(operation) is None:
                 continue
-            target_name = descriptor.get_function_field_name(operation)
-            add_lookup_entry(target_name, field_name, descriptor)
+            process_descriptor(field_name, descriptor)
 
         setattr(cls, lookup_attr, lookup)
 

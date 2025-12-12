@@ -27,6 +27,8 @@ class DeleteRoute(RouteBase):
         service_name: str = None,
         handle_exception: Callable = None,
         custom_before_delete: Callable = None,
+        delete_function_parameters_dto: type | None = None,
+        delete_function_name: str | None = None,
     ):
         super().__init__(
             url=url,
@@ -39,6 +41,8 @@ class DeleteRoute(RouteBase):
             handle_exception=handle_exception,
         )
         self.custom_before_delete = custom_before_delete
+        self._delete_function_parameters_dto = delete_function_parameters_dto
+        self._delete_function_name = delete_function_name
 
     def _partition_filters(self, args):
         partition_filters = {}
@@ -127,10 +131,19 @@ class DeleteRoute(RouteBase):
                 service = self._get_service(factory)
 
                 if id is not None:
+                    function_object = RouteBase.build_function_object_from_args(
+                        self._delete_function_parameters_dto,
+                        args,
+                        extra_params=partition_filters,
+                        id_value=id,
+                    )
                     service.delete(
                         id,
                         partition_filters,
                         custom_before_delete=self.custom_before_delete,
+                        function_params=None if function_object is not None else args,
+                        function_object=function_object,
+                        function_name=self._delete_function_name,
                     )
 
                     # Retornando a resposta da requisição
@@ -139,10 +152,25 @@ class DeleteRoute(RouteBase):
 
                     request_data = list(map(lambda item: item["id"] if isinstance(item, dict) else item, request_data))
 
-                    _delete_return = service.delete_list(
-                        request_data,
-                        partition_filters
-                    )
+                    _delete_return = {}
+                    for _id in request_data:
+                        try:
+                            function_object = RouteBase.build_function_object_from_args(
+                                self._delete_function_parameters_dto,
+                                args,
+                                extra_params=partition_filters,
+                                id_value=_id,
+                            )
+                            service.delete(
+                                _id,
+                                partition_filters,
+                                custom_before_delete=self.custom_before_delete,
+                                function_params=None if function_object is not None else args,
+                                function_object=function_object,
+                                function_name=self._delete_function_name,
+                            )
+                        except Exception as e:
+                            _delete_return[_id] = e
 
                     _response = self._multi_status_response(request_data, _delete_return)
 

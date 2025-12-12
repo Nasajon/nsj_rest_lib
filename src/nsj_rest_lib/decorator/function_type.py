@@ -9,14 +9,11 @@ from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 class FunctionType:
     type_base_class: Type[FunctionTypeBase] = FunctionTypeBase
 
-    def __init__(self, type_name: str, function_name: str) -> None:
-        if not type_name or not function_name:
-            raise ValueError(
-                "Os parâmetros 'type_name' e 'function_name' são obrigatórios."
-            )
+    def __init__(self, type_name: str) -> None:
+        if not type_name:
+            raise ValueError("O parâmetro 'type_name' é obrigatório.")
 
         self.type_name = type_name
-        self.function_name = function_name
 
     def __call__(self, cls: Type[FunctionTypeBase]):
         functools.update_wrapper(self, cls)
@@ -27,7 +24,6 @@ class FunctionType:
             )
 
         self._check_class_attribute(cls, "type_name", self.type_name)
-        self._check_class_attribute(cls, "function_name", self.function_name)
         self._check_class_attribute(cls, "fields_map", {})
         self._check_class_attribute(
             cls, "_dto_function_mapping_cache", {}
@@ -55,6 +51,17 @@ class FunctionType:
                     if isinstance(descriptor, FunctionRelationField):
                         descriptor.configure_related_type(annotations[key], key)
                 cls.fields_map[key] = descriptor
+
+        pk_fields = [
+            name
+            for name, desc in getattr(cls, "fields_map", {}).items()
+            if getattr(desc, "pk", False)
+        ]
+        if len(pk_fields) > 1:
+            raise ValueError(
+                f"FunctionType '{cls.__name__}' possui mais de um campo marcado como pk."
+            )
+        cls.pk_field_name = pk_fields[0] if pk_fields else None
 
         return cls
 

@@ -22,6 +22,7 @@ class ClassificacaoFinanceiraDTO(DTOBase):
         validator=DTOFieldValidators().validate_uuid,
         entity_field="classificacaofinanceira",
         update_function_field="classificacao",
+        get_function_field="classificacao",
     )
 
     codigo: str = DTOField(resume=True, not_null=True, strip=True, min=1, max=30)
@@ -32,6 +33,7 @@ class ClassificacaoFinanceiraDTO(DTOBase):
         max=150,
         insert_function_field="descricao_func",
         update_function_field="descricao",
+        get_function_field="descricao_func",
     )
     codigocontabil: str = DTOField(strip=True, min=1, max=20)
     resumo: str = DTOField(strip=True, min=1, max=30)

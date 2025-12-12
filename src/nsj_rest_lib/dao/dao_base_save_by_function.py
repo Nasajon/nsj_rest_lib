@@ -166,6 +166,7 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
     def insert_by_function(
         self,
         function_object: FunctionTypeBase,
+        function_name: str,
     ):
         """
         Insere a entidade utilizando uma função de banco declarada por meio de um FunctionType.
@@ -173,6 +174,7 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
 
         return self._execute_function(
             function_object,
+            function_name=function_name,
             block_label="DOINSERT",
             action_label="inserindo",
         )
@@ -180,6 +182,7 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
     def update_by_function(
         self,
         function_object: FunctionTypeBase,
+        function_name: str,
     ):
         """
         Atualiza a entidade utilizando uma função de banco declarada por meio de um FunctionType.
@@ -187,6 +190,7 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
 
         return self._execute_function(
             function_object,
+            function_name=function_name,
             block_label="DOUPDATE",
             action_label="atualizando",
         )
@@ -194,6 +198,7 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
     def _execute_function(
         self,
         function_object: FunctionTypeBase,
+        function_name: str,
         block_label: str,
         action_label: str,
     ):
@@ -203,6 +208,10 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
             )
 
         function_type_class = function_object.__class__
+        if not function_name:
+            raise ValueError(
+                f"É necessário informar o nome da função para {function_type_class.__name__}."
+            )
 
         (
             relation_declarations,
@@ -224,7 +233,7 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
         BEGIN
 {assignments_sql}
 
-            VAR_RETORNO = {function_type_class.function_name}(VAR_TIPO);
+            VAR_RETORNO = {function_name}(VAR_TIPO);
             PERFORM set_config('retorno.bloco', VAR_RETORNO.mensagem::varchar, true);
         END ${block_label}$;
 

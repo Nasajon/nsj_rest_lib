@@ -29,6 +29,7 @@ def get_clientes_byfunction(request, response):
     dto_class=ClienteByfunctionDTO,
     entity_class=ClienteByfunctionEntity,
     insert_function_type_class=ClienteByfunctionInsertType,
+    insert_function_name="teste.api_clientenovo",
 )
 def post_clientes_byfunction(request, response):
     return response

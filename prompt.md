@@ -1,13 +1,27 @@
-Agora que o insert by function está implementado, contando com ServiceBase e DAOBase próprios, contando com propretiy descriptor específico, contando com superclasse, decorator e até testes específicos (além de alterações nos decorator PostRoute, DTOField, DTOObjectField, DTOOneToOneField, DTOListField, etc). Então, gostaria que implementasse uma solução para Update By Function, o que será, em essência, uma quase duplicação da solução Insert By Function.
+Gostaria de estender a funcionalidade suporte a funções de banco, hoje implementadas para as rotas de POST e PUT, para que também funcionem nas rotas de GET e DELETE.
 
-Minha ideia é criar nova classe base, novos properties descriptor, novo decorator, e, é claro, aterar também as propriedades dos decorators que vão utilizar o recurso (PostRoute, DTOField, DTOObjectField, DTOOneToOneField, DTOListField, etc), para suportar também o update.
+Em resumo, para as rotas de GET:
 
-Nessa replicação, só precisa adaptar os nomes. Por exemplo, a cópia do "InsertFunctionType" será chamada "UpdateFunctionType", a cópia do "insert_function_field" vira "update_function_field", e a cópia do "insert_function_type_class", usado no "PostRoute", deve se chamar, "update_function_type_class", mas, só deve estar disponível no "PutRoute" (não no "PostRoute").
+- Preciso declarar a função a ser usada no GET.
+- Preciso declarar o tipo de Objeto usado para mapear o retorno da função.
+- Talvez não precise de um tipo novo de objeto... Talvez apenas o DTO (já suportar no GetRoute) seja suficiente.
+- A ideia básica é que o objeto retornado pela função, que deve ser um type do postgres (um um array desse tyoe), seja mapeado para o DTO.
+- Como entrada da função, preciso declarar um objeto, subcalsse de FunctionType, chamado: GetFunctionType, ou ListFunctionType. A ideia é que esse objeto, além de definir a função chamada, permita mapear os dados de entrada da função.
+    - Se for uma função de Get by ID (e não List), e o tipo GetFunctionType for declarado, então o ID da entidade deve ser colocado na propriedade que for a PK do GetFunctionType. Se não tiver um GetFunctionType declarado, então o ID recebido na rota vira o primeiro parâmetro de entrada da função. Além disso, os query args são todos mapeados para o GetFunctionType.
+    - Se for uma rota de List, todos os query args serão mapeados para o ListFunctionType.
+- Creio que será preciso adicionar uma flag no FunctionField. para indicar qual campo seria a PK (pk=True).
 
-No entanto, há também algumas refatorações no processo:
+Para as rotas de DELETE:
 
-- Renomear o property descriptor "InsertFunctionField" para "FunctionField", porque, não faz sentido replicar e fazer diferença entre insert e update.
-- Renomear as classes ServiceBaseInsertByFunction e DAOBaseInsertByFunction, para ServiceBaseSaveByFunction e DAOBaseSaveByFunction, respectivamente, porque me parece que os códigos de update e insert serão identicos (só mudando os nomes dos tipos e das funções).
-- Nas classes que devem ser distintas, como "InsertFunctionType", creio que faz sentido criar superclasses| para conter o comportamento comum, e então estender adicionando o que for específico para Insert e Update (talvez a superclasse de InsertFunctionType seria FunctionType).
+- Preciso declarar a função a ser usada no DELETE.
+- Preciso declarar um tipo de objeto a ser usado, como um tipo de DTO, porém destinado a mapear o que for recebido como query args na chamada. A ideia é que, caso declarado, os query args viram uma instância desse ojeto, a ser passado como entrada na função de delete.
+- Se houver um objeto, e ele tiver um campo de pk, esse campo receberá o ID contido na rota. Se não houver, o ID é passado como parâmetro de entrada da função a ser chamada.
+    - Esse novo objeto seria de uma subclasse de FunctionType, chamada: DeleteFunctionType.
 
-Ao final de tudo, não deixe de implementar os testes automáticos unitários (para os testes por APIs, depois te passo as estruturas de funções e tipos a usar, então podemos adiar um pouco).
+
+
+Por fim, quero criar um novo tipo de decorator para declarar rotas direto para funções (de modo bem livre)... Características:
+
+- O nome do decorator será DBFunctionRoute.
+- Deve receber os métodos HTTP suportados: GET, POST, PUT e/ou DELETE.
+- 
