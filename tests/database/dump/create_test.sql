@@ -824,8 +824,8 @@ AS $function$
 BEGIN
     RETURN QUERY
         SELECT CAST('ffe29dad-e33d-4e9c-9803-5eb926e5bc21' AS uuid),
-               'teste-04',
-               'Classificação para teste do insert por funcao',
+               CAST('teste-04' AS varchar(16)),
+               CAST('Classificação para teste do insert por funcao' AS varchar(150)),
                CAST('3964bfdc-e09e-4386-9655-5296062e632d' AS uuid);
 END;
 $function$;
@@ -842,9 +842,9 @@ AS $function$
 BEGIN
     RETURN QUERY
         SELECT CAST('ffe29dad-e33d-4e9c-9803-5eb926e5bc21' AS uuid),
-               CAST(COALESCE(a_objeto.codigo, 'teste-04') AS varchar),
-               'Classificação para teste do insert por funcao',
-               a_objeto.grupo_empresarial;
+               CAST(COALESCE(a_objeto.codigo, 'teste-04') AS varchar(16)),
+               CAST('Classificação para teste do insert por funcao' AS varchar(150)),
+               CAST('3964bfdc-e09e-4386-9655-5296062e632d' AS uuid);
 END;
 $function$;
 

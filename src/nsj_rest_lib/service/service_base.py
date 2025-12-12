@@ -240,9 +240,7 @@ class ServiceBase(
                         source_field_name = fields_map[
                             function_field_name
                         ].get_type_field_name()
-                    new_value = row.get(
-                        source_field_name, row.get(function_field_name)
-                    )
+                    new_value = row.get(source_field_name, row.get(function_field_name))
                     if new_value is None:
                         new_value = row.get(dto_field_name)
                     existing_value = dto_kwargs.get(dto_field_name)
@@ -252,10 +250,23 @@ class ServiceBase(
             else:
                 dto_kwargs.update(row)
 
+            # Fallback: completa campos ainda vazios usando nomes conhecidos do DTO
+            dto_fields_map = getattr(dto_class, "fields_map", {}) or {}
+            for dto_field_name, descriptor in dto_fields_map.items():
+                if dto_kwargs.get(dto_field_name) is not None:
+                    continue
+                for candidate in (
+                    dto_field_name,
+                    descriptor.get_entity_field_name(),
+                    descriptor.get_function_field_name(operation or ""),
+                ):
+                    if candidate and candidate in row and row[candidate] is not None:
+                        dto_kwargs[dto_field_name] = row[candidate]
+                        break
+
             dto_instance = dto_class(
-                dto_kwargs,
-                kwargs_as_entity=True,
                 escape_validator=True,
+                **dto_kwargs,
             )
             dtos.append(dto_instance)
         return dtos
