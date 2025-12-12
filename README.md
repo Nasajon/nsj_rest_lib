@@ -168,6 +168,12 @@ E em torno na rota ficaria: `/pai/<id_pai>/filho/<id>`
 
 ## Histórico de versões
 
+### 6.0.0
+
+- Implementação do suporte a Get by ID, List e Delete, todos por função de banco.
+- Ajustes nas funções que já existiam (Post e Put)
+    - Daqui vem o breaking change. Em resumo, o nome das funções, que antes era mapeado nos objetos de tipo das funções, por meio dos decorators "InsertFunctionType" e "UpdateFunctionType", agora passa a ser mapeado nos decorators das rotas PostRoute e PutRoute (e o mesmo padrão foi seguido no GetRoute, ListRoute e DeleteRoute).
+
 ### 5.3.0
 
 - Possibilidade de mapear rotas de mais de um nível de profundidade, sendo que todos os IDs intermediários serão usados como filtros adicionais para as queries. Além disso, os relacionamentos do tipo DTOListField são uasdos para que o campo de relacionamento entre as entidades, possa ser usado como filtro na entidade detalhe (relacionamento Mestre X Detalhe), mesmo quando não explícitamente mapeado na classe detalhe.
