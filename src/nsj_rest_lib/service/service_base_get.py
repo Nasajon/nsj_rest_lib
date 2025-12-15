@@ -134,7 +134,7 @@ class ServiceBaseGet(ServiceBaseRetrieve):
 
         # Tratando das propriedades de lista
         if len(self._dto_class.list_fields_map) > 0:
-            self._retrieve_related_lists([dto], fields)
+            self._retrieve_related_lists([dto], fields, expands)
 
         # Tratando das propriedades de relacionamento left join
         if len(self._dto_class.left_join_fields_map) > 0:
