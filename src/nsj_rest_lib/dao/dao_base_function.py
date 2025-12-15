@@ -5,6 +5,7 @@ from nsj_gcf_utils.json_util import convert_to_dumps
 from nsj_rest_lib.dao.dao_base_save_by_function import _FunctionSQLBuilder
 from nsj_rest_lib.dao.dao_base_util import DAOBaseUtil
 from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
+from nsj_rest_lib.settings import get_logger
 
 
 class DAOBaseFunction(DAOBaseUtil):
@@ -54,6 +55,8 @@ class DAOBaseFunction(DAOBaseUtil):
         SELECT current_setting('retorno.bloco', true)::jsonb as retorno;
         """
 
+        get_logger().debug(f"[RestLib Debug] Function SQL: {sql}")
+        get_logger().debug(f"[RestLib Debug] Function Parameters: {values_map}")
         _, returning = self._db.execute_batch(sql, **values_map)
 
         if not returning:
