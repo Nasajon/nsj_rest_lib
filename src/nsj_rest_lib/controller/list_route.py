@@ -32,10 +32,23 @@ class ListRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
-        list_function_parameters_dto: type | None = None,
+        list_function_type_class: type | None = None,
         list_function_name: str | None = None,
         list_function_response_dto_class: type | None = None,
     ):
+        """
+        Rota de LIST (GET sem ID).
+
+        - ``list_function_type_class``: subclasse de
+          ``ListFunctionTypeBase`` representando o TYPE de entrada da
+          função PL/pgSQL de listagem. Quando informado, a chamada é
+          feita via ``_call_function_with_type``. Se omitido, a listagem
+          é feita via SELECT direto na tabela.
+        - ``list_function_name``: nome da função PL/pgSQL para LIST por
+          função (ex.: ``teste.api_classificacaofinanceiralist``).
+        - ``list_function_response_dto_class``: DTO usado para mapear o
+          retorno da função (fallback para ``dto_class``).
+        """
         super().__init__(
             url=url,
             http_method=http_method,
@@ -46,7 +59,7 @@ class ListRoute(RouteBase):
             service_name=service_name,
             handle_exception=handle_exception,
         )
-        self._list_function_parameters_dto = list_function_parameters_dto
+        self._list_function_type_class = list_function_type_class
         self._list_function_name = list_function_name
         self._list_function_response_dto_class = (
             list_function_response_dto_class or dto_class
@@ -143,12 +156,13 @@ class ListRoute(RouteBase):
                 # Construindo os objetos
                 service = self._get_service(factory)
 
-                function_object = RouteBase.build_function_object_from_args(
-                    self._list_function_parameters_dto,
-                    filters,
-                    extra_params=None,
-                    id_value=None,
-                )
+                function_object = None
+                if self._list_function_type_class is not None:
+                    function_object = RouteBase.build_function_type_from_args(
+                        self._list_function_type_class,
+                        filters,
+                        id_value=None,
+                    )
                 function_params = None if function_object is not None else filters
 
                 # Chamando o service (método list)

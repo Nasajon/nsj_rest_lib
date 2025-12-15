@@ -195,7 +195,9 @@ class RouteBase:
         """
         Constrói um FunctionType a partir dos args da requisição, incluindo a PK.
         """
-        return function_type_class.build_from_params(args, id_value=id_value)
+        if function_type_class is None:
+            return None
+        return function_type_class.build_from_params(args or {}, id_value=id_value)
 
     @staticmethod
     def build_function_object_from_args(

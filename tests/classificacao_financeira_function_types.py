@@ -3,11 +3,15 @@ import uuid
 from nsj_rest_lib.decorator.insert_function_type import InsertFunctionType
 from nsj_rest_lib.decorator.update_function_type import UpdateFunctionType
 from nsj_rest_lib.decorator.list_function_type import ListFunctionType
+from nsj_rest_lib.decorator.get_function_type import GetFunctionType
+from nsj_rest_lib.decorator.delete_function_type import DeleteFunctionType
 from nsj_rest_lib.descriptor.function_field import FunctionField
 from nsj_rest_lib.entity.function_type_base import (
     InsertFunctionTypeBase,
     UpdateFunctionTypeBase,
     ListFunctionTypeBase,
+    GetFunctionTypeBase,
+    DeleteFunctionTypeBase,
 )
 
 
@@ -55,3 +59,16 @@ class ClassificacaoFinanceiraListType(ListFunctionTypeBase):
         pk=True, type_field_name="grupo_empresarial"
     )
 
+
+@GetFunctionType(type_name="teste.tclassificacaofinanceiraget")
+class ClassificacaoFinanceiraGetType(GetFunctionTypeBase):
+    classificacao: uuid.UUID = FunctionField(pk=True)
+    codigo: str = FunctionField()
+    descricao_func: str = FunctionField()
+    grupo_empresarial: uuid.UUID = FunctionField()
+
+
+@DeleteFunctionType(type_name="teste.tclassificacaofinanceiraexcluir")
+class ClassificacaoFinanceiraDeleteType(DeleteFunctionTypeBase):
+    classificacao: uuid.UUID = FunctionField(pk=True)
+    grupo_empresarial: uuid.UUID = FunctionField()

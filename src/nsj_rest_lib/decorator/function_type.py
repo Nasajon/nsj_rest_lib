@@ -19,21 +19,24 @@ class FunctionType:
         ``\"teste.tclassificacaofinanceiranovo\"``). Esse valor é
         copiado para o atributo de classe ``type_name`` da classe
         decorada, e é usado posteriormente pelo DAO para montar o
-        bloco PL/pgSQL que instancia o TYPE e chama a função:
+        bloco PL/pgSQL que instancia o TYPE e chama a função. O uso
+        varia conforme a operação:
 
-        - em ``InsertFunctionType`` e ``UpdateFunctionType`` o
+        - ``InsertFunctionType`` e ``UpdateFunctionType``:
           ``type_name`` indica o TYPE aceito pelas funções de
           INSERT/UPDATE (ex.: ``a_objeto teste.tminhafuncaoinsert``),
           permitindo que o Service construa um registro desse TYPE a
-          partir do DTO e delegue a operação para uma função PL/pgSQL.
-        - para GET/LIST/DELETE por função **não** é utilizada
-          ``FunctionTypeBase``; nesses cenários o mapeamento de
-          parâmetros é feito diretamente com DTOs específicos
-          (parâmetros ``*_function_parameters_dto`` das rotas/serviços),
-          e o ``type_name`` aqui não participa do fluxo.
+          partir do DTO e delegue a operação para a função PL/pgSQL.
+        - ``GetFunctionType``, ``ListFunctionType`` e
+          ``DeleteFunctionType``: ``type_name`` indica o TYPE usado
+          como “objeto de parâmetros” das funções de GET/LIST/DELETE.
+          Se a rota/serviço receber um FunctionType desse tipo, a
+          chamada será feita via ``_call_function_with_type``; caso
+          contrário, a chamada ocorre em modo RAW (parâmetros simples).
 
-        Em resumo:
-        - ``type_name`` é **sempre** o nome do TYPE, não da função;
+        Em resumo: ``type_name`` é **sempre** o nome do TYPE (não o
+        nome da função) que será instanciado e passado como argumento
+        para a função de banco.
         """
         if not type_name:
             raise ValueError("O parâmetro 'type_name' é obrigatório.")

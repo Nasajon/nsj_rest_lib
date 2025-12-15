@@ -27,9 +27,22 @@ class DeleteRoute(RouteBase):
         service_name: str = None,
         handle_exception: Callable = None,
         custom_before_delete: Callable = None,
-        delete_function_parameters_dto: type | None = None,
+        delete_function_type_class: type | None = None,
         delete_function_name: str | None = None,
     ):
+        """
+        Rota de DELETE.
+
+        - ``delete_function_type_class``: subclasse de
+          ``DeleteFunctionTypeBase`` representando o TYPE de entrada da
+          função PL/pgSQL de exclusão. Quando informado, a chamada é
+          feita via ``_call_function_with_type``. Se omitido, a exclusão
+          é feita direto na tabela.
+        - ``delete_function_name``: nome da função PL/pgSQL para DELETE
+          por função (ex.: ``teste.api_classificacaofinanceiraexcluir``).
+        - ``custom_before_delete``: callback opcional executado antes do
+          delete.
+        """
         super().__init__(
             url=url,
             http_method=http_method,
@@ -41,7 +54,7 @@ class DeleteRoute(RouteBase):
             handle_exception=handle_exception,
         )
         self.custom_before_delete = custom_before_delete
-        self._delete_function_parameters_dto = delete_function_parameters_dto
+        self._delete_function_type_class = delete_function_type_class
         self._delete_function_name = delete_function_name
 
     def _partition_filters(self, args):
@@ -131,12 +144,15 @@ class DeleteRoute(RouteBase):
                 service = self._get_service(factory)
 
                 if id is not None:
-                    function_object = RouteBase.build_function_object_from_args(
-                        self._delete_function_parameters_dto,
-                        args,
-                        extra_params=partition_filters,
-                        id_value=id,
-                    )
+                    function_object = None
+                    if self._delete_function_type_class is not None:
+                        params = dict(args)
+                        params.update(partition_filters)
+                        function_object = RouteBase.build_function_type_from_args(
+                            self._delete_function_type_class,
+                            params,
+                            id_value=id,
+                        )
                     service.delete(
                         id,
                         partition_filters,
@@ -155,12 +171,15 @@ class DeleteRoute(RouteBase):
                     _delete_return = {}
                     for _id in request_data:
                         try:
-                            function_object = RouteBase.build_function_object_from_args(
-                                self._delete_function_parameters_dto,
-                                args,
-                                extra_params=partition_filters,
-                                id_value=_id,
-                            )
+                            function_object = None
+                            if self._delete_function_type_class is not None:
+                                params = dict(args)
+                                params.update(partition_filters)
+                                function_object = RouteBase.build_function_type_from_args(
+                                    self._delete_function_type_class,
+                                    params,
+                                    id_value=_id,
+                                )
                             service.delete(
                                 _id,
                                 partition_filters,

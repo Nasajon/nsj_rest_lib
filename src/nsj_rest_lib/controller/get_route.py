@@ -32,10 +32,24 @@ class GetRoute(RouteBase):
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
-        get_function_parameters_dto: type | None = None,
+        get_function_type_class: type | None = None,
         get_function_name: str | None = None,
         get_function_response_dto_class: type | None = None,
     ):
+        """
+        Rota de GET por ID.
+
+        - ``get_function_type_class``: subclasse de ``GetFunctionTypeBase``
+          que representa o TYPE de entrada da função PL/pgSQL. Quando
+          informado, o Service chama ``_call_function_with_type`` usando
+          uma instância desse FunctionType montada a partir dos
+          parâmetros da requisição. Se não for informado, o GET usa o
+          modo padrão (select na tabela).
+        - ``get_function_name``: nome da função PL/pgSQL para GET por
+          função (ex.: ``teste.api_classificacaofinanceiraget``).
+        - ``get_function_response_dto_class``: DTO usado para mapear o
+          retorno da função (fallback para ``dto_class``).
+        """
         super().__init__(
             url=url,
             http_method=http_method,
@@ -46,7 +60,7 @@ class GetRoute(RouteBase):
             service_name=service_name,
             handle_exception=handle_exception,
         )
-        self._get_function_parameters_dto = get_function_parameters_dto
+        self._get_function_type_class = get_function_type_class
         self._get_function_name = get_function_name
         self._get_function_response_dto_class = (
             get_function_response_dto_class or dto_class
@@ -119,12 +133,15 @@ class GetRoute(RouteBase):
 
                 # Construindo os objetos
                 service = self._get_service(factory)
-                function_object = RouteBase.build_function_object_from_args(
-                    self._get_function_parameters_dto,
-                    args,
-                    extra_params=partition_fields,
-                    id_value=id,
-                )
+                function_object = None
+                if self._get_function_type_class is not None:
+                    params = dict(args)
+                    params.update(partition_fields)
+                    function_object = RouteBase.build_function_type_from_args(
+                        self._get_function_type_class,
+                        params,
+                        id_value=id,
+                    )
                 function_params = None if function_object is not None else args
 
                 # Chamando o service (método get)

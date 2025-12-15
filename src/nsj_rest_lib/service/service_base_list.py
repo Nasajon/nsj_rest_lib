@@ -8,6 +8,7 @@ from nsj_gcf_utils.log_time import log_time_context
 
 from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.util.fields_util import FieldsTree
 from nsj_rest_lib.util.order_spec import (
     OrderFieldSpec,
@@ -269,29 +270,18 @@ class ServiceBaseList(ServiceBaseRetrieve):
             raise ValueError("Nome da função LIST não informado.")
 
         if function_object is not None:
-            from nsj_rest_lib.dto.dto_base import DTOBase as _DTOBase
-
-            if not isinstance(function_object, _DTOBase):
+            if isinstance(function_object, FunctionTypeBase):
+                rows = self._dao._call_function_with_type(function_object, fn_name)
+            else:
                 raise TypeError(
-                    "function_object deve ser um DTOBase em _list_by_function."
+                    "function_object deve ser um FunctionTypeBase em _list_by_function."
                 )
-            params_for_call = self._extract_params_from_dto(function_object)
+        else:
             rows = self._dao._call_function_raw(
                 fn_name,
                 [],
-                params_for_call,
+                params,
             )
-            return self._map_function_rows_to_dtos(
-                rows,
-                dto_class,
-                operation="list",
-            )
-
-        rows = self._dao._call_function_raw(
-            fn_name,
-            [],
-            params,
-        )
 
         return self._map_function_rows_to_dtos(
             rows,

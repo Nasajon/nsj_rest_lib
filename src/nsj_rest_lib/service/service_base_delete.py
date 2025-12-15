@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.entity.filter import Filter
 from nsj_rest_lib.exception import DTOListFieldConfigException
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
@@ -213,14 +214,14 @@ class ServiceBaseDelete(ServiceBasePartialOf):
             raise ValueError("Nome da função DELETE não informado.")
 
         if function_object is not None:
-            from nsj_rest_lib.dto.dto_base import DTOBase as _DTOBase
+            if isinstance(function_object, FunctionTypeBase):
+                self._dao._call_function_with_type(function_object, fn_name)
+                return
+            raise TypeError(
+                "function_object deve ser um FunctionTypeBase em _delete_by_function."
+            )
 
-            if not isinstance(function_object, _DTOBase):
-                raise TypeError(
-                    "function_object deve ser um DTOBase em _delete_by_function."
-                )
-            params = self._extract_params_from_dto(function_object)
-
+        # Chamada RAW (parâmetros simples)
         positional_values = []
         if id is not None:
             positional_values.append(id)

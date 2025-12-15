@@ -168,7 +168,7 @@ E em torno na rota ficaria: `/pai/<id_pai>/filho/<id>`
 
 ## Histórico de versões
 
-### 6.0.0
+### 6.0.1
 
 - Implementação do suporte a Get by ID, List e Delete, todos por função de banco.
 - Ajustes nas funções que já existiam (Post e Put)

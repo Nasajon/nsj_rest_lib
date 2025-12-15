@@ -3,6 +3,7 @@ import typing as ty
 from typing import Any, Dict
 
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.exception import ConflictException
 from nsj_rest_lib.util.fields_util import FieldsTree
 
@@ -178,25 +179,15 @@ class ServiceBaseGet(ServiceBaseRetrieve):
             raise ValueError("Nome da função GET não informado.")
 
         if function_object is not None:
-            # Suporta apenas DTOBase como objeto de parâmetros
-            from nsj_rest_lib.dto.dto_base import DTOBase as _DTOBase
-
-            if not isinstance(function_object, _DTOBase):
+            if isinstance(function_object, FunctionTypeBase):
+                # Chamada por TYPE composto (FunctionType)
+                rows = self._dao._call_function_with_type(function_object, fn_name)
+            else:
                 raise TypeError(
-                    "function_object deve ser um DTOBase em _get_by_function."
+                    "function_object deve ser um FunctionTypeBase em _get_by_function."
                 )
-            params_for_call = self._extract_params_from_dto(function_object)
-            rows = self._dao._call_function_raw(
-                fn_name,
-                [],
-                params_for_call,
-            )
-            dtos = self._map_function_rows_to_dtos(
-                rows,
-                dto_class,
-                operation="get",
-            )
         else:
+            # Chamada RAW (parâmetros simples)
             positional_values = []
             if id is not None:
                 positional_values.append(id)
@@ -205,11 +196,12 @@ class ServiceBaseGet(ServiceBaseRetrieve):
                 positional_values,
                 all_params,
             )
-            dtos = self._map_function_rows_to_dtos(
-                rows,
-                dto_class,
-                operation="get",
-            )
+
+        dtos = self._map_function_rows_to_dtos(
+            rows,
+            dto_class,
+            operation="get",
+        )
 
         if not dtos:
             raise NotFoundException(
