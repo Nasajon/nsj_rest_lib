@@ -2,12 +2,14 @@ import uuid
 import typing as ty
 
 from nsj_rest_lib.decorator.dto import DTO  # type: ignore
-from nsj_rest_lib.descriptor.dto_field import DTOField
-from nsj_rest_lib.descriptor.dto_one_to_one_field import (
+from nsj_rest_lib.descriptor.dto_field import DTOField  # type: ignore
+from nsj_rest_lib.descriptor.dto_list_field import DTOListField  # type: ignore
+from nsj_rest_lib.descriptor.dto_one_to_one_field import (  # type: ignore
     DTOOneToOneField,
     OTORelationType,
 )
 from nsj_rest_lib.descriptor.dto_left_join_field import EntityRelationOwner  # type: ignore
+
 from nsj_rest_lib.dto.dto_base import DTOBase  # type: ignore
 
 from nsj_rest_lib.decorator.entity import Entity  # type: ignore
@@ -75,6 +77,46 @@ class ParentDAO(DAOBase):
     def entity_exists(self, *_, **__):
         return False
 
+    pass
+
+
+@Entity(table_name="detail_entity", pk_field="detail_id", default_order_fields=["detail_id"])
+class DetailEntity(EntityBase):
+    detail_id: uuid.UUID = uuid.UUID(int=0)
+    pass
+
+
+@DTO()
+class DetailDTO(DTOBase):
+    detail_id: int = DTOField(pk=True, resume=True)
+    pass
+
+
+@Entity(table_name="list_item_entity", pk_field="item_id", default_order_fields=["item_id"])
+class ListItemEntity(EntityBase):
+    item_id: uuid.UUID = uuid.UUID(int=0)
+    detail: uuid.UUID = uuid.UUID(int=0)
+    pass
+
+
+@DTO()
+class ListItemDTO(DTOBase):
+    item_id: int = DTOField(pk=True, resume=True)
+    detail: DetailDTO = DTOOneToOneField(
+        entity_type=DetailEntity,
+        relation_type=OTORelationType.COMPOSITION,
+    )
+    pass
+
+
+@DTO()
+class ParentWithListDTO(DTOBase):
+    id: int = DTOField(pk=True, resume=True)
+    items: ty.List[ListItemDTO] = DTOListField(
+        dto_type=ListItemDTO,
+        entity_type=ListItemEntity,
+        related_entity_field="parent_id",
+    )
     pass
 
 
@@ -198,3 +240,23 @@ def test_entity_relation_owner_other() -> None:
             raise err
         pass
     pass
+
+
+def test_list_fields_propagate_one_to_one_expands() -> None:
+    detail_dto = DetailDTO(detail_id=42)
+    list_item_dto = ListItemDTO(item_id=7, detail=detail_dto)
+    parent = ParentWithListDTO(id=99, items=[list_item_dto])
+
+    fields = {
+        "root": {"items"},
+        "items": {
+            "root": {"item_id", "detail"},
+            "detail": {"root": {"detail_id"}},
+        },
+    }
+    expands = {"root": {"items"}, "items": {"root": {"detail"}}}
+
+    dto_dict = parent.convert_to_dict(fields, expands)
+
+    assert "items" in dto_dict
+    assert dto_dict["items"][0]["detail"] == {"detail_id": detail_dto.detail_id}
