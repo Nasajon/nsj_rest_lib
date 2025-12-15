@@ -9,7 +9,7 @@ from nsj_gcf_utils.log_time import log_time_context
 from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
-from nsj_rest_lib.util.fields_util import FieldsTree
+from nsj_rest_lib.util.fields_util import FieldsTree, normalize_fields_tree
 from nsj_rest_lib.util.order_spec import (
     OrderFieldSpec,
     OrderFieldSource,
@@ -55,7 +55,7 @@ class ServiceBaseList(ServiceBaseRetrieve):
                 function_name=fn_name,
             )
         # Resolving fields
-        fields = self._resolving_fields(fields)
+        fields = normalize_fields_tree(fields)
 
         has_partial = self._has_partial_support()
         partial_config = getattr(self._dto_class, "partial_dto_config", None)

@@ -21,10 +21,7 @@ from nsj_rest_lib.exception import (
 from nsj_rest_lib.settings import get_logger
 from nsj_rest_lib.util.fields_util import (
     FieldsTree,
-    clone_fields_tree,
     extract_child_tree,
-    merge_fields_tree,
-    normalize_fields_tree,
 )
 from nsj_rest_lib.util.join_aux import JoinAux
 
@@ -32,15 +29,6 @@ from .service_base_partial_of import ServiceBasePartialOf
 
 
 class ServiceBaseRetrieve(ServiceBasePartialOf):
-    def _resolving_fields(self, fields: FieldsTree) -> FieldsTree:
-        """
-        Verifica os fields recebidos, garantindo que os campos de resumo (incluindo os
-        configurados nos relacionamentos) sejam considerados.
-        """
-
-        result = normalize_fields_tree(fields)
-        return result
-
     def _add_overide_data_filters(self, all_filters):
         if (
             self._dto_class.data_override_group is not None

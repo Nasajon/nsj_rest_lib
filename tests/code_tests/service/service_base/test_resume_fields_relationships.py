@@ -1,5 +1,6 @@
 from unittest.mock import Mock
 
+from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.decorator.dto import DTO
 from nsj_rest_lib.descriptor.dto_field import DTOField
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
@@ -87,25 +88,25 @@ def build_service():
 
 
 def test_resolving_fields_includes_resume_relationships():
-    service = build_service()
+    fields, _ = RouteBase.parse_fields_and_expands(PessoaDTO, '', '', 'GET')
 
-    resolved = service._resolving_fields(None)
+    assert "contatos" in fields["root"]
+    assert "documento_principal" in fields["root"]
 
-    assert "contatos" in resolved["root"]
-    assert "documento_principal" in resolved["root"]
-
-    contatos_fields = resolved["contatos"]
+    contatos_fields = fields["contatos"]
     assert "nome" in contatos_fields["root"]
     assert "telefones" in contatos_fields["root"]
 
     telefones_fields = contatos_fields["telefones"]
     assert "numero" in telefones_fields["root"]
 
-    documento_fields = resolved["documento_principal"]
+    documento_fields = fields["documento_principal"]
     assert "codigo" in documento_fields["root"]
 
 
 def test_convert_to_dict_uses_resume_fields_tree():
+    fields, _ = RouteBase.parse_fields_and_expands(PessoaDTO, '', '', 'GET')
+
     pessoa = PessoaDTO(
         id=1,
         nome="Fulano",
@@ -121,7 +122,7 @@ def test_convert_to_dict_uses_resume_fields_tree():
         ],
     )
 
-    result = pessoa.convert_to_dict()
+    result = pessoa.convert_to_dict(fields)
 
     assert "contatos" in result
     contatos = result["contatos"]

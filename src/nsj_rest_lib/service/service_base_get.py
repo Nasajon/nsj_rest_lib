@@ -5,7 +5,7 @@ from typing import Any, Dict
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.exception import ConflictException
-from nsj_rest_lib.util.fields_util import FieldsTree
+from nsj_rest_lib.util.fields_util import FieldsTree, normalize_fields_tree
 
 from .service_base_retrieve import ServiceBaseRetrieve
 
@@ -41,7 +41,7 @@ class ServiceBaseGet(ServiceBaseRetrieve):
             )
 
         # Resolving fields
-        fields = self._resolving_fields(fields)
+        fields = normalize_fields_tree(fields)
 
         if self._has_partial_support():
             base_root_fields, partial_root_fields = self._split_partial_fields(

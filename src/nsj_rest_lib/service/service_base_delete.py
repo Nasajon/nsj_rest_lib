@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
@@ -6,6 +6,7 @@ from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.entity.filter import Filter
 from nsj_rest_lib.exception import DTOListFieldConfigException
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
+from nsj_rest_lib.util.fields_util import FieldsTree
 
 from .service_base_partial_of import ServiceBasePartialOf
 
@@ -20,6 +21,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         function_params: Dict[str, Any] | None = None,
         function_object=None,
         function_name: str | None = None,
+        fields: Optional[FieldsTree] = None,
     ) -> DTOBase:
         self._delete(
             id,
@@ -29,6 +31,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
             function_params=function_params,
             function_object=function_object,
             function_name=function_name,
+            fields=fields,
         )
 
     def delete_list(
@@ -38,6 +41,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         function_params: Dict[str, Any] | None = None,
         function_object=None,
         function_name: str | None = None,
+        fields: Optional[FieldsTree] = None,
     ):
         _returns = {}
         for _id in ids:
@@ -49,6 +53,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
                     function_params=function_params,
                     function_object=function_object,
                     function_name=function_name,
+                    fields=fields,
                 )
             except Exception as e:
                 _returns[_id] = e
@@ -64,6 +69,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         function_params: Dict[str, Any] | None = None,
         function_object=None,
         function_name: str | None = None,
+        fields: Optional[FieldsTree] = None,
     ) -> DTOBase:
         try:
             if manage_transaction:
@@ -105,7 +111,9 @@ class ServiceBaseDelete(ServiceBasePartialOf):
 
             # Tratando das propriedades de lista
             if len(self._dto_class.list_fields_map) > 0:
-                self._delete_related_lists(id, additional_filters)
+                self._delete_related_lists(
+                    id, additional_filters, fields=fields,
+                )
 
             # Excluindo os conjuntos (se necessário)
             if self._dto_class.conjunto_type is not None:
@@ -131,6 +139,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         custom_before_delete=None,
         function_params: Dict[str, Any] | None = None,
         function_name: str | None = None,
+        fields: Optional[FieldsTree] = None,
     ) -> DTOBase:
 
         if not ids:
@@ -149,7 +158,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
             for _id in ids:
                 # Função para validar ou fazer outras consultas antes de deletar
                 if custom_before_delete is not None:
-                    dto = self.get(_id, additional_filters, None)
+                    dto = self.get(_id, additional_filters, fields)
                     custom_before_delete(self._dao._db, dto)
 
                 fn_name = function_name
@@ -174,7 +183,9 @@ class ServiceBaseDelete(ServiceBasePartialOf):
 
                 # Tratando das propriedades de lista
                 if len(self._dto_class.list_fields_map) > 0:
-                    self._delete_related_lists(_id, additional_filters)
+                    self._delete_related_lists(
+                        _id, additional_filters, fields=fields,
+                    )
 
             # Adicionando o ID nos filtros
             id_condiction = Filter(FilterOperator.IN, entity_id_values)
@@ -283,7 +294,12 @@ class ServiceBaseDelete(ServiceBasePartialOf):
                     additional_filters=additional_filters,
                 )
 
-    def _delete_related_lists(self, id, additional_filters: Dict[str, Any] = None):
+    def _delete_related_lists(
+        self,
+        id,
+        additional_filters: Dict[str, Any] = None,
+        fields: Optional[FieldsTree] = None,
+    ):
         # Handling each related list
         from .service_base import ServiceBase
 
@@ -310,7 +326,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
             }
 
             # Getting related data
-            related_dto_list = service.list(None, None, {"root": set()}, None, filters)
+            related_dto_list = service.list(None, None, fields, None, filters)
 
             # Excluindo cada entidade detalhe
             related_ids = []

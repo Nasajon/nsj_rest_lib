@@ -234,6 +234,9 @@ class RouteBase:
                         limit - 1
                     )
                     pass
+                merge_fields_tree(
+                    _fields_tree[field_name], l_field.resume_fields_tree,
+                )
                 pass
 
             for field_name, obj_field in _dto_class.object_fields_map.items():
@@ -242,6 +245,7 @@ class RouteBase:
                 _resume_fields = getattr(
                     obj_field.expected_type, f"{verb.lower()}_resume_fields"
                 )
+
                 if field_name not in _fields_tree:
                     _fields_tree[field_name] = { 'root': _resume_fields }
                 else:
@@ -253,6 +257,9 @@ class RouteBase:
                         limit - 1
                     )
                     pass
+                merge_fields_tree(
+                    _fields_tree[field_name], obj_field.resume_fields_tree,
+                )
                 pass
             pass
 

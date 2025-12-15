@@ -451,9 +451,8 @@ class DTO:
                     getattr(cls, "integrity_check_fields_map")[key] = attr
 
                 if len(attr.resume_fields_tree.get("root", set())) > 0:
-                    resume_fields = getattr(cls, "resume_fields")
-                    if key not in resume_fields:
-                        resume_fields.add(key)
+                    attr.resume = True
+                    self._handle_resume_field(key, attr, cls)
 
             elif isinstance(attr, DTOLeftJoinField):
                 # Storing field in fields_map
@@ -504,6 +503,9 @@ class DTO:
                 # Copying type from annotation (if exists)
                 if key in cls.__annotations__:
                     attr.expected_type = cls.__annotations__[key]
+
+                if len(attr.resume_fields_tree.get("root", set())) > 0:
+                    attr.resume = True
 
                 self._handle_resume_field(key, attr, cls)
 
