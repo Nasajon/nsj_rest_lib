@@ -127,7 +127,9 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
 
         return dto_list
 
-    def _retrieve_related_lists(self, dto_list: List[DTOBase], fields: FieldsTree):
+    def _retrieve_related_lists(
+        self, dto_list: List[DTOBase], fields: FieldsTree, expands: FieldsTree,
+    ):
 
         # TODO Controlar profundidade?!
         if not dto_list:
@@ -194,6 +196,7 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
 
             # Resolvendo os fields da entidade aninhada
             fields_to_list = extract_child_tree(fields, master_dto_attr)
+            expands_to_list = extract_child_tree(expands, master_dto_attr)
 
             # Busca todos os relacionados de uma vez
             related_dto_list = service.list(
@@ -203,6 +206,7 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
                 None,
                 filters,
                 return_hidden_fields=set([list_field.related_entity_field]),
+                expands=expands_to_list,
             )
 
             # Agrupa os relacionados por chave
