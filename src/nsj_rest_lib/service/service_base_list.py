@@ -233,7 +233,7 @@ class ServiceBaseList(ServiceBaseRetrieve):
 
         # Retrieving related lists
         if len(self._dto_class.list_fields_map) > 0:
-            self._retrieve_related_lists(dto_list, fields)
+            self._retrieve_related_lists(dto_list, fields, expands)
 
         # Tratando das propriedades de relacionamento left join
         # TODO Verificar se está certo passar os filtros como campos de partição

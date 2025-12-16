@@ -626,15 +626,18 @@ class DTOBase(abc.ABC):
 
             # Criando o mapa de fields para a entidade aninhada
             internal_fields = extract_child_tree(fields_tree, field)
+            internal_expands = extract_child_tree(expands, field)
 
             # Recuperando o valor do atributo
-            value = getattr(self, field, None)
-            if value is None:
-                value = []
+            value: List[DTOBase] = getattr(self, field, [])
 
             # Convetendo a lista de DTOs aninhados
             result[field] = [
-                item.convert_to_dict(clone_fields_tree(internal_fields))
+                item.convert_to_dict(
+                    clone_fields_tree(internal_fields),
+                    clone_fields_tree(internal_expands),
+                    just_resume
+                )
                 for item in value
             ]
 
