@@ -17,6 +17,7 @@ class ServiceBaseUpdate(ServiceBaseInsert):
         upsert: bool = False,
         manage_transaction: bool = True,
         function_name: str | None = None,
+        retrieve_after_update: bool = False,
     ) -> DTOBase:
         return self._save(
             insert=False,
@@ -29,6 +30,7 @@ class ServiceBaseUpdate(ServiceBaseInsert):
             custom_after_update=custom_after_update,
             upsert=upsert,
             function_name=function_name,
+            retrieve_after_insert=retrieve_after_update,
         )
 
     def update_list(
@@ -40,6 +42,7 @@ class ServiceBaseUpdate(ServiceBaseInsert):
         upsert: bool = False,
         manage_transaction: bool = True,
         function_name: str | None = None,
+        retrieve_after_update: bool = False,
     ) -> List[DTOBase]:
         _lst_return = []
         try:
@@ -58,6 +61,7 @@ class ServiceBaseUpdate(ServiceBaseInsert):
                     custom_after_update=custom_after_update,
                     upsert=upsert,
                     function_name=function_name,
+                    retrieve_after_insert=retrieve_after_update,
                 )
 
                 if _return_object is not None:
