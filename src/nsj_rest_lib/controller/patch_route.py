@@ -30,6 +30,7 @@ class PatchRoute(RouteBase):
         handle_exception: Callable = None,
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
+        retrieve_after_partial_update: bool = False,
     ):
         super().__init__(
             url=url,
@@ -43,6 +44,7 @@ class PatchRoute(RouteBase):
         )
         self.custom_before_update = custom_before_update
         self.custom_after_update = custom_after_update
+        self.retrieve_after_partial_update = retrieve_after_partial_update
 
     def handle_request(
         self,
@@ -99,6 +101,7 @@ class PatchRoute(RouteBase):
                     aditional_filters=partition_filters,
                     custom_before_update=self.custom_before_update,
                     custom_after_update=self.custom_after_update,
+                    retrieve_after_partial_update=self.retrieve_after_partial_update,
                 )
 
                 if data is not None:

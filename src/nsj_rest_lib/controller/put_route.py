@@ -35,6 +35,7 @@ class PutRoute(RouteBase):
         handle_exception: Callable = None,
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
+        retrieve_after_update: bool = False,
         update_function_type_class: Type[UpdateFunctionTypeBase] | None = None,
         update_function_name: str | None = None,
     ):
@@ -50,6 +51,7 @@ class PutRoute(RouteBase):
         )
         self.custom_before_update = custom_before_update
         self.custom_after_update = custom_after_update
+        self.retrieve_after_update = retrieve_after_update
         self._update_function_type_class = update_function_type_class
         self._update_function_name = update_function_name
 
@@ -161,6 +163,7 @@ class PutRoute(RouteBase):
                         custom_after_update=self.custom_after_update,
                         upsert=is_upsert,
                         function_name=self._update_function_name,
+                        retrieve_after_update=self.retrieve_after_update,
                     )
 
                     if data is not None:
@@ -183,6 +186,7 @@ class PutRoute(RouteBase):
                         custom_after_update=self.custom_after_update,
                         upsert=is_upsert,
                         function_name=self._update_function_name,
+                        retrieve_after_update=self.retrieve_after_update,
                     )
 
                     if data is not None or not len(data) > 0:
