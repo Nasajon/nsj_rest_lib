@@ -659,7 +659,8 @@ class DTOBase(abc.ABC):
                 continue
 
             result[k] = getattr(self, k).convert_to_dict(
-                extract_child_tree(fields_tree, k)
+                extract_child_tree(fields_tree, k),
+                extract_child_tree(expands, k)
             )
 
         # Converting list fields
