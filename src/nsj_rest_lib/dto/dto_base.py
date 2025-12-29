@@ -22,8 +22,15 @@ from nsj_rest_lib.util.sql_utils import montar_chave_map_sql_join
 
 
 class DTOBase(abc.ABC):
-    resume_fields: Set[str] = set()
+    # NOTE: If you're going to add a new resumable verb don't forget to add it
+    #           to the constants in util/__init__.py
+    list_resume_fields: Set[str] = set()
+    get_resume_fields: Set[str] = set()
+    post_resume_fields: Set[str] = set()
+    patch_resume_fields: Set[str] = set()
+    put_resume_fields: Set[str] = set()
     partition_fields: Set[str] = set()
+
     fields_map: Dict[str, DTOField] = {}
     insert_function_field_lookup: Dict[str, Tuple[str, Any]] = {}
     update_function_field_lookup: Dict[str, Tuple[str, Any]] = {}
@@ -538,66 +545,16 @@ class DTOBase(abc.ABC):
             else:
                 return dto_field.expected_type(value)
 
-    @classmethod
-    def _build_default_fields_tree(cls) -> FieldsTree:
-        """
-        Constrói a estrutura de fields para o DTO, com base nos campos
-        configurados como resumo.
-
-        A estrutura de fields é uma árvore, onde cada chave é o nome do campo
-        e o valor é um conjunto de campos que são resumos.
-
-        :return: Uma estrutura de fields em formato de árvore.
-        :rtype: FieldsTree
-        """
-        tree: FieldsTree = {"root": set(cls.resume_fields)}
-
-        for field_name, descriptor in cls.list_fields_map.items():
-            if len(descriptor.resume_fields_tree.get("root", set())) <= 0:
-                continue
-
-            tree["root"].add(field_name)
-            tree[field_name] = clone_fields_tree(descriptor.resume_fields_tree)
-
-        for field_name, descriptor in cls.object_fields_map.items():
-            if descriptor.resume or len(descriptor.resume_fields) > 0:
-                tree["root"].add(field_name)
-
-                if len(descriptor.resume_fields_tree.get("root", set())) > 0:
-                    tree[field_name] = clone_fields_tree(descriptor.resume_fields_tree)
-
-        for field_name, descriptor in cls.aggregator_fields_map.items():
-            if field_name in tree["root"]:
-                tree["root"] |= descriptor.expected_type.resume_fields
-
-        for field_name, descriptor in cls.one_to_one_fields_map.items():
-            if descriptor.field.resume:
-                tree["root"].add(field_name)
-
-        return tree
-
     def convert_to_dict(
         self,
-        fields: Optional[FieldsTree] = None,
+        fields: FieldsTree,
         expands: Optional[Dict[str, Set[str]]] = None,
-        just_resume: bool = False,
     ):
         """
         Converte DTO para dict
         """
 
-        # Resolving fields to use
-        if just_resume:
-            fields_tree = self.__class__._build_default_fields_tree()
-        else:
-            if fields is None:
-                fields_tree = self.__class__._build_default_fields_tree()
-            else:
-                fields_tree = normalize_fields_tree(fields)
-                merge_fields_tree(
-                    fields_tree,
-                    self.__class__._build_default_fields_tree(),
-                )
+        fields_tree = normalize_fields_tree(fields)
 
         if expands is None:
             expands = {"root": set()}

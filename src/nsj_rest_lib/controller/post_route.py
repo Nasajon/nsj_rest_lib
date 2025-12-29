@@ -117,6 +117,14 @@ class PostRoute(RouteBase):
                 if not isinstance(request_data, list):
                     request_data = [request_data]
 
+                # NOTE: Maybe we should allow the caller to set what fields
+                #           to return when retrieve_after_insert=True
+                # fields_raw = args.get("fields")
+                fields_raw = ''
+                fields, _ = RouteBase.parse_fields_and_expands(
+                    self._dto_class, fields_raw, '', 'POST'
+                )
+
                 data_pack = []
                 lst_data = []
                 partition_filters = None
@@ -151,6 +159,7 @@ class PostRoute(RouteBase):
                         custom_after_insert=self.custom_after_insert,
                         retrieve_after_insert=self.retrieve_after_insert,
                         function_name=self._insert_function_name,
+                        fields=fields,
                     )
 
                     if data is not None:
@@ -164,7 +173,7 @@ class PostRoute(RouteBase):
                             return ("", 202, resp_headers)
 
                         # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                        lst_data.append(data.convert_to_dict())
+                        lst_data.append(data.convert_to_dict(fields))
                 else:
                     data = service.insert_list(
                         dtos=data_pack,
@@ -173,11 +182,12 @@ class PostRoute(RouteBase):
                         custom_after_insert=self.custom_after_insert,
                         retrieve_after_insert=self.retrieve_after_insert,
                         function_name=self._insert_function_name,
+                        fields=fields,
                     )
 
                     if data is not None or not len(data) > 0:
                         # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                        lst_data = [item.convert_to_dict() for item in data]
+                        lst_data = [item.convert_to_dict(fields) for item in data]
 
                 if len(lst_data) == 1:
                     # Retornando a resposta da requisição

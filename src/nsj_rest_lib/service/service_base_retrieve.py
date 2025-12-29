@@ -21,10 +21,7 @@ from nsj_rest_lib.exception import (
 from nsj_rest_lib.settings import get_logger
 from nsj_rest_lib.util.fields_util import (
     FieldsTree,
-    clone_fields_tree,
     extract_child_tree,
-    merge_fields_tree,
-    normalize_fields_tree,
 )
 from nsj_rest_lib.util.join_aux import JoinAux
 
@@ -32,41 +29,6 @@ from .service_base_partial_of import ServiceBasePartialOf
 
 
 class ServiceBaseRetrieve(ServiceBasePartialOf):
-    def _resolving_fields(self, fields: FieldsTree) -> FieldsTree:
-        """
-        Verifica os fields recebidos, garantindo que os campos de resumo (incluindo os
-        configurados nos relacionamentos) sejam considerados.
-        """
-
-        result = normalize_fields_tree(fields)
-        merge_fields_tree(result, self._dto_class._build_default_fields_tree())
-
-        # Tratamento especial para campos agregadores
-        for field_name, descriptor in self._dto_class.aggregator_fields_map.items():
-            if field_name not in result["root"]:
-                continue
-
-            result["root"] |= descriptor.expected_type.resume_fields
-
-            if field_name not in result:
-                continue
-
-            child_tree = result.pop(field_name)
-            if isinstance(child_tree, dict):
-                result["root"] |= child_tree.get("root", set())
-
-                for nested_field, nested_tree in child_tree.items():
-                    if nested_field == "root":
-                        continue
-
-                    existing = result.get(nested_field)
-                    if not isinstance(existing, dict):
-                        result[nested_field] = clone_fields_tree(nested_tree)
-                    else:
-                        merge_fields_tree(existing, nested_tree)
-
-        return result
-
     def _add_overide_data_filters(self, all_filters):
         if (
             self._dto_class.data_override_group is not None

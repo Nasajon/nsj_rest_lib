@@ -137,6 +137,14 @@ class DeleteRoute(RouteBase):
                     if not isinstance(request_data, list):
                         request_data = [request_data]
 
+                # NOTE: Maybe we should allow the caller to set what fields
+                #           to return when retrieve_after_insert=True
+                # fields_raw = args.get("fields")
+                fields_raw = ''
+                fields, _ = RouteBase.parse_fields_and_expands(
+                    self._dto_class, fields_raw, '', 'PUT'
+                )
+
                 partition_filters = self._partition_filters(args)
                 partition_filters.update(kwargs)
 
@@ -160,6 +168,7 @@ class DeleteRoute(RouteBase):
                         function_params=None if function_object is not None else args,
                         function_object=function_object,
                         function_name=self._delete_function_name,
+                        fields=fields,
                     )
 
                     # Retornando a resposta da requisição
@@ -187,6 +196,7 @@ class DeleteRoute(RouteBase):
                                 function_params=None if function_object is not None else args,
                                 function_object=function_object,
                                 function_name=self._delete_function_name,
+                                fields=fields,
                             )
                         except Exception as e:
                             _delete_return[_id] = e

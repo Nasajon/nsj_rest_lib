@@ -6,6 +6,8 @@ from nsj_rest_lib.entity.function_type_base import (
     InsertFunctionTypeBase,
     UpdateFunctionTypeBase,
 )
+from nsj_rest_lib.util import ResumableVerbsTy
+
 
 from .dto_field import DTOField
 
@@ -35,7 +37,7 @@ class DTOOneToOneField:
     field: DTOField
     entity_relation_owner: 'EntityRelationOwner'
     not_null: bool
-    resume: bool
+    resume: ty.Union[bool, ty.List[ResumableVerbsTy]]
     partition_data: bool
     entity_field: str
     insert_function_field: str
@@ -48,7 +50,7 @@ class DTOOneToOneField:
         self,
         entity_type: ty.Type[EntityBase],
         relation_type: OTORelationType,
-        resume: bool = False,
+        resume: ty.Union[bool, ty.List[ResumableVerbsTy]] = False,
         entity_field: ty.Optional[str] = None,
         entity_relation_owner: 'EntityRelationOwner' = 'self',  # type: ignore
         not_null: bool = False,
@@ -97,8 +99,10 @@ class DTOOneToOneField:
                     `pk_field` of the `Related DTO` will be used in place of
                     the object.
 
-        - resume: Indicates if on GET requests the non expanded value should be
-            always returned.
+        - resume: When a boolean indicates that the non expanded value will
+                      always be returned on all Verbs, If it's a list it
+                      indicates in what Verbs it will always return the
+                      non expanded value.
 
         - entity_field: The name of the field in the Entity of the `Current DTO`.
             If `None` will use the name of the field in the `Current DTO`.
