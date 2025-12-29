@@ -274,6 +274,9 @@ class ServiceBaseUtil:
                     ]
 
                 elif filter in self._dto_class.fields_map:
+                    # NOTE: If something is changed here make sure to check
+                    #           if the DTOAggregator part needs to change.
+
                     # Creating filter config to a DTOField (equals operator)
                     field_filter = DTOFieldFilter(filter)
                     field_filter.set_field_name(filter)
@@ -302,6 +305,31 @@ class ServiceBaseUtil:
                         ]
                         if filter in join_query.fields:
                             table_alias = join_query.sql_alias
+                elif '.' in filter:
+                    dot_index: int = filter.index('.')
+                    left_part: str = filter[:dot_index]
+                    right_part: str = filter[dot_index + 1 :]
+                    if (
+                        left_part in self._dto_class.aggregator_fields_map
+                        and right_part in self._entity_class().__dict__
+                    ):
+                        is_entity_filter = True
+                        filter = right_part
+
+                        # NOTE: This is a semi copy of the normal field process
+                        field_right_part = DTOFieldFilter(right_part)
+                        field_right_part.set_field_name(right_part)
+                        dto_field = self._dto_class.aggregator_fields_map[
+                            left_part
+                        ].expected_type.fields_map[right_part]
+                        if (
+                            partial_config is not None
+                            and getattr(dto_field, "name", right_part)
+                            in partial_config.extension_fields
+                        ):
+                            is_partial_extension_field = True
+                            pass
+                        pass
 
                 # TODO Refatorar para usar um mapa de fields do entity
                 elif filter in self._entity_class().__dict__:
