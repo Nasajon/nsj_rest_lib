@@ -6,6 +6,8 @@ from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.exception import ConflictException
 from nsj_rest_lib.util.fields_util import FieldsTree
+from nsj_rest_lib.util.fields_util import extract_child_tree
+
 
 from .service_base_retrieve import ServiceBaseRetrieve
 
@@ -113,6 +115,17 @@ class ServiceBaseGet(ServiceBaseRetrieve):
         for k, v in self._dto_class.aggregator_fields_map.items():
             if k not in fields["root"]:
                 continue
+            if k in expands:
+                orig_dto = self._dto_class
+                self._dto_class = v.expected_type
+                self._retrieve_one_to_one_fields(
+                    [entity],
+                    fields,
+                    extract_child_tree(expands, k),
+                    partition_fields,
+                )
+                self._dto_class = orig_dto
+                pass
             setattr(entity, k, v.expected_type(entity, escape_validator=True))
             pass
 

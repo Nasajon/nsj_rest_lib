@@ -9,7 +9,7 @@ from nsj_gcf_utils.log_time import log_time_context
 from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
-from nsj_rest_lib.util.fields_util import FieldsTree
+from nsj_rest_lib.util.fields_util import FieldsTree, extract_child_tree
 from nsj_rest_lib.util.order_spec import (
     OrderFieldSpec,
     OrderFieldSource,
@@ -198,6 +198,21 @@ class ServiceBaseList(ServiceBaseRetrieve):
                 expands,
                 filters,
             )
+
+        # NOTE: Doing this here to expand all of the entity_list in one go
+        for k, v in agg_field_map.items():
+            if k not in expands:
+                continue
+            orig_dto = self._dto_class
+            self._dto_class = v.expected_type
+            self._retrieve_one_to_one_fields(
+                entity_list,
+                fields,
+                extract_child_tree(expands, k),
+                filters,
+            )
+            self._dto_class = orig_dto
+            pass
 
         # Convertendo para uma lista de DTOs
         with log_time_context(
