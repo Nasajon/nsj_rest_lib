@@ -45,6 +45,7 @@ class ResponseService:
         retrieve_after_insert=False,
         function_name=None,
         custom_json_response=False,
+        retrieve_fields=None,
     ):
         return self.payload
 
@@ -59,6 +60,7 @@ class ResponseService:
         function_name=None,
         retrieve_after_update=False,
         custom_json_response=False,
+        retrieve_fields=None,
     ):
         return self.payload
 
@@ -71,6 +73,7 @@ class ResponseService:
         custom_after_update=None,
         retrieve_after_partial_update=False,
         custom_json_response=False,
+        retrieve_fields=None,
     ):
         return self.payload
 

@@ -64,8 +64,10 @@ class PatchRoute(RouteBase):
                 # Recuperando os dados do corpo da requisição
                 if os.getenv("ENV", "").lower() != "erp_sql":
                     data = request.json
+                    args = request.args
                 else:
                     data = body
+                    args = query_args or {}
 
                 if len(kwargs) > 0:
                     data.update(kwargs)
@@ -95,6 +97,11 @@ class PatchRoute(RouteBase):
 
                 # Construindo os objetos
                 service = self._get_service(factory)
+                retrieve_fields = (
+                    RouteBase.parse_fields(self._dto_class, args.get("fields"))
+                    if self.retrieve_after_partial_update
+                    else None
+                )
 
                 # Chamando o service (método insert)
                 data = service.partial_update(
@@ -105,6 +112,7 @@ class PatchRoute(RouteBase):
                     custom_after_update=self.custom_after_update,
                     retrieve_after_partial_update=self.retrieve_after_partial_update,
                     custom_json_response=self.custom_json_response,
+                    retrieve_fields=retrieve_fields,
                 )
 
                 if data is not None:
@@ -130,7 +138,7 @@ class PatchRoute(RouteBase):
                         return (json_dumps(data), 200, {**DEFAULT_RESP_HEADERS})
 
                     # Convertendo para o formato de dicionário
-                    dict_data = data.convert_to_dict()
+                    dict_data = data.convert_to_dict(retrieve_fields)
 
                     # Retornando a resposta da requuisição
                     return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})

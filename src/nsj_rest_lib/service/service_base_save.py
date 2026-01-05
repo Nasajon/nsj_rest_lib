@@ -14,6 +14,7 @@ from nsj_rest_lib.exception import (
     DTOListFieldConfigException,
     NotFoundException,
 )
+from nsj_rest_lib.util.fields_util import FieldsTree
 
 from .service_base_partial_of import ServiceBasePartialOf, PartialExtensionWriteData
 
@@ -36,6 +37,7 @@ class ServiceBaseSave(ServiceBasePartialOf):
         retrieve_after_insert: bool = False,
         function_name: str | None = None,
         custom_json_response: bool = False,
+        retrieve_fields: FieldsTree | None = None,
     ) -> DTOBase:
         try:
             received_dto = dto
@@ -244,7 +246,7 @@ class ServiceBaseSave(ServiceBasePartialOf):
                     )
 
             if retrieve_after_insert and not custom_json_response:
-                response_dto = self.get(id, aditional_filters, None)
+                response_dto = self.get(id, aditional_filters, retrieve_fields)
 
             if custom_data is not None:
                 if isinstance(custom_data, dict):

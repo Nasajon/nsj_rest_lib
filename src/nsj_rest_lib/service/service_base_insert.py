@@ -17,6 +17,7 @@ class ServiceBaseInsert(ServiceBaseSave):
         manage_transaction: bool = True,
         function_name: str | None = None,
         custom_json_response: bool = False,
+        retrieve_fields=None,
     ) -> DTOBase:
         return self._save(
             insert=True,
@@ -29,6 +30,7 @@ class ServiceBaseInsert(ServiceBaseSave):
             retrieve_after_insert=retrieve_after_insert,
             function_name=function_name,
             custom_json_response=custom_json_response,
+            retrieve_fields=retrieve_fields,
         )
 
     def insert_list(
@@ -41,6 +43,7 @@ class ServiceBaseInsert(ServiceBaseSave):
         manage_transaction: bool = True,
         function_name: str | None = None,
         custom_json_response: bool = False,
+        retrieve_fields=None,
     ) -> List[DTOBase]:
         _lst_return = []
         try:
@@ -59,6 +62,7 @@ class ServiceBaseInsert(ServiceBaseSave):
                     retrieve_after_insert=retrieve_after_insert,
                     function_name=function_name,
                     custom_json_response=custom_json_response,
+                    retrieve_fields=retrieve_fields,
                 )
 
                 if _return_object is not None:

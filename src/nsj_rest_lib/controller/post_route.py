@@ -119,6 +119,17 @@ class PostRoute(RouteBase):
                 if not isinstance(request_data, list):
                     request_data = [request_data]
 
+                args = (
+                    request.args
+                    if os.getenv("ENV", "").lower() != "erp_sql"
+                    else query_args or {}
+                )
+                retrieve_fields = (
+                    RouteBase.parse_fields(self._dto_class, args.get("fields"))
+                    if self.retrieve_after_insert
+                    else None
+                )
+
                 data_pack = []
                 lst_data = []
                 partition_filters = None
@@ -154,6 +165,7 @@ class PostRoute(RouteBase):
                         retrieve_after_insert=self.retrieve_after_insert,
                         function_name=self._insert_function_name,
                         custom_json_response=self.custom_json_response,
+                        retrieve_fields=retrieve_fields,
                     )
 
                     if data is not None:
@@ -179,7 +191,7 @@ class PostRoute(RouteBase):
                             return (json_dumps(data), 200, {**DEFAULT_RESP_HEADERS})
 
                         # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                        lst_data.append(data.convert_to_dict())
+                        lst_data.append(data.convert_to_dict(retrieve_fields))
                 else:
                     data = service.insert_list(
                         dtos=data_pack,
@@ -189,6 +201,7 @@ class PostRoute(RouteBase):
                         retrieve_after_insert=self.retrieve_after_insert,
                         function_name=self._insert_function_name,
                         custom_json_response=self.custom_json_response,
+                        retrieve_fields=retrieve_fields,
                     )
 
                     if (
@@ -200,7 +213,9 @@ class PostRoute(RouteBase):
 
                     if data is not None or not len(data) > 0:
                         # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                        lst_data = [item.convert_to_dict() for item in data]
+                        lst_data = [
+                            item.convert_to_dict(retrieve_fields) for item in data
+                        ]
 
                 if len(lst_data) == 1:
                     # Retornando a resposta da requisição

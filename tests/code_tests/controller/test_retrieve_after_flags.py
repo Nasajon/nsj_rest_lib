@@ -65,6 +65,7 @@ class RecordingRouteService:
         retrieve_after_insert=False,
         function_name=None,
         custom_json_response=False,
+        retrieve_fields=None,
     ):
         self.called_with = {"retrieve_after_insert": retrieve_after_insert, "dto": dto}
         return DummyResponse()
@@ -80,6 +81,7 @@ class RecordingRouteService:
         function_name=None,
         retrieve_after_update=False,
         custom_json_response=False,
+        retrieve_fields=None,
     ):
         self.called_with = {"retrieve_after_update": retrieve_after_update, "dto": dto, "id": id}
         return DummyResponse()
@@ -93,6 +95,7 @@ class RecordingRouteService:
         custom_after_update=None,
         retrieve_after_partial_update=False,
         custom_json_response=False,
+        retrieve_fields=None,
     ):
         self.called_with = {
             "retrieve_after_partial_update": retrieve_after_partial_update,

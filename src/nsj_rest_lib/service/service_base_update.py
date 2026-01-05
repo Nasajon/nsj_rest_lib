@@ -19,6 +19,7 @@ class ServiceBaseUpdate(ServiceBaseInsert):
         function_name: str | None = None,
         retrieve_after_update: bool = False,
         custom_json_response: bool = False,
+        retrieve_fields=None,
     ) -> DTOBase:
         return self._save(
             insert=False,
@@ -33,6 +34,7 @@ class ServiceBaseUpdate(ServiceBaseInsert):
             function_name=function_name,
             retrieve_after_insert=retrieve_after_update,
             custom_json_response=custom_json_response,
+            retrieve_fields=retrieve_fields,
         )
 
     def update_list(
@@ -46,6 +48,7 @@ class ServiceBaseUpdate(ServiceBaseInsert):
         function_name: str | None = None,
         retrieve_after_update: bool = False,
         custom_json_response: bool = False,
+        retrieve_fields=None,
     ) -> List[DTOBase]:
         _lst_return = []
         try:
@@ -66,6 +69,7 @@ class ServiceBaseUpdate(ServiceBaseInsert):
                     function_name=function_name,
                     retrieve_after_insert=retrieve_after_update,
                     custom_json_response=custom_json_response,
+                    retrieve_fields=retrieve_fields,
                 )
 
                 if _return_object is not None:
