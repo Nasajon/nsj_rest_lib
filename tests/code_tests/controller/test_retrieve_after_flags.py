@@ -64,6 +64,7 @@ class RecordingRouteService:
         custom_after_insert=None,
         retrieve_after_insert=False,
         function_name=None,
+        custom_json_response=False,
     ):
         self.called_with = {"retrieve_after_insert": retrieve_after_insert, "dto": dto}
         return DummyResponse()
@@ -78,6 +79,7 @@ class RecordingRouteService:
         upsert=False,
         function_name=None,
         retrieve_after_update=False,
+        custom_json_response=False,
     ):
         self.called_with = {"retrieve_after_update": retrieve_after_update, "dto": dto, "id": id}
         return DummyResponse()
@@ -90,6 +92,7 @@ class RecordingRouteService:
         custom_before_update=None,
         custom_after_update=None,
         retrieve_after_partial_update=False,
+        custom_json_response=False,
     ):
         self.called_with = {
             "retrieve_after_partial_update": retrieve_after_partial_update,
@@ -141,7 +144,7 @@ class FakeDAO:
     def insert(self, entity, sql_read_only_fields):
         return entity
 
-    def insert_by_function(self, func_object, function_name=None):
+    def insert_by_function(self, func_object, function_name=None, custom_json_response=False):
         self.insert_by_function_called = (func_object, function_name)
         return None
 
@@ -158,7 +161,7 @@ class FakeDAO:
     ):
         return entity
 
-    def update_by_function(self, func_object, function_name=None):
+    def update_by_function(self, func_object, function_name=None, custom_json_response=False):
         self.update_by_function_called = (func_object, function_name)
         return None
 

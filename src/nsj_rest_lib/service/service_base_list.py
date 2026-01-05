@@ -42,6 +42,7 @@ class ServiceBaseList(ServiceBaseRetrieve):
         function_params: Dict[str, Any] | None = None,
         function_object=None,
         function_name: str | None = None,
+        custom_json_response: bool = False,
     ) -> List[DTOBase]:
         fn_name = function_name
         # LIST por função só deve ocorrer quando o nome da função
@@ -53,6 +54,7 @@ class ServiceBaseList(ServiceBaseRetrieve):
                 function_params or {},
                 function_object,
                 function_name=fn_name,
+                custom_json_response=custom_json_response,
             )
         # Resolving fields
         fields = self._resolving_fields(fields)
@@ -276,6 +278,7 @@ class ServiceBaseList(ServiceBaseRetrieve):
         function_params: Dict[str, Any],
         function_object=None,
         function_name: str | None = None,
+        custom_json_response: bool = False,
     ) -> List[DTOBase]:
         params: Dict[str, Any] = dict(function_params or {})
         dto_class = self._list_function_response_dto_class
@@ -297,6 +300,9 @@ class ServiceBaseList(ServiceBaseRetrieve):
                 [],
                 params,
             )
+
+        if custom_json_response:
+            return rows or []
 
         return self._map_function_rows_to_dtos(
             rows,

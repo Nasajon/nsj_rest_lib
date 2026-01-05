@@ -16,6 +16,7 @@ class ServiceBasePartialUpdate(ServiceBaseUpdate):
         custom_after_update: Callable = None,
         manage_transaction: bool = True,
         retrieve_after_partial_update: bool = False,
+        custom_json_response: bool = False,
     ) -> DTOBase:
         return self._save(
             insert=False,
@@ -27,6 +28,7 @@ class ServiceBasePartialUpdate(ServiceBaseUpdate):
             custom_before_update=custom_before_update,
             custom_after_update=custom_after_update,
             retrieve_after_insert=retrieve_after_partial_update,
+            custom_json_response=custom_json_response,
         )
 
     def partial_update_list(
@@ -37,6 +39,7 @@ class ServiceBasePartialUpdate(ServiceBaseUpdate):
         custom_after_update: Callable = None,
         upsert: bool = False,
         retrieve_after_partial_update: bool = False,
+        custom_json_response: bool = False,
     ) -> List[DTOBase]:
 
         _lst_return = []
@@ -54,6 +57,7 @@ class ServiceBasePartialUpdate(ServiceBaseUpdate):
                     custom_before_update=custom_before_update,
                     custom_after_update=custom_after_update,
                     retrieve_after_insert=retrieve_after_partial_update,
+                    custom_json_response=custom_json_response,
                 )
 
                 if _return_object is not None:

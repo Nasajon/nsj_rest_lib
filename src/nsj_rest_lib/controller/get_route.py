@@ -35,6 +35,7 @@ class GetRoute(RouteBase):
         get_function_type_class: type | None = None,
         get_function_name: str | None = None,
         get_function_response_dto_class: type | None = None,
+        custom_json_response: bool = False,
     ):
         """
         Rota de GET por ID.
@@ -65,6 +66,7 @@ class GetRoute(RouteBase):
         self._get_function_response_dto_class = (
             get_function_response_dto_class or dto_class
         )
+        self.custom_json_response = custom_json_response
 
     def _get_service(self, factory: NsjInjectorFactoryBase):
         """
@@ -154,7 +156,11 @@ class GetRoute(RouteBase):
                     function_params=function_params,
                     function_object=function_object,
                     function_name=self._get_function_name,
+                    custom_json_response=self.custom_json_response,
                 )
+
+                if self.custom_json_response and self._get_function_name is not None:
+                    return (json_dumps(data), 200, {**DEFAULT_RESP_HEADERS})
 
                 # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
                 dict_data = data.convert_to_dict(fields, expands)

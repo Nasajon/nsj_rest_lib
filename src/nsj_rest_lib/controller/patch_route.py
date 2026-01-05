@@ -31,6 +31,7 @@ class PatchRoute(RouteBase):
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
         retrieve_after_partial_update: bool = False,
+        custom_json_response: bool = False,
     ):
         super().__init__(
             url=url,
@@ -45,6 +46,7 @@ class PatchRoute(RouteBase):
         self.custom_before_update = custom_before_update
         self.custom_after_update = custom_after_update
         self.retrieve_after_partial_update = retrieve_after_partial_update
+        self.custom_json_response = custom_json_response
 
     def handle_request(
         self,
@@ -102,6 +104,7 @@ class PatchRoute(RouteBase):
                     custom_before_update=self.custom_before_update,
                     custom_after_update=self.custom_after_update,
                     retrieve_after_partial_update=self.retrieve_after_partial_update,
+                    custom_json_response=self.custom_json_response,
                 )
 
                 if data is not None:
@@ -113,6 +116,18 @@ class PatchRoute(RouteBase):
                             "Location": queued_data.status_url,
                         }
                         return ("", 202, resp_headers)
+
+                    if (
+                        self.custom_json_response
+                        and (
+                            isinstance(data, dict)
+                            or (
+                                isinstance(data, list)
+                                and (not data or not hasattr(data[0], "convert_to_dict"))
+                            )
+                        )
+                    ):
+                        return (json_dumps(data), 200, {**DEFAULT_RESP_HEADERS})
 
                     # Convertendo para o formato de dicionário
                     dict_data = data.convert_to_dict()
