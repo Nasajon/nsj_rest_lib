@@ -1,7 +1,7 @@
 import re
 from typing import Any, Dict, List, Tuple
 
-from nsj_gcf_utils.json_util import convert_to_dumps
+from nsj_gcf_utils.json_util import convert_to_dumps, json_loads
 
 from nsj_rest_lib.dao.dao_base_util import DAOBaseUtil
 from nsj_rest_lib.descriptor.function_relation_field import FunctionRelationField
@@ -167,6 +167,7 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
         self,
         function_object: FunctionTypeBase,
         function_name: str,
+        custom_json_response: bool = False,
     ):
         """
         Insere a entidade utilizando uma função de banco declarada por meio de um FunctionType.
@@ -177,12 +178,14 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
             function_name=function_name,
             block_label="DOINSERT",
             action_label="inserindo",
+            custom_json_response=custom_json_response,
         )
 
     def update_by_function(
         self,
         function_object: FunctionTypeBase,
         function_name: str,
+        custom_json_response: bool = False,
     ):
         """
         Atualiza a entidade utilizando uma função de banco declarada por meio de um FunctionType.
@@ -193,6 +196,7 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
             function_name=function_name,
             block_label="DOUPDATE",
             action_label="atualizando",
+            custom_json_response=custom_json_response,
         )
 
     def _execute_function(
@@ -201,6 +205,7 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
         function_name: str,
         block_label: str,
         action_label: str,
+        custom_json_response: bool = False,
     ):
         if function_object is None:
             raise ValueError(
@@ -257,4 +262,23 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
 
             raise PostgresFunctionException(msg)
 
+        if custom_json_response:
+            return self._extract_custom_response(returning)
+
         return function_object
+
+    def _extract_custom_response(self, returning: dict) -> object:
+        if not isinstance(returning, dict):
+            return returning
+
+        payload = returning.get("mensagem")
+        if payload is None:
+            return returning
+
+        if isinstance(payload, str):
+            try:
+                return json_loads(payload)
+            except Exception:
+                return payload
+
+        return payload

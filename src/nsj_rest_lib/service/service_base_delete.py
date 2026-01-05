@@ -1,5 +1,7 @@
 from typing import Any, Dict, List
 
+from nsj_gcf_utils.json_util import json_loads
+
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
@@ -20,8 +22,9 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         function_params: Dict[str, Any] | None = None,
         function_object=None,
         function_name: str | None = None,
+        custom_json_response: bool = False,
     ) -> DTOBase:
-        self._delete(
+        return self._delete(
             id,
             manage_transaction=True,
             additional_filters=additional_filters,
@@ -29,6 +32,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
             function_params=function_params,
             function_object=function_object,
             function_name=function_name,
+            custom_json_response=custom_json_response,
         )
 
     def delete_list(
@@ -64,6 +68,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         function_params: Dict[str, Any] | None = None,
         function_object=None,
         function_name: str | None = None,
+        custom_json_response: bool = False,
     ) -> DTOBase:
         try:
             if manage_transaction:
@@ -78,14 +83,14 @@ class ServiceBaseDelete(ServiceBasePartialOf):
             # DELETE por função só deve ocorrer quando o nome da função
             # for informado explicitamente.
             if fn_name is not None:
-                self._delete_by_function(
+                return self._delete_by_function(
                     id,
                     additional_filters,
                     function_params or {},
                     function_object,
                     function_name=fn_name,
+                    custom_json_response=custom_json_response,
                 )
-                return
 
             # Convertendo os filtros para os filtros de entidade
             entity_filters = {}
@@ -115,6 +120,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
 
             # Excluindo a entity principal
             self._dao.delete(entity_filters)
+            return None
         except:
             if manage_transaction:
                 self._dao.rollback()
@@ -204,6 +210,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         function_params: Dict[str, Any],
         function_object=None,
         function_name: str | None = None,
+        custom_json_response: bool = False,
     ):
         params: Dict[str, Any] = dict(function_params or {})
         if additional_filters:
@@ -215,8 +222,11 @@ class ServiceBaseDelete(ServiceBasePartialOf):
 
         if function_object is not None:
             if isinstance(function_object, FunctionTypeBase):
-                self._dao._call_function_with_type(function_object, fn_name)
-                return
+                rows = self._dao._call_function_with_type(function_object, fn_name)
+                return self._handle_custom_delete_response(
+                    rows,
+                    custom_json_response,
+                )
             raise TypeError(
                 "function_object deve ser um FunctionTypeBase em _delete_by_function."
             )
@@ -225,11 +235,31 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         positional_values = []
         if id is not None:
             positional_values.append(id)
-        self._dao._call_function_raw(
+        rows = self._dao._call_function_raw(
             fn_name,
             positional_values,
             params,
         )
+        return self._handle_custom_delete_response(rows, custom_json_response)
+
+    def _handle_custom_delete_response(self, rows, custom_json_response: bool):
+        if not custom_json_response:
+            return None
+
+        if not rows:
+            return {}
+
+        first_row = rows[0]
+        if isinstance(first_row, dict) and "mensagem" in first_row:
+            payload = first_row.get("mensagem")
+            if isinstance(payload, str):
+                try:
+                    return json_loads(payload)
+                except Exception:
+                    return payload
+            return payload
+
+        return first_row
 
     def _delete_related_lists_old(self, id, additional_filters: Dict[str, Any] = None):
         # Handling each related list

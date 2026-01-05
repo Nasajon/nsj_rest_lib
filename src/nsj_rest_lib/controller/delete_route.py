@@ -29,6 +29,7 @@ class DeleteRoute(RouteBase):
         custom_before_delete: Callable = None,
         delete_function_type_class: type | None = None,
         delete_function_name: str | None = None,
+        custom_json_response: bool = False,
     ):
         """
         Rota de DELETE.
@@ -56,6 +57,7 @@ class DeleteRoute(RouteBase):
         self.custom_before_delete = custom_before_delete
         self._delete_function_type_class = delete_function_type_class
         self._delete_function_name = delete_function_name
+        self.custom_json_response = custom_json_response
 
     def _partition_filters(self, args):
         partition_filters = {}
@@ -153,14 +155,22 @@ class DeleteRoute(RouteBase):
                             params,
                             id_value=id,
                         )
-                    service.delete(
+                    custom_response = service.delete(
                         id,
                         partition_filters,
                         custom_before_delete=self.custom_before_delete,
                         function_params=None if function_object is not None else args,
                         function_object=function_object,
                         function_name=self._delete_function_name,
+                        custom_json_response=self.custom_json_response,
                     )
+
+                    if self.custom_json_response and custom_response is not None:
+                        return (
+                            json_dumps(custom_response),
+                            200,
+                            {**DEFAULT_RESP_HEADERS},
+                        )
 
                     # Retornando a resposta da requisição
                     return ("", 204, {**DEFAULT_RESP_HEADERS})

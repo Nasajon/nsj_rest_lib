@@ -14,6 +14,7 @@ from nsj_rest_lib.exception import (
     DTOListFieldConfigException,
     NotFoundException,
 )
+from nsj_rest_lib.util.fields_util import FieldsTree
 
 from .service_base_partial_of import ServiceBasePartialOf, PartialExtensionWriteData
 
@@ -35,9 +36,12 @@ class ServiceBaseSave(ServiceBasePartialOf):
         upsert: bool = False,
         retrieve_after_insert: bool = False,
         function_name: str | None = None,
+        custom_json_response: bool = False,
+        retrieve_fields: FieldsTree | None = None,
     ) -> DTOBase:
         try:
             received_dto = dto
+            custom_response = None
 
             self.fill_auto_increment_fields(insert, dto)
 
@@ -144,9 +148,10 @@ class ServiceBaseSave(ServiceBasePartialOf):
                     entity = self._dao.insert(entity, dto.sql_read_only_fields)
                 else:
                     insert_function_object = self._build_insert_function_type_object(dto)
-                    self._dao.insert_by_function(
+                    custom_response = self._dao.insert_by_function(
                         insert_function_object,
                         function_name=function_name,
+                        custom_json_response=custom_json_response,
                     )
 
                 if partial_write_data is not None:
@@ -183,9 +188,10 @@ class ServiceBaseSave(ServiceBasePartialOf):
                     update_function_object = (
                         self._build_update_function_type_object(dto)
                     )
-                    self._dao.update_by_function(
+                    custom_response = self._dao.update_by_function(
                         update_function_object,
                         function_name=function_name,
+                        custom_json_response=custom_json_response,
                     )
 
                 if partial_write_data is not None:
@@ -195,7 +201,11 @@ class ServiceBaseSave(ServiceBasePartialOf):
                         partial_update,
                     )
 
-            if self._dto_post_response_class is not None and not retrieve_after_insert:
+            if (
+                self._dto_post_response_class is not None
+                and not retrieve_after_insert
+                and not custom_json_response
+            ):
                 response_dto = self._dto_post_response_class(
                     entity, escape_validator=True
                 )
@@ -235,8 +245,8 @@ class ServiceBaseSave(ServiceBasePartialOf):
                         self._dao._db, old_dto, new_dto, after_data
                     )
 
-            if retrieve_after_insert:
-                response_dto = self.get(id, aditional_filters, None)
+            if retrieve_after_insert and not custom_json_response:
+                response_dto = self.get(id, aditional_filters, retrieve_fields)
 
             if custom_data is not None:
                 if isinstance(custom_data, dict):
@@ -250,6 +260,9 @@ class ServiceBaseSave(ServiceBasePartialOf):
                         pass
                     else:
                         response_dto = custom_data
+
+            if custom_json_response and custom_response is not None:
+                return custom_response
 
             return response_dto
         except:

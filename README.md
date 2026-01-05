@@ -168,6 +168,12 @@ E em torno na rota ficaria: `/pai/<id_pai>/filho/<id>`
 
 ## Histórico de versões
 
+### 6.1.0
+
+- Suporte a retrieve_after_update em PutRoute.
+- Suporte a retrieve_after_partial_update em PatchRoute.
+- Suporte a custom_json_response, para permitir retornar um json customizado por uma função de banco, em todos tipos de rota (Post, Put, Patch, Get, List e Delete). A ideia é que rotas de Post, Put, Patch e Delete retorne um TRecibo (com um json dentro do campo "mensagem"), enquanto rotas de Get e List retornem direto linhas de dados, a serem transformados em json.
+
 ### 6.0.1
 
 - Implementação do suporte a Get by ID, List e Delete, todos por função de banco.

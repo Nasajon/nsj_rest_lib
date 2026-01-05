@@ -35,6 +35,8 @@ class PutRoute(RouteBase):
         handle_exception: Callable = None,
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
+        retrieve_after_update: bool = False,
+        custom_json_response: bool = False,
         update_function_type_class: Type[UpdateFunctionTypeBase] | None = None,
         update_function_name: str | None = None,
     ):
@@ -50,6 +52,8 @@ class PutRoute(RouteBase):
         )
         self.custom_before_update = custom_before_update
         self.custom_after_update = custom_after_update
+        self.retrieve_after_update = retrieve_after_update
+        self.custom_json_response = custom_json_response
         self._update_function_type_class = update_function_type_class
         self._update_function_name = update_function_name
 
@@ -114,11 +118,16 @@ class PutRoute(RouteBase):
                     args = request.args
                 else:
                     request_data = body
-                    args = query_args
+                    args = query_args or {}
 
                 # Parâmetros da requisição
                 is_upsert = args.get(
                     "upsert", False, type=lambda value: value.lower() == "true"
+                )
+                retrieve_fields = (
+                    RouteBase.parse_fields(self._dto_class, args.get("fields"))
+                    if self.retrieve_after_update
+                    else None
                 )
 
                 if not isinstance(request_data, list):
@@ -161,6 +170,9 @@ class PutRoute(RouteBase):
                         custom_after_update=self.custom_after_update,
                         upsert=is_upsert,
                         function_name=self._update_function_name,
+                        retrieve_after_update=self.retrieve_after_update,
+                        custom_json_response=self.custom_json_response,
+                        retrieve_fields=retrieve_fields,
                     )
 
                     if data is not None:
@@ -173,8 +185,20 @@ class PutRoute(RouteBase):
                             }
                             return ("", 202, resp_headers)
 
+                        if (
+                            self.custom_json_response
+                            and (
+                                isinstance(data, dict)
+                                or (
+                                    isinstance(data, list)
+                                    and (not data or not hasattr(data[0], "convert_to_dict"))
+                                )
+                            )
+                        ):
+                            return (json_dumps(data), 200, {**DEFAULT_RESP_HEADERS})
+
                         # Convertendo para o formato de dicionário
-                        lst_data.append(data.convert_to_dict())
+                        lst_data.append(data.convert_to_dict(retrieve_fields))
                 else:
                     data = service.update_list(
                         dtos=data_pack,
@@ -183,11 +207,23 @@ class PutRoute(RouteBase):
                         custom_after_update=self.custom_after_update,
                         upsert=is_upsert,
                         function_name=self._update_function_name,
+                        retrieve_after_update=self.retrieve_after_update,
+                        custom_json_response=self.custom_json_response,
+                        retrieve_fields=retrieve_fields,
                     )
+
+                    if (
+                        self.custom_json_response
+                        and isinstance(data, list)
+                        and (not data or not hasattr(data[0], "convert_to_dict"))
+                    ):
+                        return (json_dumps(data), 200, {**DEFAULT_RESP_HEADERS})
 
                     if data is not None or not len(data) > 0:
                         # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                        lst_data = [item.convert_to_dict() for item in data]
+                        lst_data = [
+                            item.convert_to_dict(retrieve_fields) for item in data
+                        ]
 
                 if len(lst_data) == 1:
                     # Retornando a resposta da requisição

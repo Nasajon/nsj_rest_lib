@@ -23,6 +23,7 @@ class ServiceBaseGet(ServiceBaseRetrieve):
         function_params: Dict[str, Any] | None = None,
         function_object=None,
         function_name: str | None = None,
+        custom_json_response: bool = False,
     ) -> DTOBase:
 
         if expands is None:
@@ -40,6 +41,7 @@ class ServiceBaseGet(ServiceBaseRetrieve):
                 function_params or {},
                 function_object,
                 function_name=fn_name,
+                custom_json_response=custom_json_response,
             )
 
         # Resolving fields
@@ -176,6 +178,7 @@ class ServiceBaseGet(ServiceBaseRetrieve):
         function_params: Dict[str, Any],
         function_object=None,
         function_name: str | None = None,
+        custom_json_response: bool = False,
     ) -> DTOBase:
         from nsj_rest_lib.exception import NotFoundException
 
@@ -209,6 +212,13 @@ class ServiceBaseGet(ServiceBaseRetrieve):
                 positional_values,
                 all_params,
             )
+
+        if custom_json_response:
+            if not rows:
+                raise NotFoundException(
+                    f"{self._entity_class.__name__} com id {id} não encontrado."
+                )
+            return rows[0]
 
         dtos = self._map_function_rows_to_dtos(
             rows,

@@ -82,3 +82,31 @@ def get_classificacao_financeira(request, response):
 )
 def delete_classificacao_financeira(request, response):
     return response
+
+
+@application.route(f"{LIST_POST_ROUTE}2", methods=["POST"])
+@PostRoute(
+    url=f"{LIST_POST_ROUTE}2",
+    http_method="POST",
+    dto_class=ClassificacaoFinanceiraDTO,
+    entity_class=ClassificacaoFinanceiraEntity,
+    insert_function_type_class=ClassificacaoFinanceiraInsertType,
+    insert_function_name="teste.api_classificacaofinanceiranovo",
+    retrieve_after_insert=True,
+)
+def post_classificacoes_financeiras2(request, response):
+    return response
+
+
+@application.route(f"{LIST_POST_ROUTE}2/<id>", methods=["PUT"])
+@PutRoute(
+    url=f"{LIST_POST_ROUTE}2/<id>",
+    http_method="PUT",
+    dto_class=ClassificacaoFinanceiraDTO,
+    entity_class=ClassificacaoFinanceiraEntity,
+    update_function_type_class=ClassificacaoFinanceiraUpdateType,
+    update_function_name="teste.api_classificacaofinanceiraalterar",
+    retrieve_after_update=True,
+)
+def put_classificacoes_financeiras2(request, response):
+    return response

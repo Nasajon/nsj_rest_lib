@@ -30,6 +30,8 @@ class PatchRoute(RouteBase):
         handle_exception: Callable = None,
         custom_before_update: Callable = None,
         custom_after_update: Callable = None,
+        retrieve_after_partial_update: bool = False,
+        custom_json_response: bool = False,
     ):
         super().__init__(
             url=url,
@@ -43,6 +45,8 @@ class PatchRoute(RouteBase):
         )
         self.custom_before_update = custom_before_update
         self.custom_after_update = custom_after_update
+        self.retrieve_after_partial_update = retrieve_after_partial_update
+        self.custom_json_response = custom_json_response
 
     def handle_request(
         self,
@@ -60,8 +64,10 @@ class PatchRoute(RouteBase):
                 # Recuperando os dados do corpo da requisição
                 if os.getenv("ENV", "").lower() != "erp_sql":
                     data = request.json
+                    args = request.args
                 else:
                     data = body
+                    args = query_args or {}
 
                 if len(kwargs) > 0:
                     data.update(kwargs)
@@ -91,6 +97,11 @@ class PatchRoute(RouteBase):
 
                 # Construindo os objetos
                 service = self._get_service(factory)
+                retrieve_fields = (
+                    RouteBase.parse_fields(self._dto_class, args.get("fields"))
+                    if self.retrieve_after_partial_update
+                    else None
+                )
 
                 # Chamando o service (método insert)
                 data = service.partial_update(
@@ -99,6 +110,9 @@ class PatchRoute(RouteBase):
                     aditional_filters=partition_filters,
                     custom_before_update=self.custom_before_update,
                     custom_after_update=self.custom_after_update,
+                    retrieve_after_partial_update=self.retrieve_after_partial_update,
+                    custom_json_response=self.custom_json_response,
+                    retrieve_fields=retrieve_fields,
                 )
 
                 if data is not None:
@@ -111,8 +125,20 @@ class PatchRoute(RouteBase):
                         }
                         return ("", 202, resp_headers)
 
+                    if (
+                        self.custom_json_response
+                        and (
+                            isinstance(data, dict)
+                            or (
+                                isinstance(data, list)
+                                and (not data or not hasattr(data[0], "convert_to_dict"))
+                            )
+                        )
+                    ):
+                        return (json_dumps(data), 200, {**DEFAULT_RESP_HEADERS})
+
                     # Convertendo para o formato de dicionário
-                    dict_data = data.convert_to_dict()
+                    dict_data = data.convert_to_dict(retrieve_fields)
 
                     # Retornando a resposta da requuisição
                     return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})

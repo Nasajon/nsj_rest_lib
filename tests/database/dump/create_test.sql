@@ -131,7 +131,9 @@ AS $function$
 	DECLARE VAR_CLASSIFICACAO_PAI_ID UUID;
 	DECLARE VAR_NATUREZA INTEGER;
 	DECLARE VAR_RECIBO teste.TRECIBO;
-BEGIN      
+BEGIN
+    VAR_GRUPOEMPRESARIAL := a_objeto.grupoempresarial::uuid;
+	
 	--VERIFICA CAMPOS OBRIGATORIOS
 	IF ( a_objeto.codigo IS NULL ) OR ( a_objeto.codigo = '' ) THEN
 		VAR_RECIBO.MENSAGEM := teste.API_MONTAMENSAGEM('FALHA', 'Código não informado.' );
