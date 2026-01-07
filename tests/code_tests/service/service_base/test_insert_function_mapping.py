@@ -110,7 +110,7 @@ class AddressDTO(DTOBase):
 
 @DTO()
 class DocumentDTO(DTOBase):
-    numero: str = DTOField()
+    numero: str = DTOField(pk=True)
     tipo: str = DTOField()
 
 
