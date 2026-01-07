@@ -738,8 +738,6 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
                 local_fields = extract_child_tree(fields, key)
                 pass
 
-            local_fields['root'].add(relation_field)
-
             related_dto_list: ty.List[DTOBase] = service.list(
                 after=None,
                 limit=None,
@@ -747,12 +745,12 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
                 order_fields=None,
                 filters=related_filters,
                 search_query=None,
-                return_hidden_fields=None,
+                return_hidden_fields=set([relation_field]),
                 expands=local_expands,
             )
 
-            related_map: ty.Dict[str, ty.Dict[str, ty.Any]] = {
-                str(getattr(x, relation_field)): x
+            related_map: ty.Dict[str, DTOBase] = {
+                str(x.return_hidden_fields.get(relation_field)): x
                 for x in related_dto_list
             }
             # NOTE: I'm assuming relation_field of x will never be NULL, because

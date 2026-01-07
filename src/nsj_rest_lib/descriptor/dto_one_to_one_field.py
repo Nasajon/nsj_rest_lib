@@ -99,9 +99,8 @@ class DTOOneToOneField:
                     `pk_field` of the `Related DTO` will be used in place of
                     the object.
 
-        - relation_field: Field name in the `Related DTO` used to identify the
-            relation when `relation_type` is AGGREGATION. Defaults to the
-            `pk_field` of the `Related DTO`.
+        - relation_field: Field name in the `entity_type` to use in the `on` of
+            the `join` query. Defaults to the `pk_field` of the `entity_type`.
 
         - resume: Indicates if on GET requests the non expanded value should be
             always returned.
@@ -194,6 +193,16 @@ class DTOOneToOneField:
             f"Argument `entity_type` of `DTOOneToOneField` HAS to be"
             f" a `EntityBase`. Is {repr(self.entity_type)}."
         )
+
+        if self.relation_field == '':
+            self.relation_field = self.entity_type.pk_field
+            pass
+
+        assert self.relation_field in self.entity_type.fields_map, (
+            f"Argument `relation_field` of `DTOOneToOneField` HAS to be"
+            f" a field of `{repr(self.entity_type)}`. Is {repr(self.relation_field)}."
+        )
+
         pass
 
     def __get__(self, instance: ty.Optional['DTOBase'], owner: ty.Any):
@@ -233,7 +242,11 @@ class DTOOneToOneField:
                         pass
                     pass
 
-                if isinstance(value, self.expected_type):
+                # NOTE: At this moment if the relation_field in the entity has
+                #           a diferent name from the field on the DTO we disable
+                #           validation, because at the moment there is no easy
+                #           way to get a DTOField from the entity field name
+                if isinstance(value, self.expected_type) and hasattr(value, self.relation_field):
                     relation_value = getattr(value, self.relation_field)
                     if self.field.use_default_validator:
                         # NOTE: This may throw
