@@ -722,10 +722,10 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
             if len(keys_to_fetch) == 0:
                 continue
 
-            pk_field: str = oto_field.expected_type.pk_field
+            relation_field: str = oto_field.relation_field
 
             related_filters: ty.Dict[str, str] = {
-                pk_field: ",".join(str(k) for k in keys_to_fetch)
+                relation_field: ",".join(str(k) for k in keys_to_fetch)
             }
 
             local_expands: ty.Optional[FieldsTree] = None
@@ -733,10 +733,12 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
                 local_expands = extract_child_tree(expands, key)
                 pass
 
-            local_fields: ty.Optional[FieldsTree] = None
+            local_fields: FieldsTree = {'root': set()}
             if key in fields:
                 local_fields = extract_child_tree(fields, key)
                 pass
+
+            local_fields['root'].add(relation_field)
 
             related_dto_list: ty.List[DTOBase] = service.list(
                 after=None,
@@ -750,11 +752,11 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
             )
 
             related_map: ty.Dict[str, ty.Dict[str, ty.Any]] = {
-                str(getattr(x, pk_field)): x
+                str(getattr(x, relation_field)): x
                 for x in related_dto_list
             }
-            # NOTE: I'm assuming pk_field of x will never be NULL, because
-            #           to be NULL would mean to not have a PK.
+            # NOTE: I'm assuming relation_field of x will never be NULL, because
+            #           to be NULL would mean to not have an identifier.
 
             for dto in dto_list:
                 orig_val: str = str(getattr(dto, field_name))

@@ -540,6 +540,15 @@ class DTO:
                     attr.entity_field = key
                     pass
 
+                if attr.relation_field == "":
+                    attr.relation_field = attr.expected_type.pk_field
+
+                assert attr.relation_field in attr.expected_type.fields_map, (
+                    f"`DTOOneToOneField` with name `{key}` relation_field"
+                    f" MUST reference a field in `{attr.expected_type.__name__}`"
+                    f". Got `{attr.relation_field}`."
+                )
+
                 attr.field = DTOField(
                     not_null=attr.not_null,
                     entity_field=attr.entity_field,

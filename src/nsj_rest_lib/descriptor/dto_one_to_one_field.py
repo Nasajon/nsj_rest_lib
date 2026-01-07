@@ -38,6 +38,7 @@ class DTOOneToOneField:
     resume: bool
     partition_data: bool
     entity_field: str
+    relation_field: str
     insert_function_field: str
     update_function_field: str
     validator: ty.Optional[ty.Callable[..., ty.Any]]
@@ -62,6 +63,7 @@ class DTOOneToOneField:
         convert_to_function: ty.Optional[ty.Callable[..., ty.Any]] = None,
         get_function_field: ty.Optional[str] = None,
         delete_function_field: ty.Optional[str] = None,
+        relation_field: ty.Optional[str] = None,
     ):
         """Descriptor used for One to One relations.
         ---------
@@ -96,6 +98,10 @@ class DTOOneToOneField:
                     `relation_field` is `None`. In this case, the value in the
                     `pk_field` of the `Related DTO` will be used in place of
                     the object.
+
+        - relation_field: Field name in the `Related DTO` used to identify the
+            relation when `relation_type` is AGGREGATION. Defaults to the
+            `pk_field` of the `Related DTO`.
 
         - resume: Indicates if on GET requests the non expanded value should be
             always returned.
@@ -151,6 +157,7 @@ class DTOOneToOneField:
         self.convert_to_function = convert_to_function
         self.get_function_field = get_function_field
         self.delete_function_field = delete_function_field
+        self.relation_field = relation_field or ''
 
         self.name = None
         self.expected_type = ty.cast(ty.Type['DTOBase'], type)
@@ -220,27 +227,29 @@ class DTOOneToOneField:
                         pass
                 else:
                     if isinstance(value, self.expected_type):
-                        value = getattr(
-                            value, self.expected_type.pk_field, None
-                        )
+                        value = getattr(value, self.relation_field, None)
                     elif isinstance(value, dict):
-                        value = value.get(self.expected_type.pk_field, None)
+                        value = value.get(self.relation_field, None)
                         pass
                     pass
 
                 if isinstance(value, self.expected_type):
-                    pk = getattr(value, self.expected_type.pk_field)
+                    relation_value = getattr(value, self.relation_field)
                     if self.field.use_default_validator:
                         # NOTE: This may throw
-                        pk = self.field.validate(self.field, pk, instance)
+                        relation_value = self.field.validate(
+                            self.field, relation_value, instance
+                        )
                         pass
 
                     if self.field.validator is not None:
                         # NOTE: This may throw
-                        pk = self.field.validator(self.field, pk)
+                        relation_value = self.field.validator(
+                            self.field, relation_value
+                        )
                         pass
 
-                    setattr(value, self.expected_type.pk_field, pk)
+                    setattr(value, self.relation_field, relation_value)
                 else:
                     if self.field.use_default_validator:
                         # NOTE: This may throw
