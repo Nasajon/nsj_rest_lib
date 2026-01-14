@@ -50,6 +50,38 @@ class ParentDTO(DTOBase):
     pass
 
 
+@Entity(table_name="child_code_entity", pk_field="id", default_order_fields=["id"])
+class ChildCodeEntity(EntityBase):
+    id: uuid.UUID = uuid.UUID(int=0)
+    code: str = ""
+    pass
+
+
+@DTO()
+class ChildCodeDTO(DTOBase):
+    id: int = DTOField(pk=True, resume=True)
+    code: str = DTOField()
+    pass
+
+
+@Entity(table_name="parent_code_entity", pk_field="pid", default_order_fields=["pid"])
+class ParentCodeEntity(EntityBase):
+    pid: uuid.UUID = uuid.UUID(int=0)
+    child: str = ""
+    pass
+
+
+@DTO()
+class ParentCodeDTO(DTOBase):
+    pid: int = DTOField(pk=True, resume=True)
+    child: ChildCodeDTO = DTOOneToOneField(
+        entity_type=ChildCodeEntity,
+        relation_type=OTORelationType.AGGREGATION,
+        relation_field="code",
+    )
+    pass
+
+
 class ParentDAO(DAOBase):
     def __init__(self, da, entity_class):
         super().__init__(db=da, entity_class=entity_class)
@@ -156,6 +188,16 @@ def test_insert_object() -> None:
     )
     dto_response: ParentDTO = service.insert(dto)
     assert dto_response.child == vals["child"]
+    pass
+
+
+def test_relation_field_aggregation_uses_custom_field() -> None:
+    child = ChildCodeDTO(id=1, code="A1")
+    dto = ParentCodeDTO(child=child)
+    assert dto.child == "A1"
+
+    dto_from_dict = ParentCodeDTO(child={"code": "B2"})
+    assert dto_from_dict.child == "B2"
     pass
 
 

@@ -209,16 +209,16 @@ class DTOBase(abc.ABC):
             else:
                 setattr(self, field, None)
 
-        for oto_field in self.__class__.one_to_one_fields_map.values():
+        for oto_key, oto_field in self.__class__.one_to_one_fields_map.items():
             field = oto_field.entity_field
             if field not in kwargs or kwargs[field] is None:
-                setattr(self, field, None)
+                setattr(self, oto_key, None)
                 continue
             if not isinstance(kwargs[field], (dict, oto_field.expected_type)):
-                set_field(oto_field.field, field)
+                set_field(oto_field.field, oto_key)
                 continue
 
-            setattr(self, field, kwargs[field])
+            setattr(self, oto_key, kwargs[field])
             pass
 
         for k, v in self.__class__.aggregator_fields_map.items():
