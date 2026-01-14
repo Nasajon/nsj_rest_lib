@@ -168,6 +168,10 @@ E em torno na rota ficaria: `/pai/<id_pai>/filho/<id>`
 
 ## Histórico de versões
 
+### 6.2.0
+
+- Suporte ao relacionamento um para um usando campos diferentes da PK (por meio da propriedade `relation_field` do descriptor DTOOneToOneField).
+
 ### 6.1.0
 
 - Suporte a retrieve_after_update em PutRoute.
