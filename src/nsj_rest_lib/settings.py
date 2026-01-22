@@ -39,7 +39,9 @@ def get_logger():
 
 
 if ENV_MULTIDB == "true":
-    get_logger().warning("Atenção! Todas as propriedades (colunas) do tipo tenant serão ignoradas nos DTOs.")
+    get_logger().warning(
+        "Atenção! Todas as propriedades (colunas) do tipo tenant serão ignoradas nos DTOs."
+    )
 
 
 # Endpoint do OpenTelemetry Collector
@@ -54,3 +56,6 @@ provider = MeterProvider(metric_readers=[reader])
 metrics.set_meter_provider(provider)
 
 application = Flask("app")
+
+# Configurações da auditoria
+AUDIT_STREAM_KEY = os.getenv("AUDIT_STREAM_KEY", "audit:requests")
