@@ -6,8 +6,8 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
-from redis_config import redis_client
-from settings import AUDIT_STREAM_KEY, get_logger
+from nsj_rest_lib.redis_config import redis_client
+from nsj_rest_lib.settings import AUDIT_STREAM_KEY, get_logger
 
 
 RETENTION_DAYS = 7
@@ -30,11 +30,12 @@ class HTTPMethods(enum.Enum):
     DELETE = "DELETE"
     OPTIONS = "OPTIONS"
 
-    def from_value(self) -> "HTTPMethods":
+    @staticmethod
+    def from_value(value: str) -> "HTTPMethods":
         for method in HTTPMethods:
-            if method.value == self.value:
+            if method.value == value:
                 return method
-        raise ValueError(f"Invalid HTTP method value: {self.value}")
+        raise ValueError(f"Invalid HTTP method value: {value}")
 
 
 class AuditUtil:
