@@ -59,3 +59,6 @@ application = Flask("app")
 
 # Configurações da auditoria
 AUDIT_STREAM_KEY = os.getenv("AUDIT_STREAM_KEY", "audit:requests")
+AUDIT_OUTBOX_TRANSACTION = (
+    os.getenv("AUDIT_OUTBOX_TRANSACTION", "true").lower() == "true"
+)

@@ -100,6 +100,7 @@ class FunctionRouteWrapper:
             dto_class=getattr(self.route_obj, "_dto_class", None),
             path_args=kwargs,
         )
+        g.audit_params_normalizados = params_normalizados
 
         # Chamando auditoria de eventos (AuditUtil.emit_request_started)
         audit_util = AuditUtil()

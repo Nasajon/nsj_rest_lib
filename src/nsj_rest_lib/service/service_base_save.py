@@ -16,10 +16,11 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.util.fields_util import FieldsTree
 
+from .service_base_audit import ServiceBaseAudit
 from .service_base_partial_of import ServiceBasePartialOf, PartialExtensionWriteData
 
 
-class ServiceBaseSave(ServiceBasePartialOf):
+class ServiceBaseSave(ServiceBasePartialOf, ServiceBaseAudit):
     def _save(
         self,
         insert: bool,
@@ -141,6 +142,14 @@ class ServiceBaseSave(ServiceBasePartialOf):
                         f"Já existe um registro no banco com o identificador '{getattr(entity, entity_pk_field)}'"
                     )
 
+                self._record_audit_outbox(
+                    action="insert",
+                    dto=dto,
+                    resource_id=id,
+                    old_dto=None,
+                    route_resource_id=None,
+                )
+
                 ################################################
                 # DAO.INSERT (ou DAO.INSERT_BY_FUNCTION)
                 ################################################
@@ -172,6 +181,15 @@ class ServiceBaseSave(ServiceBasePartialOf):
                     raise ValueError(
                         "update_by_function não suporta operações com upsert."
                     )
+
+                resource_id = id or getattr(old_dto, dto.pk_field, None)
+                self._record_audit_outbox(
+                    action="update",
+                    dto=dto,
+                    resource_id=resource_id,
+                    old_dto=old_dto,
+                    route_resource_id=id,
+                )
 
                 if self._update_function_type_class is None:
                     entity = self._dao.update(
