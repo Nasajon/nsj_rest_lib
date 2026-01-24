@@ -12,6 +12,7 @@ from nsj_rest_lib.util.audit_ids_util import (
     retrieve_grupo_empresarial_id,
     retrieve_tenant_id,
 )
+from nsj_rest_lib.util.audit_dto_util import convert_dto_full
 from nsj_rest_lib.util.audit_value_util import coerce_int, coerce_uuid
 from nsj_rest_lib.util.user_audit_util import get_actor_user_id
 from nsj_rest_lib.util.util_normaliza_parametros import get_params_normalizados
@@ -144,8 +145,8 @@ class ServiceBaseAudit:
         resource_id: Any | None,
     ) -> Any:
         if old_dto is not None and new_dto is not None:
-            old_values = self._extract_dto_values(old_dto)
-            new_values = self._extract_dto_values(new_dto)
+            old_values = convert_dto_full(old_dto)
+            new_values = convert_dto_full(new_dto)
             if not isinstance(old_values, dict) or not isinstance(new_values, dict):
                 return new_values
             diff = self._diff_values(old_values, new_values)
@@ -156,40 +157,7 @@ class ServiceBaseAudit:
                 return None
             return {"id": resource_id}
 
-        return self._extract_dto_values(new_dto)
-
-    def _extract_dto_values(self, dto: Any) -> Any:
-        if hasattr(dto, "convert_to_dict") and callable(dto.convert_to_dict):
-            fields_tree = self._build_fields_tree(dto)
-            expands_tree = self._build_expands_tree(dto)
-            return dto.convert_to_dict(fields_tree, expands_tree)
-
-        return dto
-
-    @staticmethod
-    def _build_fields_tree(dto: Any) -> Dict[str, set]:
-        root_fields: set = set()
-        for attr in (
-            "fields_map",
-            "list_fields_map",
-            "object_fields_map",
-            "one_to_one_fields_map",
-            "aggregator_fields_map",
-            "sql_join_fields_map",
-            "left_join_fields_map",
-        ):
-            fields_map = getattr(dto, attr, None)
-            if isinstance(fields_map, dict):
-                root_fields |= set(fields_map.keys())
-        return {"root": root_fields}
-
-    @staticmethod
-    def _build_expands_tree(dto: Any) -> Dict[str, set]:
-        expands_root: set = set()
-        one_to_one_fields = getattr(dto, "one_to_one_fields_map", None)
-        if isinstance(one_to_one_fields, dict):
-            expands_root |= set(one_to_one_fields.keys())
-        return {"root": expands_root}
+        return convert_dto_full(new_dto)
 
     @staticmethod
     def _diff_values(
