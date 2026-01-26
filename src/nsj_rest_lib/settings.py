@@ -58,6 +58,7 @@ metrics.set_meter_provider(provider)
 application = Flask("app")
 
 # Configurações da auditoria
+AUDIT_REDIS_URL = os.getenv("AUDIT_REDIS_URL")
 AUDIT_STREAM_KEY = os.getenv("AUDIT_STREAM_KEY", "audit:requests")
 AUDIT_OUTBOX_TRANSACTION = (
     os.getenv("AUDIT_OUTBOX_TRANSACTION", "true").lower() == "true"

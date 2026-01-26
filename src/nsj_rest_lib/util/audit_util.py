@@ -48,29 +48,6 @@ class AuditUtil:
         self.redis_client = redis_client
         self.stream_key = audit_stream_key
 
-    # def _key(self, *parts: str) -> str:
-    #     return ":".join(parts)
-
-    # def get_redis(self, *args: str) -> Any:
-    #     if not redis_client:
-    #         get_logger().warning(
-    #             "Atenção! Redis nao configurado (faltando variavel REDIS_URL)."
-    #         )
-
-    #     value = redis_client.get(self._key(*args))
-    #     if value:
-    #         return value.decode("utf-8")
-    #     return None
-
-    # def set_redis(self, *args) -> None:
-    #     if not redis_client:
-    #         get_logger().warning(
-    #             "Atenção! Redis nao configurado (faltando variavel REDIS_URL)."
-    #         )
-
-    #     value = args[-1]
-    #     redis_client.set(self._key(*args[:-1]), value)
-
     def emit_request_started(
         self,
         request_id: uuid.UUID,
