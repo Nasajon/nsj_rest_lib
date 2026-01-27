@@ -3,14 +3,11 @@ import json
 import redis
 import uuid
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Any
 
 from nsj_rest_lib.redis_config import redis_client
 from nsj_rest_lib.settings import AUDIT_STREAM_KEY, get_logger
-
-
-RETENTION_DAYS = 7
 
 
 class DBTypes(enum.Enum):
@@ -69,7 +66,7 @@ class AuditUtil:
         payload_ref: str | None = None,
     ) -> str:
         """
-        Publica um evento 'request_started' no Redis Stream com retenção aproximada de 7 dias.
+        Publica um evento 'request_started' no Redis Stream.
 
         Parâmetros:
         - request_id: ID da requisição
@@ -93,10 +90,6 @@ class AuditUtil:
 
         try:
             now = datetime.now(timezone.utc)
-
-            # 🔹 ID mínimo para retenção (agora - 7 dias)
-            min_ts_ms = int((now - timedelta(days=RETENTION_DAYS)).timestamp() * 1000)
-            min_id = f"{min_ts_ms}-0"
 
             event = {
                 "event_id": str(uuid.uuid4()),
@@ -146,12 +139,9 @@ class AuditUtil:
             elif payload_ref:
                 event["payload_ref"] = payload_ref
 
-            # XADD com retenção por tempo (7 dias)
             msg_id = self.redis_client.xadd(
                 self.stream_key,
                 fields=event,
-                minid=min_id,
-                approximate=True,
             )
 
             return msg_id
@@ -176,7 +166,7 @@ class AuditUtil:
         is_transaction_intent: bool | None = None,
     ) -> str:
         """
-        Publica um evento 'request_finished' no Redis Stream com retenção aproximada de 7 dias.
+        Publica um evento 'request_finished' no Redis Stream.
 
         Parâmetros:
         - request_id: ID da requisição
@@ -197,10 +187,6 @@ class AuditUtil:
 
         try:
             now = datetime.now(timezone.utc)
-
-            # 🔹 ID mínimo para retenção (agora - 7 dias)
-            min_ts_ms = int((now - timedelta(days=RETENTION_DAYS)).timestamp() * 1000)
-            min_id = f"{min_ts_ms}-0"
 
             event = {
                 "event_id": str(uuid.uuid4()),
@@ -249,12 +235,9 @@ class AuditUtil:
             if request_json:
                 event["request_json"] = request_json
 
-            # XADD com retenção por tempo (7 dias)
             msg_id = self.redis_client.xadd(
                 self.stream_key,
                 fields=event,
-                minid=min_id,
-                approximate=True,
             )
 
             return msg_id
