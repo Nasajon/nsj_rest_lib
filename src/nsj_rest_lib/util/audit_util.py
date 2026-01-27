@@ -150,7 +150,8 @@ class AuditUtil:
             msg_id = self.redis_client.xadd(
                 self.stream_key,
                 fields=event,
-                minid=f"~ {min_id}",  # purge aproximado
+                minid=min_id,
+                approximate=True,
             )
 
             return msg_id
@@ -252,7 +253,8 @@ class AuditUtil:
             msg_id = self.redis_client.xadd(
                 self.stream_key,
                 fields=event,
-                minid=f"~ {min_id}",  # purge aproximado
+                minid=min_id,
+                approximate=True,
             )
 
             return msg_id
