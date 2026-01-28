@@ -658,10 +658,17 @@ class DTOBase(abc.ABC):
             if k not in fields_tree["root"]:
                 continue
 
-            result[k] = getattr(self, k).convert_to_dict(
-                extract_child_tree(fields_tree, k),
-                extract_child_tree(expands, k)
-            )
+            value = getattr(self, k, None)
+            if value is None:
+                result[k] = None
+                continue
+            if hasattr(value, "convert_to_dict"):
+                result[k] = value.convert_to_dict(
+                    extract_child_tree(fields_tree, k),
+                    extract_child_tree(expands, k),
+                )
+            else:
+                result[k] = value
 
         # Converting list fields
         for field in self.list_fields_map:
@@ -672,15 +679,22 @@ class DTOBase(abc.ABC):
             internal_fields = extract_child_tree(fields_tree, field)
             internal_expands = extract_child_tree(expands, field)
 
-            # Recuperando o valor do atributo
-            value: List[DTOBase] = getattr(self, field, [])
+            # Recuperando o valor do atributo sem disparar descriptor em DTO incompleto
+            value = self.__dict__.get(field, None)
+            if value is None:
+                result[field] = None
+                continue
 
             # Convetendo a lista de DTOs aninhados
             result[field] = [
-                item.convert_to_dict(
-                    clone_fields_tree(internal_fields),
-                    clone_fields_tree(internal_expands),
-                    just_resume
+                (
+                    item.convert_to_dict(
+                        clone_fields_tree(internal_fields),
+                        clone_fields_tree(internal_expands),
+                        just_resume,
+                    )
+                    if item is not None and hasattr(item, "convert_to_dict")
+                    else item
                 )
                 for item in value
             ]

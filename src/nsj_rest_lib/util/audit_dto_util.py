@@ -3,6 +3,7 @@ from typing import Any, Dict, Set
 
 def build_fields_tree(dto: Any) -> Dict[str, Set[str]]:
     root_fields: Set[str] = set()
+    dto_dict = getattr(dto, "__dict__", {})
     for attr in (
         "fields_map",
         "list_fields_map",
@@ -14,7 +15,9 @@ def build_fields_tree(dto: Any) -> Dict[str, Set[str]]:
     ):
         fields_map = getattr(dto, attr, None)
         if isinstance(fields_map, dict):
-            root_fields |= set(fields_map.keys())
+            for key in fields_map.keys():
+                if key in dto_dict:
+                    root_fields.add(key)
     return {"root": root_fields}
 
 

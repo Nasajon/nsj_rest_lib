@@ -69,6 +69,13 @@ class DAOBaseAudit:
         """
 
         savepoint_set = False
+        logger = get_logger()
+        logger.debug(
+            "audit_outbox insert start: db=%s driver=%s in_tx=%s",
+            type(self._db).__name__,
+            AuditDBModelUtil._detect_db_driver(self._db),
+            self._db.in_transaction(),
+        )
         try:
             if self._db.in_transaction():
                 self._db.execute("SAVEPOINT audit_outbox_sp")
@@ -78,6 +85,7 @@ class DAOBaseAudit:
             if rowcount <= 0:
                 raise Exception("Erro inserindo audit_outbox no banco de dados.")
         except Exception as exc:
+            logger.debug("audit_outbox insert failed: %s", exc)
             if savepoint_set:
                 try:
                     self._db.execute("ROLLBACK TO SAVEPOINT audit_outbox_sp")
@@ -87,9 +95,14 @@ class DAOBaseAudit:
                     )
                     pass
 
-            if DATABASE_DRIVER.lower().startswith(
-                "postgres"
-            ) and AuditDBModelUtil.is_audit_outbox_model_error(exc):
+            is_postgres = AuditDBModelUtil.is_postgres(self._db)
+            is_model_error = AuditDBModelUtil.is_audit_outbox_model_error(exc)
+            logger.debug(
+                "audit_outbox repair check: is_postgres=%s is_model_error=%s",
+                is_postgres,
+                is_model_error,
+            )
+            if is_postgres and is_model_error:
                 self._repair_schema()
                 retry_savepoint_set = False
                 try:
@@ -127,6 +140,13 @@ class DAOBaseAudit:
         return json_dumps(value, ensure_ascii=False)
 
     def _repair_schema(self) -> None:
+        logger = get_logger()
+        logger.debug(
+            "audit_outbox repair start: db=%s driver=%s provider=%s",
+            type(self._db).__name__,
+            AuditDBModelUtil._detect_db_driver(self._db),
+            "set" if self._db_adapter_provider is not None else "none",
+        )
         if self._db_adapter_provider is None:
             AuditDBModelUtil.ensure_audit_outbox_schema(self._db)
             return
@@ -141,6 +161,11 @@ class DAOBaseAudit:
             return
 
         try:
+            logger.debug(
+                "audit_outbox repair using provider: db=%s driver=%s",
+                type(db_adapter).__name__,
+                AuditDBModelUtil._detect_db_driver(db_adapter),
+            )
             AuditDBModelUtil.ensure_audit_outbox_schema(db_adapter)
         except Exception as exc:
             get_logger().warning(f"Erro corrigindo schema de audit_outbox: {exc}")

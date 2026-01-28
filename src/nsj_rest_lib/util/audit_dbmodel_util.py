@@ -8,9 +8,9 @@ class AuditDBModelUtil:
         "outbox_id": "uuid",
         "outbox_seq": "bigint",
         "created_at": "timestamptz",
-        "tenant_id": "integer",
-        "grupo_empresarial_id": "uuid",
-        "area_atendimento_id": "uuid",
+        "tenant_id": "varchar(150)",
+        "grupo_empresarial_id": "varchar(150)",
+        "area_atendimento_id": "varchar(150)",
         "request_id": "uuid",
         "user_id": "text",
         "subject_user_id": "text",
@@ -29,9 +29,9 @@ class AuditDBModelUtil:
         "outbox_id uuid PRIMARY KEY",
         "outbox_seq bigserial",
         "created_at timestamptz NOT NULL DEFAULT now()",
-        "tenant_id integer NOT NULL",
-        "grupo_empresarial_id uuid NOT NULL",
-        "area_atendimento_id uuid NULL",
+        "tenant_id varchar(150) NULL",
+        "grupo_empresarial_id varchar(150) NULL",
+        "area_atendimento_id varchar(150) NULL",
         "request_id uuid NOT NULL",
         "user_id text NOT NULL",
         "subject_user_id text NULL",
@@ -58,13 +58,78 @@ class AuditDBModelUtil:
         "bigint": ("bigint", "int8"),
         "integer": ("integer", "int4"),
         "text": ("text",),
+        "varchar(150)": ("character varying", "varchar"),
         "jsonb": ("jsonb",),
         "timestamptz": ("timestamp with time zone", "timestamptz"),
     }
+    _NULLABLE_COLUMNS = {"tenant_id", "grupo_empresarial_id", "area_atendimento_id"}
 
-    @staticmethod
-    def _is_postgres() -> bool:
+    @classmethod
+    def _is_postgres(cls, db=None) -> bool:
+        detected = cls._detect_db_driver(db)
+        if detected is not None:
+            return detected.startswith("postgres")
         return DATABASE_DRIVER.lower().startswith("postgres")
+
+    @classmethod
+    def is_postgres(cls, db=None) -> bool:
+        return cls._is_postgres(db)
+
+    @classmethod
+    def _detect_db_driver(cls, db) -> str | None:
+        if db is None:
+            return None
+
+        # Direct string driver on adapter
+        for attr in ("driver", "db_driver", "database_driver", "dialect_name", "db_dialect"):
+            value = getattr(db, attr, None)
+            if isinstance(value, str) and value:
+                return value.lower()
+
+        candidates = [db]
+        for attr in (
+            "_db",
+            "engine",
+            "_engine",
+            "connection",
+            "_connection",
+            "conn",
+            "_conn",
+        ):
+            obj = getattr(db, attr, None)
+            if obj is not None:
+                candidates.append(obj)
+
+        for obj in candidates:
+            # SQLAlchemy engine/connection: dialect.name
+            dialect = getattr(obj, "dialect", None)
+            if dialect is not None:
+                name = getattr(dialect, "name", None)
+                if isinstance(name, str) and name:
+                    return name.lower()
+                driver = getattr(dialect, "driver", None)
+                if isinstance(driver, str) and driver:
+                    return driver.lower()
+
+            url = getattr(obj, "url", None)
+            if url is not None:
+                drivername = getattr(url, "drivername", None)
+                if isinstance(drivername, str) and drivername:
+                    return drivername.lower()
+                get_backend_name = getattr(url, "get_backend_name", None)
+                if callable(get_backend_name):
+                    try:
+                        backend = get_backend_name()
+                    except Exception:
+                        backend = None
+                    if isinstance(backend, str) and backend:
+                        return backend.lower()
+
+            name = getattr(obj, "name", None)
+            if isinstance(name, str) and name:
+                return name.lower()
+
+        return None
 
     @staticmethod
     def is_audit_outbox_model_error(exc: Exception) -> bool:
@@ -85,7 +150,7 @@ class AuditDBModelUtil:
 
     @classmethod
     def ensure_audit_outbox_schema(cls, db) -> None:
-        if not cls._is_postgres():
+        if not cls._is_postgres(db):
             return
 
         if not cls._table_exists(db):
@@ -93,6 +158,7 @@ class AuditDBModelUtil:
         else:
             cls._ensure_columns(db)
             cls._ensure_types(db)
+            cls._ensure_nullability(db)
 
         cls._ensure_indexes(db)
 
@@ -165,6 +231,24 @@ class AuditDBModelUtil:
                 f"ALTER TABLE audit_outbox ALTER COLUMN {column_name} "
                 f"TYPE {column_type} USING {column_name}::{column_type}"
             )
+
+    @classmethod
+    def _ensure_nullability(cls, db) -> None:
+        rows = db.execute_query(
+            """
+            SELECT column_name, is_nullable
+              FROM information_schema.columns
+             WHERE table_schema = 'public'
+               AND table_name = 'audit_outbox'
+            """
+        )
+        nullable_map = {row["column_name"]: row["is_nullable"] for row in rows}
+
+        for column_name in cls._NULLABLE_COLUMNS:
+            if nullable_map.get(column_name) == "NO":
+                db.execute(
+                    f"ALTER TABLE audit_outbox ALTER COLUMN {column_name} DROP NOT NULL"
+                )
 
     @classmethod
     def _ensure_indexes(cls, db) -> None:

@@ -1,5 +1,6 @@
 import hashlib
 import json
+import uuid
 
 from typing import Any, Dict
 
@@ -13,12 +14,18 @@ from nsj_rest_lib.util.audit_ids_util import (
     retrieve_tenant_id,
 )
 from nsj_rest_lib.util.audit_dto_util import convert_dto_full
-from nsj_rest_lib.util.audit_value_util import coerce_int, coerce_uuid
 from nsj_rest_lib.util.user_audit_util import get_actor_user_id
 from nsj_rest_lib.util.util_normaliza_parametros import get_params_normalizados
 
 
 class ServiceBaseAudit:
+    def _should_record_audit_outbox(self) -> bool:
+        if not AUDIT_OUTBOX_TRANSACTION:
+            return False
+        if not has_request_context():
+            return False
+        return getattr(g, "request_id", None) is not None
+
     def _record_audit_outbox(
         self,
         action: str,
@@ -116,14 +123,19 @@ class ServiceBaseAudit:
         resource_id = resource_id or self._resolve_resource_id(dto)
         if commit_json is None:
             commit_json = self._build_commit_json(old_dto, dto, resource_id)
+        commit_json = self._add_table_name_to_commit_json(commit_json)
 
         resource_type = self._resolve_resource_type(route_resource_id)
         payload_sha256 = self._build_payload_sha256(body, query_args)
 
         return {
-            "tenant_id": coerce_int(tenant_id) or 0,
-            "grupo_empresarial_id": coerce_uuid(grupo_empresarial_id),
-            "area_atendimento_id": coerce_uuid(area_atendimento_id, allow_none=True),
+            "tenant_id": self._normalize_audit_id_value(tenant_id),
+            "grupo_empresarial_id": self._normalize_audit_id_value(
+                grupo_empresarial_id
+            ),
+            "area_atendimento_id": self._normalize_audit_id_value(
+                area_atendimento_id
+            ),
             "request_id": request_id,
             "user_id": user_id,
             "subject_user_id": subject_user_id,
@@ -137,6 +149,29 @@ class ServiceBaseAudit:
             "payload_sha256": payload_sha256,
             "schema_version": 1,
         }
+
+    def _add_table_name_to_commit_json(self, commit_json: Any | None) -> Any | None:
+        if not isinstance(commit_json, dict):
+            return commit_json
+
+        table_name = None
+        entity_class = getattr(self, "_entity_class", None)
+        if entity_class is not None:
+            try:
+                table_name = entity_class().get_table_name()
+            except Exception:
+                table_name = None
+
+        if table_name:
+            commit_json.setdefault("table_name", table_name)
+
+        return commit_json
+
+    @staticmethod
+    def _normalize_audit_id_value(value: Any) -> Any:
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
     def _build_commit_json(
         self,
