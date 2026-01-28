@@ -4,6 +4,12 @@ import typing as ty
 from flask import request
 from typing import Callable
 
+from nsj_audit_lib.util.audit_config import AuditConfig
+from nsj_gcf_utils.json_util import json_dumps
+from nsj_gcf_utils.log_time import log_time
+from nsj_gcf_utils.pagination_util import page_body, PaginationException
+from nsj_gcf_utils.rest_error_util import format_json_error
+
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dao.dao_base import DAOBase
@@ -15,12 +21,6 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger, DEFAULT_PAGE_SIZE
-from nsj_rest_lib.util.audit_config import AuditConfig
-
-from nsj_gcf_utils.json_util import json_dumps
-from nsj_gcf_utils.log_time import log_time
-from nsj_gcf_utils.pagination_util import page_body, PaginationException
-from nsj_gcf_utils.rest_error_util import format_json_error
 
 
 class ListRoute(RouteBase):
@@ -95,7 +95,7 @@ class ListRoute(RouteBase):
         self,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
-        **kwargs: ty.Any
+        **kwargs: ty.Any,
     ):
         """
         Tratando requisições HTTP Get (para listar entidades, e não para recuperar pelo ID).

@@ -1,5 +1,6 @@
 import typing as ty
 
+from nsj_audit_lib.service.audit_service import AuditService
 from nsj_gcf_utils.db_adapter2 import DBAdapter2
 
 from nsj_rest_lib.dao.dao_base import DAOBase
@@ -18,8 +19,6 @@ from .service_base_save_by_function import ServiceBaseSaveByFunction
 from .service_base_list import ServiceBaseList
 from .service_base_partial_update import ServiceBasePartialUpdate
 from .service_base_update import ServiceBaseUpdate
-
-
 class ServiceBase(
     ServiceBaseSaveByFunction,
     ServiceBasePartialUpdate,
@@ -71,6 +70,13 @@ class ServiceBase(
         )
         self.set_insert_function_type_class(insert_function_type_class)
         self.set_update_function_type_class(update_function_type_class)
+
+        # Instanciando o Service de Auditoria
+        # db_provider = None
+        # injector_factory = getattr(self, "_injector_factory", None)
+        # if injector_factory is not None and hasattr(injector_factory, "db_adapter"):
+        #     db_provider = injector_factory.db_adapter
+        self.audit_service = AuditService(self._dao._db)
 
     @staticmethod
     def construtor1(

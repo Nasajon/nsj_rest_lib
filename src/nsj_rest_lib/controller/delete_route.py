@@ -1,20 +1,23 @@
 import os
 import typing as ty
+
 from flask import request
 from typing import Callable
+
+from nsj_audit_lib.util.audit_config import AuditConfig
+from nsj_gcf_utils.json_util import json_dumps
+from nsj_gcf_utils.rest_error_util import format_json_error, format_error_body
 
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.exception import DTOConfigException, MissingParameterException, NotFoundException
+from nsj_rest_lib.exception import (
+    MissingParameterException,
+    NotFoundException,
+)
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger
-from nsj_rest_lib.util.audit_config import AuditConfig
-
-from nsj_gcf_utils.json_util import json_dumps
-from nsj_gcf_utils.pagination_util import PaginationException
-from nsj_gcf_utils.rest_error_util import format_json_error, format_error_body
 
 
 class DeleteRoute(RouteBase):
@@ -73,7 +76,6 @@ class DeleteRoute(RouteBase):
 
         return partition_filters
 
-
     def _exception_to_http(self, exception: Exception):
         if isinstance(exception, MissingParameterException):
             return 400, exception
@@ -83,17 +85,20 @@ class DeleteRoute(RouteBase):
 
         return 500, exception
 
-
     def _multi_status_response(
         self,
         request_data: list,
         delete_return: dict,
-    )-> dict:
+    ) -> dict:
         """
         Constrói a resposta para api multi-status
         """
         _return_mapping = {}
-        _global_status = "OK" if len(delete_return) == 0 else "ERROR" if len(delete_return) == len(request_data) else "MULTI-STATUS"
+        _global_status = (
+            "OK"
+            if len(delete_return) == 0
+            else "ERROR" if len(delete_return) == len(request_data) else "MULTI-STATUS"
+        )
         for _id in request_data:
             if _id in delete_return:
                 _return_mapping[_id] = self._exception_to_http(delete_return[_id])
@@ -101,27 +106,25 @@ class DeleteRoute(RouteBase):
                 _return_mapping[_id] = 204, None
 
         _response = {
-            "global_status" : _global_status,
+            "global_status": _global_status,
             "response": [
-                    {
-                        "status": _http_code,
-                        "id": _id,
-                        "body": {},
-                        "error":
-                            next(iter(format_error_body(f'{_ex}')), {}) if _ex else {}
-
-                    } for  _id, (_http_code, _ex) in _return_mapping.items()
-            ]
+                {
+                    "status": _http_code,
+                    "id": _id,
+                    "body": {},
+                    "error": next(iter(format_error_body(f"{_ex}")), {}) if _ex else {},
+                }
+                for _id, (_http_code, _ex) in _return_mapping.items()
+            ],
         }
         return _response
-
 
     def handle_request(
         self,
         id: str = None,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
-        **kwargs: ty.Any
+        **kwargs: ty.Any,
     ):
         """
         Tratando requisições HTTP Delete para excluir uma instância de uma entidade.
@@ -201,7 +204,9 @@ class DeleteRoute(RouteBase):
                             _id,
                             partition_filters,
                             custom_before_delete=self.custom_before_delete,
-                            function_params=None if function_object is not None else args,
+                            function_params=(
+                                None if function_object is not None else args
+                            ),
                             function_object=function_object,
                             function_name=self._delete_function_name,
                         )

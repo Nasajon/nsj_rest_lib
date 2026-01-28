@@ -14,13 +14,14 @@ from nsj_rest_lib.exception import (
     DTOListFieldConfigException,
     NotFoundException,
 )
+from nsj_rest_lib.service.service_base_partial_of import (
+    ServiceBasePartialOf,
+    PartialExtensionWriteData,
+)
 from nsj_rest_lib.util.fields_util import FieldsTree
 
-from .service_base_audit import ServiceBaseAudit
-from .service_base_partial_of import ServiceBasePartialOf, PartialExtensionWriteData
 
-
-class ServiceBaseSave(ServiceBasePartialOf, ServiceBaseAudit):
+class ServiceBaseSave(ServiceBasePartialOf):
     def _save(
         self,
         insert: bool,
@@ -50,7 +51,7 @@ class ServiceBaseSave(ServiceBasePartialOf, ServiceBaseAudit):
                 self._dao.begin()
 
             old_dto = None
-            should_audit_outbox = self._should_record_audit_outbox()
+            should_audit_outbox = self.audit_service.should_record_audit_outbox()
             if not insert and not upsert:
                 old_dto = self._retrieve_old_dto(dto, id, aditional_filters)
                 setattr(dto, dto.pk_field, getattr(old_dto, dto.pk_field))
@@ -143,7 +144,7 @@ class ServiceBaseSave(ServiceBasePartialOf, ServiceBaseAudit):
                         f"Já existe um registro no banco com o identificador '{getattr(entity, entity_pk_field)}'"
                     )
 
-                self._record_audit_outbox(
+                self.audit_service.record_audit_outbox(
                     action="insert",
                     dto=dto,
                     resource_id=id,
@@ -157,7 +158,9 @@ class ServiceBaseSave(ServiceBasePartialOf, ServiceBaseAudit):
                 if self._insert_function_type_class is None:
                     entity = self._dao.insert(entity, dto.sql_read_only_fields)
                 else:
-                    insert_function_object = self._build_insert_function_type_object(dto)
+                    insert_function_object = self._build_insert_function_type_object(
+                        dto
+                    )
                     custom_response = self._dao.insert_by_function(
                         insert_function_object,
                         function_name=function_name,
@@ -195,7 +198,7 @@ class ServiceBaseSave(ServiceBasePartialOf, ServiceBaseAudit):
                             audit_old_dto = None
 
                 resource_id = id or getattr(old_dto, dto.pk_field, None)
-                self._record_audit_outbox(
+                self.audit_service.record_audit_outbox(
                     action="update",
                     dto=dto,
                     resource_id=resource_id,
@@ -215,8 +218,8 @@ class ServiceBaseSave(ServiceBasePartialOf, ServiceBaseAudit):
                         upsert,
                     )
                 else:
-                    update_function_object = (
-                        self._build_update_function_type_object(dto)
+                    update_function_object = self._build_update_function_type_object(
+                        dto
                     )
                     custom_response = self._dao.update_by_function(
                         update_function_object,

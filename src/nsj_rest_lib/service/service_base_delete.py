@@ -8,12 +8,10 @@ from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.entity.filter import Filter
 from nsj_rest_lib.exception import DTOListFieldConfigException
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
-
-from .service_base_audit import ServiceBaseAudit
-from .service_base_partial_of import ServiceBasePartialOf
+from nsj_rest_lib.service.service_base_partial_of import ServiceBasePartialOf
 
 
-class ServiceBaseDelete(ServiceBasePartialOf, ServiceBaseAudit):
+class ServiceBaseDelete(ServiceBasePartialOf):
 
     def delete(
         self,
@@ -84,7 +82,7 @@ class ServiceBaseDelete(ServiceBasePartialOf, ServiceBaseAudit):
             # DELETE por função só deve ocorrer quando o nome da função
             # for informado explicitamente.
             if fn_name is not None:
-                self._record_audit_outbox(
+                self.audit_service.record_audit_outbox(
                     action="delete",
                     dto=None,
                     resource_id=id,
@@ -110,7 +108,7 @@ class ServiceBaseDelete(ServiceBasePartialOf, ServiceBaseAudit):
                 additional_filters,
             )
 
-            self._record_audit_outbox(
+            self.audit_service.record_audit_outbox(
                 action="delete",
                 dto=None,
                 resource_id=entity_id_value,
@@ -176,7 +174,7 @@ class ServiceBaseDelete(ServiceBasePartialOf, ServiceBaseAudit):
                 # DELETE por função só deve ocorrer quando o nome da função
                 # for informado explicitamente.
                 if fn_name is not None:
-                    self._record_audit_outbox(
+                    self.audit_service.record_audit_outbox(
                         action="delete",
                         dto=None,
                         resource_id=_id,
@@ -196,7 +194,7 @@ class ServiceBaseDelete(ServiceBasePartialOf, ServiceBaseAudit):
                     additional_filters,
                 )
 
-                self._record_audit_outbox(
+                self.audit_service.record_audit_outbox(
                     action="delete",
                     dto=None,
                     resource_id=entity_id_value,

@@ -4,6 +4,11 @@ import typing as ty
 from flask import request
 from typing import Callable
 
+from nsj_audit_lib.util.audit_config import AuditConfig
+from nsj_gcf_utils.json_util import json_dumps
+from nsj_gcf_utils.pagination_util import PaginationException
+from nsj_gcf_utils.rest_error_util import format_json_error
+
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dao.dao_base import DAOBase
@@ -16,11 +21,6 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger
-from nsj_rest_lib.util.audit_config import AuditConfig
-
-from nsj_gcf_utils.json_util import json_dumps
-from nsj_gcf_utils.pagination_util import PaginationException
-from nsj_gcf_utils.rest_error_util import format_json_error
 
 
 class GetRoute(RouteBase):
@@ -96,7 +96,7 @@ class GetRoute(RouteBase):
         id: str,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
-        **kwargs: ty.Any
+        **kwargs: ty.Any,
     ):
         """
         Tratando requisições HTTP Get para recuperar uma instância de uma entidade.
@@ -113,7 +113,7 @@ class GetRoute(RouteBase):
             fields = args.get("fields")
             fields = RouteBase.parse_fields(self._dto_class, fields)
 
-            expands = RouteBase.parse_expands(self._dto_class, args.get('expand'))
+            expands = RouteBase.parse_expands(self._dto_class, args.get("expand"))
 
             partition_fields = kwargs.copy()
             # Tratando campos de particionamento

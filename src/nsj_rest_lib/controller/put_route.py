@@ -3,6 +3,10 @@ import typing as ty
 from flask import request
 from typing import Callable, Type
 
+from nsj_audit_lib.util.audit_config import AuditConfig
+from nsj_gcf_utils.json_util import json_dumps, JsonLoadException
+from nsj_gcf_utils.rest_error_util import format_json_error
+
 from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dao.dao_base import DAOBase
@@ -17,10 +21,6 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger
-from nsj_rest_lib.util.audit_config import AuditConfig
-
-from nsj_gcf_utils.json_util import json_dumps, JsonLoadException
-from nsj_gcf_utils.rest_error_util import format_json_error
 
 
 class PutRoute(RouteBase):
@@ -60,9 +60,8 @@ class PutRoute(RouteBase):
         self._update_function_type_class = update_function_type_class
         self._update_function_name = update_function_name
 
-        if (
-            self._update_function_type_class is not None
-            and not issubclass(self._update_function_type_class, UpdateFunctionTypeBase)
+        if self._update_function_type_class is not None and not issubclass(
+            self._update_function_type_class, UpdateFunctionTypeBase
         ):
             raise ValueError(
                 "A classe informada em update_function_type_class deve herdar de UpdateFunctionTypeBase."
@@ -107,7 +106,7 @@ class PutRoute(RouteBase):
         id: str = None,
         query_args: dict[str, any] = None,
         body: dict[str, any] = None,
-        **kwargs: ty.Any
+        **kwargs: ty.Any,
     ):
         """
         Tratando requisições HTTP Put para inserir uma instância de uma entidade.
@@ -187,14 +186,11 @@ class PutRoute(RouteBase):
                         }
                         return ("", 202, resp_headers)
 
-                    if (
-                        self.custom_json_response
-                        and (
-                            isinstance(data, dict)
-                            or (
-                                isinstance(data, list)
-                                and (not data or not hasattr(data[0], "convert_to_dict"))
-                            )
+                    if self.custom_json_response and (
+                        isinstance(data, dict)
+                        or (
+                            isinstance(data, list)
+                            and (not data or not hasattr(data[0], "convert_to_dict"))
                         )
                     ):
                         return (json_dumps(data), 200, {**DEFAULT_RESP_HEADERS})
@@ -223,9 +219,7 @@ class PutRoute(RouteBase):
 
                 if data is not None or not len(data) > 0:
                     # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
-                    lst_data = [
-                        item.convert_to_dict(retrieve_fields) for item in data
-                    ]
+                    lst_data = [item.convert_to_dict(retrieve_fields) for item in data]
 
             if len(lst_data) == 1:
                 # Retornando a resposta da requisição
