@@ -141,7 +141,7 @@ class CustomerWithRelationsDTO(DTOBase):
 
 
 class DummyDAO:
-    pass
+    _db = None
 
 
 class FakeInjector:

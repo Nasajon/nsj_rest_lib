@@ -6,6 +6,8 @@ import enum
 
 from typing import Any, Dict, List, Set, Union, Optional, Tuple
 
+from nsj_audit_lib.dto.dto_auditavel import DTOAuditavel
+
 from nsj_rest_lib.entity.entity_base import EMPTY, EntityBase
 from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
 from nsj_rest_lib.descriptor.dto_one_to_one_field import DTOOneToOneField
@@ -21,7 +23,7 @@ from nsj_rest_lib.util.fields_util import (
 from nsj_rest_lib.util.sql_utils import montar_chave_map_sql_join
 
 
-class DTOBase(abc.ABC):
+class DTOBase(abc.ABC, DTOAuditavel):
     resume_fields: Set[str] = set()
     partition_fields: Set[str] = set()
     fields_map: Dict[str, DTOField] = {}
@@ -539,7 +541,7 @@ class DTOBase(abc.ABC):
                 return dto_field.expected_type(value)
 
     @classmethod
-    def _build_default_fields_tree(cls) -> FieldsTree:
+    def build_default_fields_tree(cls) -> FieldsTree:
         """
         Constrói a estrutura de fields para o DTO, com base nos campos
         configurados como resumo.
@@ -588,15 +590,15 @@ class DTOBase(abc.ABC):
 
         # Resolving fields to use
         if just_resume:
-            fields_tree = self.__class__._build_default_fields_tree()
+            fields_tree = self.__class__.build_default_fields_tree()
         else:
             if fields is None:
-                fields_tree = self.__class__._build_default_fields_tree()
+                fields_tree = self.__class__.build_default_fields_tree()
             else:
                 fields_tree = normalize_fields_tree(fields)
                 merge_fields_tree(
                     fields_tree,
-                    self.__class__._build_default_fields_tree(),
+                    self.__class__.build_default_fields_tree(),
                 )
 
         if expands is None:
@@ -648,7 +650,7 @@ class DTOBase(abc.ABC):
                 if isinstance(getattr(self, field), oto_field.expected_type):
                     result[field] = getattr(self, field).convert_to_dict(
                         fields_tree[field] if field in fields_tree else None,
-                        expands[field] if field in expands else None
+                        expands[field] if field in expands else None,
                     )
                     pass
                 pass
@@ -658,10 +660,17 @@ class DTOBase(abc.ABC):
             if k not in fields_tree["root"]:
                 continue
 
-            result[k] = getattr(self, k).convert_to_dict(
-                extract_child_tree(fields_tree, k),
-                extract_child_tree(expands, k)
-            )
+            value = getattr(self, k, None)
+            if value is None:
+                result[k] = None
+                continue
+            if hasattr(value, "convert_to_dict"):
+                result[k] = value.convert_to_dict(
+                    extract_child_tree(fields_tree, k),
+                    extract_child_tree(expands, k),
+                )
+            else:
+                result[k] = value
 
         # Converting list fields
         for field in self.list_fields_map:
@@ -672,22 +681,29 @@ class DTOBase(abc.ABC):
             internal_fields = extract_child_tree(fields_tree, field)
             internal_expands = extract_child_tree(expands, field)
 
-            # Recuperando o valor do atributo
-            value: List[DTOBase] = getattr(self, field, [])
+            # Recuperando o valor do atributo sem disparar descriptor em DTO incompleto
+            value = self.__dict__.get(field, None)
+            if value is None:
+                result[field] = None
+                continue
 
             # Convetendo a lista de DTOs aninhados
             result[field] = [
-                item.convert_to_dict(
-                    clone_fields_tree(internal_fields),
-                    clone_fields_tree(internal_expands),
-                    just_resume
+                (
+                    item.convert_to_dict(
+                        clone_fields_tree(internal_fields),
+                        clone_fields_tree(internal_expands),
+                        just_resume,
+                    )
+                    if item is not None and hasattr(item, "convert_to_dict")
+                    else item
                 )
                 for item in value
             ]
 
         return result
 
-    def get_entity_field_name(self, dto_field_name: str) -> str:
+    def get_entity_field_name(self, dto_field_name: str) -> str | None:
         """
         Retorna o nome correspondente do field no entity
         (o qual é o nome do field no DTO por padrão, ou o nome que for
@@ -701,3 +717,55 @@ class DTOBase(abc.ABC):
             return None
 
         return self.fields_map[dto_field_name].get_entity_field_name()
+
+    @classmethod
+    def _filter_by_fields_tree(cls, value, fields_tree):
+        if not isinstance(value, dict):
+            return value
+
+        root_fields = fields_tree.get("root", set())
+        result = {}
+        for field in root_fields:
+            if field not in value:
+                continue
+            field_value = value[field]
+            subtree = fields_tree.get(field)
+            if subtree and isinstance(field_value, dict):
+                result[field] = cls._filter_by_fields_tree(field_value, subtree)
+            elif subtree and isinstance(field_value, list):
+                result[field] = [
+                    (
+                        cls._filter_by_fields_tree(item, subtree)
+                        if isinstance(item, dict)
+                        else item
+                    )
+                    for item in field_value
+                ]
+            else:
+                result[field] = field_value
+        return result
+
+    @classmethod
+    def get_params_normalizados(
+        cls, body, query_args=None, path_args=None
+    ) -> list | dict:
+        """
+        Normaliza o corpo da requisição, de acordo com as propriedades do DTO.
+        """
+
+        fields_tree = cls.build_default_fields_tree()
+        if isinstance(body, list):
+            normalized_body = [
+                (
+                    cls._filter_by_fields_tree(item, fields_tree)
+                    if isinstance(item, dict)
+                    else item
+                )
+                for item in body
+            ]
+        elif isinstance(body, dict):
+            normalized_body = cls._filter_by_fields_tree(body, fields_tree)
+        else:
+            normalized_body = {}
+
+        return normalized_body
