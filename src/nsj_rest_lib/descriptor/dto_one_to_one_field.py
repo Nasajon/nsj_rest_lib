@@ -238,7 +238,10 @@ class DTOOneToOneField:
                     if isinstance(value, self.expected_type):
                         value = getattr(value, self.relation_field, None)
                     elif isinstance(value, dict):
-                        value = value.get(self.relation_field, None)
+                        value_aux = value.get(self.relation_field, None)
+                        if value_aux is None:
+                            value_aux = value.get(self.expected_type.pk_field, None)
+                        value = value_aux
                         pass
                     pass
 
