@@ -57,6 +57,7 @@ class DTOBase(abc.ABC, DTOAuditavel):
     data_override_group: list[str]
     data_override_fields: list[str]
     return_hidden_fields: dict[str, any] = {}
+    etag_field_name: Optional[str] = None
 
     def __init__(
         self,

@@ -81,6 +81,7 @@ class DTOField:
         read_only: bool = False,
         no_update: bool = False,
         metric_label: bool = False,
+        etag_field: bool = False,
         auto_increment: dict[str, any] = {},
         description: str = "",
         use_integrity_check: bool = True,
@@ -152,6 +153,8 @@ class DTOField:
 
         - metric_label: Permite indicar quais campos serão enviados como métricas para o OpenTelemetry Collector.
 
+        - etag_field: Indica que este campo deve ser usado como fonte de ETag para GET unitarios.
+
         - auto_increment: Dicionário para controle de campos com auto incremento de valores. O padrão do dicionário é:
             {
                 "sequence_name": "NOME_DA_SEQUENCIA",
@@ -211,6 +214,7 @@ class DTOField:
         self.read_only = read_only
         self.no_update = no_update
         self.metric_label = metric_label
+        self.etag_field = etag_field
 
         self.auto_increment = None
         if auto_increment:
