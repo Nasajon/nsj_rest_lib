@@ -267,6 +267,9 @@ class DTO:
         # Criando a propriedade "metric_fields" na classe "cls", se necessário
         self._check_class_attribute(cls, "metric_fields", set())
 
+        # Criando a propriedade "etag_field_name" na classe "cls", se necessário
+        self._check_class_attribute(cls, "etag_field_name", None)
+
         # Criando a propriedade "data_override_group"
         self._check_class_attribute(
             cls, "data_override_group", self._data_override_group
@@ -411,6 +414,13 @@ class DTO:
                 # Verifica se o campo é uma métrica do opentelemetry
                 if attr.metric_label:
                     getattr(cls, "metric_fields").add(key)
+
+                if attr.etag_field:
+                    if cls.etag_field_name is not None:
+                        raise ValueError(
+                            "Apenas um campo pode ser marcado como etag_field."
+                        )
+                    cls.etag_field_name = key
 
                 # Verifica se tem a propriedade auto_increment habilitada
                 if attr.auto_increment:

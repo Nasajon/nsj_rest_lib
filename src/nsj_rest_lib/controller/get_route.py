@@ -2,7 +2,7 @@ import os
 import typing as ty
 
 from flask import request
-from typing import Callable
+from typing import Callable, Optional
 
 from nsj_audit_lib.util.audit_config import AuditConfig
 from nsj_gcf_utils.json_util import json_dumps
@@ -110,11 +110,12 @@ class GetRoute(RouteBase):
             else:
                 args = query_args
 
-            # Tratando dos fields
-            fields = args.get("fields")
-            fields = RouteBase.parse_fields(self._dto_class, fields)
-
-            expands = RouteBase.parse_expands(self._dto_class, args.get("expand"))
+            fields = RouteBase.parse_fields(
+                self._dto_class, args.get("fields", '')
+            )
+            expands = RouteBase.parse_expands(
+                self._dto_class, args.get("expand", '')
+            )
             merge_fields_tree(fields, expands)
 
             partition_fields = kwargs.copy()
@@ -150,6 +151,33 @@ class GetRoute(RouteBase):
                 )
             function_params = None if function_object is not None else args
 
+            etag_header: Optional[str] = request.headers.get("If-None-Match")
+            etag_field_name: Optional[str] = self._dto_class.etag_field_name
+            if (
+                etag_header is not None
+                and etag_field_name is not None
+            ):
+                fields['root'].add(etag_field_name)
+                etag_fields = {
+                    'root': {etag_field_name, self._dto_class.pk_field}
+                }
+
+                etag_dto = service.get(
+                    id=id,
+                    partition_fields=partition_fields,
+                    fields=etag_fields,
+                    expands={'root': set()},
+                    function_params=function_params,
+                    function_object=function_object,
+                    function_name=self._get_function_name,
+                    custom_json_response=False,
+                )
+                etag_value = getattr(etag_dto, etag_field_name, None)
+                if etag_value is not None and etag_header == str(etag_value):
+                    return (
+                        "", 304, {**DEFAULT_RESP_HEADERS, "ETag": etag_value}
+                    )
+
             # Chamando o service (método get)
             # TODO Rever parametro order_fields abaixo
             data = service.get(
@@ -169,8 +197,14 @@ class GetRoute(RouteBase):
             # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
             dict_data = data.convert_to_dict(fields, expands)
 
+            headers = {**DEFAULT_RESP_HEADERS}
+            if etag_field_name is not None:
+                etag_value = getattr(data, etag_field_name, None)
+                if etag_value is not None:
+                    headers["ETag"] = str(etag_value)
+
             # Retornando a resposta da requuisição
-            return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})
+            return (json_dumps(dict_data), 200, headers)
         except MissingParameterException as e:
             get_logger().warning(e)
             if self._handle_exception is not None:
