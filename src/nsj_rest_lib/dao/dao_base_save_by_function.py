@@ -255,10 +255,11 @@ class DAOBaseSaveByFunction(DAOBaseUtil):
         returning = returning[0]["retorno"]
 
         if returning["codigo"].lower().strip() != "ok":
-            if returning["tipo"]:
-                msg = f"{returning['tipo']}: {returning['mensagem']}"
+            returning_tipo = returning.get("tipo")
+            if returning_tipo:
+                msg = f"{returning_tipo}: {returning.get('mensagem')}"
             else:
-                msg = returning["mensagem"]
+                msg = returning.get('mensagem')
 
             raise PostgresFunctionException(msg)
 
