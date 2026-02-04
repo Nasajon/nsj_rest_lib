@@ -241,6 +241,9 @@ class DTOOneToOneField:
                         value_aux = value.get(self.relation_field, None)
                         if value_aux is None:
                             value_aux = value.get(self.expected_type.pk_field, None)
+                        if value_aux is None: 
+                            field_str, field = self.expected_type.get_field_by_entity_field(self.relation_field)
+                            value_aux = value.get(field_str)
                         value = value_aux
                         pass
                     pass
@@ -297,7 +300,7 @@ class DTOOneToOneField:
 
         instance.__dict__[self.storage_name] = value
         pass
-
+    
     def get_insert_function_field_name(self) -> str:
         if self.insert_function_field is not None:
             return self.insert_function_field
