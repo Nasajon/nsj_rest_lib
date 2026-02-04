@@ -211,17 +211,19 @@ class DTOBase(abc.ABC, DTOAuditavel):
             else:
                 setattr(self, field, None)
 
-        for oto_key, oto_field in self.__class__.one_to_one_fields_map.items():
-            field = oto_field.entity_field
-            if field not in kwargs or kwargs[field] is None:
-                setattr(self, oto_key, None)
-                continue
-            if not isinstance(kwargs[field], (dict, oto_field.expected_type)):
-                set_field(oto_field.field, oto_key)
-                continue
 
-            setattr(self, oto_key, kwargs[field])
-            pass
+        # for oto_key, oto_field in self.__class__.one_to_one_fields_map.items():
+        #     field_str, field = oto_field.expected_type.get_field_by_entity_field(oto_field.entity_field)
+            
+        #     if field_str not in kwargs or kwargs[field_str] is None:
+        #         setattr(self, oto_key, None)
+        #         continue
+        #     if not isinstance(kwargs[field_str], (dict, oto_field.expected_type)):
+        #         set_field(oto_field.field, oto_key)
+        #         continue
+
+        #     setattr(self, oto_key, kwargs[field])
+        #     pass
 
         for k, v in self.__class__.aggregator_fields_map.items():
             if k not in kwargs or kwargs[k] is None:
@@ -301,11 +303,16 @@ class DTOBase(abc.ABC, DTOAuditavel):
                 else:
                     setattr(self, field, None)
 
-        # Tratando do ID automático
-        # if generate_pk_uuid:
-        #     if getattr(self, self.__class__.pk_field) is None:
-        #         setattr(self, self.__class__.pk_field, uuid.uuid4())
 
+    @classmethod
+    def get_field_by_entity_field(clazz, entity_field : str) -> tuple[str, DTOField]:
+        if len(clazz.fields_map) <= 0:
+            raise ValueError(f"Não foram encontrados campos para a classe solicitada {clazz.__name__}")
+        for field, dto_field in clazz.fields_map.items():
+            if dto_field.entity_field == entity_field or field == entity_field:
+                return field, dto_field        
+        raise ValueError(f"Campo da entidade {entity_field} não encontrado para a classe solicitada {clazz.__name__}")
+        
     def convert_to_entity(
         self,
         entity_class: EntityBase,
