@@ -19,6 +19,7 @@ from nsj_rest_lib.service.service_base import ServiceBase
 
 class FakeDAO:
     def __init__(self):
+        self._db = None
         self.called_with_type = None
         self.called_with_type_name = None
         self.called_raw = None

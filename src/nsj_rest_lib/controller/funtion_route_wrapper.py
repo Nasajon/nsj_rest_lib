@@ -1,5 +1,5 @@
-from typing import Any, Callable
 from flask import request
+from typing import Any, Callable
 
 
 class FunctionRouteWrapper:
@@ -10,6 +10,7 @@ class FunctionRouteWrapper:
         super().__init__()
 
         self.func = func
+        self.route_obj = route_obj
 
         # Assumindo o nome da rota como o nome da classe
         route_name = route_obj.__class__.__name__
@@ -23,6 +24,7 @@ class FunctionRouteWrapper:
         self.__name__ = f"{route_name}_{ref_count}"
 
     def __call__(self, *args: Any, **kwargs: Any):
+
         # Retorna o resultado da chamada ao método handle_request do objeto de rota associado
-        response = self._route_obj.handle_request(*args, **kwargs)
+        response = self._route_obj.internal_handle_request(*args, **kwargs)
         return self.func(request, response)

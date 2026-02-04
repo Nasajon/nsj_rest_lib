@@ -13,6 +13,7 @@ from nsj_rest_lib.descriptor.function_field import FunctionField
 
 class FakeDAO:
     def __init__(self):
+        self._db = None
         self.called_with_type = None
         self.called_function_name = None
         self.called_raw = None

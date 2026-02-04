@@ -8,8 +8,7 @@ from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.entity.filter import Filter
 from nsj_rest_lib.exception import DTOListFieldConfigException
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
-
-from .service_base_partial_of import ServiceBasePartialOf
+from nsj_rest_lib.service.service_base_partial_of import ServiceBasePartialOf
 
 
 class ServiceBaseDelete(ServiceBasePartialOf):
@@ -83,6 +82,12 @@ class ServiceBaseDelete(ServiceBasePartialOf):
             # DELETE por função só deve ocorrer quando o nome da função
             # for informado explicitamente.
             if fn_name is not None:
+                self.audit_service.record_audit_outbox(
+                    action="delete",
+                    dto=None,
+                    resource_id=id,
+                    route_resource_id=id,
+                )
                 return self._delete_by_function(
                     id,
                     additional_filters,
@@ -101,6 +106,13 @@ class ServiceBaseDelete(ServiceBasePartialOf):
             entity_key_field, entity_id_value = self._resolve_field_key(
                 id,
                 additional_filters,
+            )
+
+            self.audit_service.record_audit_outbox(
+                action="delete",
+                dto=None,
+                resource_id=entity_id_value,
+                route_resource_id=id,
             )
 
             # Adicionando o ID nos filtros
@@ -162,6 +174,12 @@ class ServiceBaseDelete(ServiceBasePartialOf):
                 # DELETE por função só deve ocorrer quando o nome da função
                 # for informado explicitamente.
                 if fn_name is not None:
+                    self.audit_service.record_audit_outbox(
+                        action="delete",
+                        dto=None,
+                        resource_id=_id,
+                        route_resource_id=_id,
+                    )
                     self._delete_by_function(
                         _id,
                         additional_filters,
@@ -174,6 +192,13 @@ class ServiceBaseDelete(ServiceBasePartialOf):
                 entity_key_field, entity_id_value = self._resolve_field_key(
                     _id,
                     additional_filters,
+                )
+
+                self.audit_service.record_audit_outbox(
+                    action="delete",
+                    dto=None,
+                    resource_id=entity_id_value,
+                    route_resource_id=_id,
                 )
 
                 entity_id_values.append(entity_id_value)

@@ -39,7 +39,7 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
         """
 
         result = normalize_fields_tree(fields)
-        merge_fields_tree(result, self._dto_class._build_default_fields_tree())
+        merge_fields_tree(result, self._dto_class.build_default_fields_tree())
 
         # Tratamento especial para campos agregadores
         for field_name, descriptor in self._dto_class.aggregator_fields_map.items():
@@ -128,7 +128,10 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
         return dto_list
 
     def _retrieve_related_lists(
-        self, dto_list: List[DTOBase], fields: FieldsTree, expands: FieldsTree,
+        self,
+        dto_list: List[DTOBase],
+        fields: FieldsTree,
+        expands: FieldsTree,
     ):
 
         # TODO Controlar profundidade?!
@@ -733,7 +736,7 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
                 local_expands = extract_child_tree(expands, key)
                 pass
 
-            local_fields: FieldsTree = {'root': set()}
+            local_fields: FieldsTree = {"root": set()}
             if key in fields:
                 local_fields = extract_child_tree(fields, key)
                 pass

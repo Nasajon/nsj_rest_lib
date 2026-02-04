@@ -132,6 +132,7 @@ class SampleUpdateFunction(UpdateFunctionTypeBase):
 
 class FakeDAO:
     def __init__(self):
+        self._db = None
         self.insert_by_function_called = None
         self.update_by_function_called = None
 

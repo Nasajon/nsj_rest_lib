@@ -168,6 +168,10 @@ E em torno na rota ficaria: `/pai/<id_pai>/filho/<id>`
 
 ## Histórico de versões
 
+### 6.3.0
+
+- Implementação do suporte a auditoria nativa (ver projeto [nsj-audit-lib](https://github.com/Nasajon/nsj-audit-lib)).
+
 ### 6.2.0
 
 - Suporte ao relacionamento um para um usando campos diferentes da PK (por meio da propriedade `relation_field` do descriptor DTOOneToOneField).

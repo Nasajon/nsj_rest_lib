@@ -9,7 +9,7 @@ from nsj_rest_lib.exception import ConflictException
 from nsj_rest_lib.util.join_aux import JoinAux
 from nsj_rest_lib.util.order_spec import PARTIAL_JOIN_ALIAS
 
-from .service_base_util import ServiceBaseUtil
+from nsj_rest_lib.service.service_base_util import ServiceBaseUtil
 
 
 @dataclass

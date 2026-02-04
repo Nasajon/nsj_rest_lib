@@ -1,7 +1,7 @@
-import re
-import collections
+from typing import Callable, Dict, List, Optional, Any
 
-from typing import Callable, Dict, List, Set, Optional, Any
+from nsj_audit_lib.util.audit_config import AuditConfig
+from nsj_audit_lib.util.audit_request_util import AuditRequestUtil
 
 from nsj_rest_lib.controller.funtion_route_wrapper import FunctionRouteWrapper
 from nsj_rest_lib.dao.dao_base import DAOBase
@@ -9,8 +9,8 @@ from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
 from nsj_rest_lib.exception import DataOverrideParameterException
 from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
-from nsj_rest_lib.service.service_base import ServiceBase
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
+from nsj_rest_lib.service.service_base import ServiceBase
 from nsj_rest_lib.util.fields_util import FieldsTree, parse_fields_expression
 
 
@@ -74,6 +74,7 @@ class RouteBase:
 
     E em torno na rota ficaria: `/pai/<id_pai>/filho/<id>`
     """
+
     url: str
     http_method: str
     registered_routes: List["RouteBase"] = []
@@ -96,6 +97,7 @@ class RouteBase:
         injector_factory: NsjInjectorFactoryBase = NsjInjectorFactoryBase,
         service_name: str = None,
         handle_exception: Callable = None,
+        audit_config: AuditConfig | None = None,
     ):
         super().__init__()
 
@@ -109,6 +111,11 @@ class RouteBase:
         self._dto_class = dto_class
         self._entity_class = entity_class
         self._dto_response_class = dto_response_class
+
+        self.audit_config = audit_config
+        self.audit_request_util = AuditRequestUtil(
+            audit_config=audit_config, dto_class=self._dto_class
+        )
 
     def __call__(self, func):
         from nsj_rest_lib.controller.command_router import CommandRouter
@@ -125,6 +132,29 @@ class RouteBase:
 
         # Retornando o wrapper para substituir a função original
         return self.function_wrapper
+
+    def internal_handle_request(self, *args: Any, **kwargs: Any):
+        """
+        Centraliza a criação do injector factory e delega para handle_request.
+        """
+
+        # Registrando auditoria da requisição
+        self.audit_request_util.record_audit_request(**kwargs)
+
+        with self._injector_factory() as factory:
+            self.set_injector_factory(factory)
+            response = self.handle_request(*args, **kwargs)
+
+        # Registrando auditoria da resposta
+        self.audit_request_util.record_audit_response(response)
+
+        return response
+
+    def set_injector_factory(self, factory: NsjInjectorFactoryBase):
+        self._request_injector_factory = factory
+
+    def get_injector_factory(self):
+        return getattr(self, "_request_injector_factory", None)
 
     def _get_service(self, factory: NsjInjectorFactoryBase) -> ServiceBase:
         """
@@ -157,7 +187,7 @@ class RouteBase:
     @staticmethod
     def parse_expands(_dto_class: DTOBase, expands: Optional[str]) -> FieldsTree:
         expands_tree = parse_fields_expression(expands)
-        #expands_tree["root"] |= dto_class.resume_expands
+        # expands_tree["root"] |= dto_class.resume_expands
 
         return expands_tree
 
