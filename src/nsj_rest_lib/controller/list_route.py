@@ -131,28 +131,9 @@ class ListRoute(RouteBase):
             expands = RouteBase.parse_expands(self._dto_class, args.get("expand"))
 
             # Tratando dos filters e search_query
-            filters = kwargs.copy()
-            search_query = None
-            for arg in args:
-                if arg.lower() == "search":
-                    search_query = args.get(arg)
-                    continue
-
-                if arg in ["limit", "after", "offset", "fields", "expand"]:
-                    continue
-
-                if arg in self._dto_class.partition_fields:
-                    continue
-
-                filters[arg] = args.get(arg)
-
-            # Tratando campos de particionamento
-            for field in self._dto_class.partition_fields:
-                value = args.get(field)
-                if value is None:
-                    raise MissingParameterException(field)
-
-                filters[field] = value
+            filters, search_query = RouteBase.parse_filters_and_search(
+                self._dto_class, args, kwargs
+            )
 
             # Tratando dos campos de data_override
             self._validade_data_override_parameters(args)
