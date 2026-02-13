@@ -22,6 +22,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         function_object=None,
         function_name: str | None = None,
         custom_json_response: bool = False,
+        entity_additional_filters: Dict[str, List[Filter]] = None,
     ) -> DTOBase:
         return self._delete(
             id,
@@ -32,6 +33,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
             function_object=function_object,
             function_name=function_name,
             custom_json_response=custom_json_response,
+            entity_additional_filters=entity_additional_filters,
         )
 
     def delete_list(
@@ -68,6 +70,7 @@ class ServiceBaseDelete(ServiceBasePartialOf):
         function_object=None,
         function_name: str | None = None,
         custom_json_response: bool = False,
+        entity_additional_filters: Dict[str, List[Filter]] = None,
     ) -> DTOBase:
         try:
             if manage_transaction:
@@ -99,7 +102,9 @@ class ServiceBaseDelete(ServiceBasePartialOf):
 
             # Convertendo os filtros para os filtros de entidade
             entity_filters = {}
-            if additional_filters is not None:
+            if entity_additional_filters is not None:
+                entity_filters = entity_additional_filters
+            elif additional_filters is not None:
                 entity_filters = self._create_entity_filters(additional_filters)
 
             # Resolve o campo de chave sendo utilizado

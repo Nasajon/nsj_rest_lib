@@ -1,6 +1,7 @@
 from typing import Any, Callable, Dict, List
 
 from nsj_rest_lib.dto.dto_base import DTOBase
+from nsj_rest_lib.entity.filter import Filter
 
 from .service_base_insert import ServiceBaseInsert
 
@@ -20,6 +21,7 @@ class ServiceBaseUpdate(ServiceBaseInsert):
         retrieve_after_update: bool = False,
         custom_json_response: bool = False,
         retrieve_fields=None,
+        entity_aditional_filters: Dict[str, List[Filter]] = None
     ) -> DTOBase:
         return self._save(
             insert=False,
@@ -35,6 +37,7 @@ class ServiceBaseUpdate(ServiceBaseInsert):
             retrieve_after_insert=retrieve_after_update,
             custom_json_response=custom_json_response,
             retrieve_fields=retrieve_fields,
+            entity_aditional_filters=entity_aditional_filters,
         )
 
     def update_list(

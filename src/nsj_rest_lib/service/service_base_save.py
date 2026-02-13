@@ -40,6 +40,7 @@ class ServiceBaseSave(ServiceBasePartialOf):
         function_name: str | None = None,
         custom_json_response: bool = False,
         retrieve_fields: FieldsTree | None = None,
+        entity_aditional_filters: Dict[str, List[Filter]] = None,
     ) -> DTOBase:
         try:
             received_dto = dto
@@ -120,8 +121,9 @@ class ServiceBaseSave(ServiceBasePartialOf):
                                 raise ValueError(
                                     f"É necessário preencher o campo '{self._updated_by_property}'"
                                 )
-
-            if aditional_filters is not None:
+            if entity_aditional_filters is not None:
+                aditional_entity_filters = entity_aditional_filters
+            elif aditional_filters is not None:
                 aditional_entity_filters = self._create_entity_filters(
                     aditional_filters
                 )
