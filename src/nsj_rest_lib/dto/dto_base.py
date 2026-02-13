@@ -18,6 +18,7 @@ from nsj_rest_lib.util.fields_util import (
     merge_fields_tree,
     normalize_fields_tree,
 )
+from nsj_rest_lib.util.enum_util import enum_to_primitive_value
 from nsj_rest_lib.util.sql_utils import montar_chave_map_sql_join
 
 
@@ -516,15 +517,7 @@ class DTOBase(abc.ABC):
                         break
 
             # Convertendo do enumerado para o valor desejado na entidade
-            if "get_entity_index" in enumerado.__dict__:
-                tuple_index = enumerado.get_entity_index()
-            else:
-                tuple_index = 1
-
-            if isinstance(enumerado.value, list) or isinstance(enumerado.value, tuple):
-                return enumerado.value[tuple_index]
-            else:
-                return enumerado.value
+            return enum_to_primitive_value(enumerado)
         else:
             # Tentando pelo valor do próprio enum (e testando os casos, se for str)
             if isinstance(value, str):

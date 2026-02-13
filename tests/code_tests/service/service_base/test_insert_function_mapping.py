@@ -1,3 +1,5 @@
+import enum
+
 from nsj_rest_lib.dao.dao_base_save_by_function import DAOBaseSaveByFunction
 from nsj_rest_lib.decorator.dto import DTO
 from nsj_rest_lib.decorator.entity import Entity
@@ -48,6 +50,23 @@ class DummyEntity(EntityBase):
 class DummyInsertType(InsertFunctionTypeBase):
     valor_func: int = FunctionField()
     descricao_func: str = FunctionField()
+
+
+class StatusEnum(enum.Enum):
+    ACTIVE = ("A", 1, 99)
+
+    def get_entity_index(self):
+        return 2
+
+
+@DTO()
+class EnumDTO(DTOBase):
+    status: StatusEnum = DTOField(insert_function_field="status_func")
+
+
+@InsertFunctionType(type_name="teste.tenum")
+class EnumInsertType(InsertFunctionTypeBase):
+    status_func: int = FunctionField()
 
 
 @InsertFunctionType(type_name="teste.tendereco")
@@ -167,6 +186,24 @@ def test_build_insert_function_type_object_with_mapped_fields():
 
     assert insert_object.valor_func == 12
     assert insert_object.descricao_func == "NOVA DESCRICAO"
+
+
+def test_build_insert_function_type_object_with_enum_value():
+    service = ServiceBase(
+        FakeInjector(),
+        DummyDAO(),
+        EnumDTO,
+        DummyEntity,
+        insert_function_type_class=EnumInsertType,
+        insert_function_name="teste.fn_enum",
+    )
+
+    dto = EnumDTO()
+    dto.status = StatusEnum.ACTIVE
+
+    insert_object = service._build_insert_function_type_object(dto)
+
+    assert insert_object.status_func == 99
 
 
 def test_build_insert_function_type_object_with_relations():

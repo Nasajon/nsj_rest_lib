@@ -1,5 +1,4 @@
 import typing as ty
-import enum
 
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
@@ -10,6 +9,7 @@ from nsj_rest_lib.entity.function_type_base import (
     InsertFunctionTypeBase,
     UpdateFunctionTypeBase,
 )
+from nsj_rest_lib.util.enum_util import coerce_enum_value
 
 
 class ServiceBaseSaveByFunction:
@@ -135,11 +135,7 @@ class ServiceBaseSaveByFunction:
                 )
 
             field_value = getattr(dto, dto_field_name, None)
-            if isinstance(field_value, enum.Enum):
-                raw = field_value.value
-                value = raw[1] if isinstance(raw, (list, tuple)) else raw
-            else:
-                value = field_value
+            value = coerce_enum_value(field_value)
 
             convert_to_function = getattr(
                 descriptor, "convert_to_function", None)
