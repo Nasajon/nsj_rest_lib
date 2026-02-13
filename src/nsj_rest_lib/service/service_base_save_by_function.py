@@ -9,6 +9,7 @@ from nsj_rest_lib.entity.function_type_base import (
     InsertFunctionTypeBase,
     UpdateFunctionTypeBase,
 )
+from nsj_rest_lib.util.enum_util import coerce_enum_value
 
 
 class ServiceBaseSaveByFunction:
@@ -34,7 +35,8 @@ class ServiceBaseSaveByFunction:
             self._insert_function_type_class is not None
             and getattr(self, "_dto_class", None) is not None
         ):
-            self._insert_function_type_class.get_function_mapping(self._dto_class)
+            self._insert_function_type_class.get_function_mapping(
+                self._dto_class)
 
     def set_update_function_type_class(
         self,
@@ -55,7 +57,8 @@ class ServiceBaseSaveByFunction:
             self._update_function_type_class is not None
             and getattr(self, "_dto_class", None) is not None
         ):
-            self._update_function_type_class.get_function_mapping(self._dto_class)
+            self._update_function_type_class.get_function_mapping(
+                self._dto_class)
 
     def _build_insert_function_type_object(
         self,
@@ -131,9 +134,11 @@ class ServiceBaseSaveByFunction:
                     f"DTO '{dto.__class__.__name__}' não possui o campo '{dto_field_name}' utilizado em '{function_type_class.__name__}'."
                 )
 
-            value = getattr(dto, dto_field_name, None)
+            field_value = getattr(dto, dto_field_name, None)
+            value = coerce_enum_value(field_value)
 
-            convert_to_function = getattr(descriptor, "convert_to_function", None)
+            convert_to_function = getattr(
+                descriptor, "convert_to_function", None)
             if convert_to_function is not None:
                 converted_values = convert_to_function(value, dto_values) or {}
 
