@@ -7,7 +7,7 @@ from nsj_rest_lib.controller.funtion_route_wrapper import FunctionRouteWrapper
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
-from nsj_rest_lib.exception import DataOverrideParameterException
+from nsj_rest_lib.exception import DataOverrideParameterException, MissingParameterException
 from nsj_rest_lib.entity.function_type_base import FunctionTypeBase
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.service.service_base import ServiceBase
@@ -190,6 +190,46 @@ class RouteBase:
         # expands_tree["root"] |= dto_class.resume_expands
 
         return expands_tree
+
+    @staticmethod
+    def parse_filters_and_search(
+        dto_class: DTOBase,
+        args: Dict[str, Any],
+        extra_filters: Optional[Dict[str, Any]] = None,
+    ) -> tuple[Dict[str, Any], Optional[str]]:
+        """
+        Extrai filtros e o termo de busca (search) dos argumentos da requisição.
+
+        - ``extra_filters``: dicionário inicial de filtros (ex.: kwargs de rota).
+        - Ignora parâmetros de paginação e seleção de campos.
+        - Ignora campos de particionamento até que sejam validados abaixo.
+        - Levanta ``MissingParameterException`` caso algum campo de particionamento não seja informado.
+        """
+
+        filters: Dict[str, Any] = dict(extra_filters or {})
+        search_query: Optional[str] = None
+
+        for arg in args:
+            if arg.lower() == "search":
+                search_query = args.get(arg)
+                continue
+
+            if arg in ["limit", "after", "offset", "fields", "expand"]:
+                continue
+
+            if arg in dto_class.partition_fields:
+                continue
+
+            filters[arg] = args.get(arg)
+
+        for field in dto_class.partition_fields:
+            value = args.get(field)
+            if value is None:
+                raise MissingParameterException(field)
+
+            filters[field] = value
+
+        return filters, search_query
 
     def _validade_data_override_parameters(self, args):
         """
