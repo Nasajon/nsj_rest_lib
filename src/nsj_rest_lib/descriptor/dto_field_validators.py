@@ -20,11 +20,10 @@ class DTOFieldValidators:
 
         value = self._remove_not_number_chars(value)
 
-        if self._is_cpf_or_cnpj(value):
-            return value
-        else:
-            raise ValueError(
-                f"{dto_field.storage_name} deve ser um CPF ou CNPJ. Valor recebido: {value}.")
+        if len(value) == 11:
+            return self.validate_cpf(dto_field, value)
+        elif len(value) == 14:
+            return self.validate_cnpj(dto_field, value)
 
     def validate_cpf(self, dto_field: DTOField, value):
         """
@@ -38,7 +37,7 @@ class DTOFieldValidators:
             raise ValueError(
                 f"{dto_field.storage_name} deve ser do tipo string. Valor recebido: {value}.")
 
-        value = self._remove_not_number_chars(value)
+        value = self._remove_not_number(value)
 
         if self._is_cpf(value):
             return value
@@ -61,7 +60,7 @@ class DTOFieldValidators:
         value = self._remove_not_number_chars(value)
 
         if self._is_cnpj(value):
-            return value
+            return value.upper()
         else:
             raise ValueError(
                 f"{dto_field.storage_name} deve ser um CNPJ. Valor recebido: {value}.")
@@ -113,8 +112,11 @@ class DTOFieldValidators:
     # Métodos Auxiliares #
     ######################
 
+    def _remove_not_number(self, value):
+        return re.sub("[^0-9]", "", value)
+
     def _remove_not_number_chars(self, value):
-        return re.sub("[^0-9]", '', value)
+        return re.sub("[^0-9A-Za-z]", "", value)
 
     def _is_cpf(self, cpf: str) -> bool:
         """ If cpf in the Brazilian format is valid, it returns True, otherwise, it returns False. """
@@ -124,7 +126,7 @@ class DTOFieldValidators:
             return False
 
         # Removing not number chars:
-        cpf = self._remove_not_number_chars(cpf)
+        cpf = self._remove_not_number(cpf)
 
         # Verify if CPF number is equal
         if cpf in [
@@ -193,6 +195,7 @@ class DTOFieldValidators:
 
         # Removing not number chars:
         cnpj = self._remove_not_number_chars(cnpj)
+        cnpj = cnpj.upper()
 
         # finding out the digits
         verificadores = cnpj[-2:]
@@ -212,7 +215,7 @@ class DTOFieldValidators:
             except:
                 break
 
-            soma += int(numero) * int(lista_validacao_um[id])
+            soma += (numero.encode("ascii")[0] - 48) * int(lista_validacao_um[id])
             id += 1
 
         soma = soma % 11
@@ -238,7 +241,7 @@ class DTOFieldValidators:
             except:
                 break
 
-            soma += int(numero) * int(lista_validacao_dois[id])
+            soma += (numero.encode("ascii")[0] - 48) * int(lista_validacao_dois[id])
             id += 1
 
         # defining the digit
@@ -257,10 +260,6 @@ class DTOFieldValidators:
         """
         Validate a brazilian CPF ou CNPJ.
         """
-
-        # Removing not number chars:
-        cpf_cnpj = self._remove_not_number_chars(cpf_cnpj)
-
         if len(cpf_cnpj) == 11:
             return self._is_cpf(cpf_cnpj)
         elif len(cpf_cnpj) == 14:

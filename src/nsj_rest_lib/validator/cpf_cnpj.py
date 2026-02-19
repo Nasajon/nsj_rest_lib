@@ -70,6 +70,7 @@ def validate_cnpj(cnpj: str) -> bool:
     cnpj = cnpj.replace("-", "")
     cnpj = cnpj.replace(".", "")
     cnpj = cnpj.replace("/", "")
+    cnpj = cnpj.upper()
 
     # finding out the digits
     verificadores = cnpj[-2:]
@@ -89,7 +90,7 @@ def validate_cnpj(cnpj: str) -> bool:
         except:
             break
 
-        soma += int(numero) * int(lista_validacao_um[id])
+        soma += (numero.encode("ascii")[0] - 48) * int(lista_validacao_um[id])
         id += 1
 
     soma = soma % 11
@@ -115,7 +116,7 @@ def validate_cnpj(cnpj: str) -> bool:
         except:
             break
 
-        soma += int(numero) * int(lista_validacao_dois[id])
+        soma += (numero.encode("ascii")[0] - 48) * int(lista_validacao_dois[id])
         id += 1
 
     # defining the digit
