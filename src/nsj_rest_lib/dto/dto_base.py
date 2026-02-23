@@ -307,6 +307,27 @@ class DTOBase(abc.ABC, DTOAuditavel):
         #     if getattr(self, self.__class__.pk_field) is None:
         #         setattr(self, self.__class__.pk_field, uuid.uuid4())
 
+        if self.escape_validator is False:
+            self.validate_dto()
+            pass
+        pass
+
+    def validate_dto(self) -> None:
+        """
+        Ponto de extensão para validações de nível DTO.
+
+        Este método é chamado automaticamente ao final do __init__,
+        depois que os campos e relacionamentos foram montados. Use-o
+        para validar regras entre campos (dependências, limites,
+        consistência etc.).
+
+        Não use este método para atualizar valores de campos,
+        pois quando self.escape_validator for True ele não será executado.
+
+        Em caso de falha, lance ValueError ou uma outra exceção.
+        """
+        return None
+
     def convert_to_entity(
         self,
         entity_class: EntityBase,
