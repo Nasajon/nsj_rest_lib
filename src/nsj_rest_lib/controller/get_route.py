@@ -21,6 +21,7 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger
+from nsj_rest_lib.util.fields_util import merge_fields_tree
 
 
 class GetRoute(RouteBase):
@@ -114,6 +115,7 @@ class GetRoute(RouteBase):
             fields = RouteBase.parse_fields(self._dto_class, fields)
 
             expands = RouteBase.parse_expands(self._dto_class, args.get("expand"))
+            merge_fields_tree(fields, expands)
 
             partition_fields = kwargs.copy()
             # Tratando campos de particionamento

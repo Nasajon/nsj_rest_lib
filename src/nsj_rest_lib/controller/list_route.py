@@ -21,6 +21,7 @@ from nsj_rest_lib.exception import (
 )
 from nsj_rest_lib.injector_factory_base import NsjInjectorFactoryBase
 from nsj_rest_lib.settings import get_logger, DEFAULT_PAGE_SIZE
+from nsj_rest_lib.util.fields_util import merge_fields_tree
 
 
 class ListRoute(RouteBase):
@@ -129,6 +130,7 @@ class ListRoute(RouteBase):
             )
 
             expands = RouteBase.parse_expands(self._dto_class, args.get("expand"))
+            merge_fields_tree(fields, expands)
 
             # Tratando dos filters e search_query
             filters, search_query = RouteBase.parse_filters_and_search(
