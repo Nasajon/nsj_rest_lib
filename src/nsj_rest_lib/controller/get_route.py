@@ -186,8 +186,10 @@ class GetRoute(RouteBase):
                             304,
                             {
                                 **DEFAULT_RESP_HEADERS,
-                                "ETag": RouteBase.quote_and_escape_string(
-                                    etag_value
+                                "ETag": (
+                                    "W/" + RouteBase.quote_and_escape_string(
+                                        etag_value
+                                    )
                                 )
                             }
                         )
@@ -215,7 +217,7 @@ class GetRoute(RouteBase):
             if etag_field_name is not None:
                 etag_value = getattr(data, etag_field_name, None)
                 if etag_value is not None:
-                    headers["ETag"] = RouteBase.quote_and_escape_string(
+                    headers["ETag"] = "W/" + RouteBase.quote_and_escape_string(
                         etag_value
                     )
 
