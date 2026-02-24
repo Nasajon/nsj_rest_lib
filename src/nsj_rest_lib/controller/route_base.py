@@ -192,6 +192,66 @@ class RouteBase:
         return expands_tree
 
     @staticmethod
+    def parse_if_none_match(header: str) -> List[str]:
+        """
+        Extrai os valores do header If-None-Match, respeitando aspas e escapes.
+
+        Exemplo:
+        >>> RouteBase.parse_if_none_match('"abc", "a\\"b"')
+        ['abc', 'a"b']
+        >>> RouteBase.parse_if_none_match('"one" , "two" , "three"')
+        ['one', 'two', 'three']
+        >>> RouteBase.parse_if_none_match('"unterminated')
+        []
+        >>> RouteBase.parse_if_none_match('W/"weak", "strong"')
+        ['weak', 'strong']
+        """
+        i: int = 0
+        header_size: int = len(header)
+        ret: List[str] = []
+        while i < header_size:
+            if header[i] == '"':
+                i += 1
+                buf: List[str] = []
+                while i < header_size:
+                    if header[i] == '\\':
+                        i += 1
+                        buf.append(header[i])
+                        i += 1
+                        continue
+
+                    if header[i] == '"':
+                        # NOTE: Append buf here so that if the string is not
+                        #           closed we do not add a incomplete value
+                        i += 1
+                        ret.append(''.join(buf))
+                        break
+
+                    buf.append(header[i])
+                    i += 1
+                    pass
+                continue
+            i += 1
+            # NOTE: Intentionaly ignoring commas and spaces
+            pass
+        return ret
+
+    @staticmethod
+    def quote_and_escape_string(s: str) -> str:
+        """
+        Envolve a string entre aspas e escapa aspas internas.
+
+        Exemplo:
+        >>> RouteBase.quote_and_escape_string('a"b')
+        '"a\\"b"'
+        >>> RouteBase.quote_and_escape_string('plain')
+        '"plain"'
+        >>> RouteBase.quote_and_escape_string('')
+        '""'
+        """
+        return '"' + str(s).replace('"', '\\"') + '"'
+
+    @staticmethod
     def parse_filters_and_search(
         dto_class: DTOBase,
         args: Dict[str, Any],
