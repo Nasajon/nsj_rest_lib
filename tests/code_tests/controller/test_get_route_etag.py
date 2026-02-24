@@ -103,7 +103,7 @@ def test_get_route_returns_etag_header_on_success():
         body, status, headers = route.handle_request(id="1")
 
     assert status == 200
-    assert headers.get("ETag") == "v1"
+    assert headers.get("ETag") == '"v1"'
     assert len(service.calls) == 1
     assert json.loads(body)["id"] == 1
 
@@ -115,13 +115,13 @@ def test_get_route_if_none_match_returns_304_and_skips_full_fetch():
     with application.test_request_context(
         "/samples/1",
         method="GET",
-        headers={"If-None-Match": "v1"},
+        headers={"If-None-Match": '"v1"'},
     ):
         body, status, headers = route.handle_request(id="1")
 
     assert status == 304
     assert body == ""
-    assert headers.get("ETag") == "v1"
+    assert headers.get("ETag") == '"v1"'
     assert len(service.calls) == 1
     assert service.calls[0]["fields"]["root"] == {"version", "id"}
 
@@ -133,12 +133,29 @@ def test_get_route_if_none_match_mismatch_fetches_full_data_and_sets_etag():
     with application.test_request_context(
         "/samples/1",
         method="GET",
-        headers={"If-None-Match": "v0"},
+        headers={"If-None-Match": '"v0"'},
     ):
         body, status, headers = route.handle_request(id="1")
 
     assert status == 200
-    assert headers.get("ETag") == "v2"
+    assert headers.get("ETag") == '"v2"'
     assert len(service.calls) == 2
     assert "version" in service.calls[1]["fields"]["root"]
     assert json.loads(body)["id"] == 1
+
+
+def test_get_route_if_none_match_multiple_values_returns_304():
+    service = RecordingService([build_dto("v1")])
+    route = build_route(service)
+
+    with application.test_request_context(
+        "/samples/1",
+        method="GET",
+        headers={"If-None-Match": '"v0", "v1", "v2"'},
+    ):
+        body, status, headers = route.handle_request(id="1")
+
+    assert status == 304
+    assert body == ""
+    assert headers.get("ETag") == '"v1"'
+    assert len(service.calls) == 1
