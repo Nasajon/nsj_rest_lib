@@ -157,11 +157,14 @@ class GetRoute(RouteBase):
                 etag_header is not None
                 and etag_field_name is not None
             ):
+                # NOTE: This is to make sure Etag is returned if the values do
+                #           not match
                 fields['root'].add(etag_field_name)
+
+                # NOTE: Doing a shallow fetch to save on IO to DB
                 etag_fields = {
                     'root': {etag_field_name, self._dto_class.pk_field}
                 }
-
                 etag_dto = service.get(
                     id=id,
                     partition_fields=partition_fields,
@@ -173,10 +176,21 @@ class GetRoute(RouteBase):
                     custom_json_response=False,
                 )
                 etag_value = getattr(etag_dto, etag_field_name, None)
-                if etag_value is not None and etag_header == str(etag_value):
-                    return (
-                        "", 304, {**DEFAULT_RESP_HEADERS, "ETag": etag_value}
+                if etag_value is not None:
+                    vals: ty.List[str] = RouteBase.parse_if_none_match(
+                        etag_header
                     )
+                    if str(etag_value) in vals:
+                        return (
+                            "",
+                            304,
+                            {
+                                **DEFAULT_RESP_HEADERS,
+                                "ETag": RouteBase.quote_and_escape_string(
+                                    etag_value
+                                )
+                            }
+                        )
 
             # Chamando o service (método get)
             # TODO Rever parametro order_fields abaixo
@@ -201,7 +215,9 @@ class GetRoute(RouteBase):
             if etag_field_name is not None:
                 etag_value = getattr(data, etag_field_name, None)
                 if etag_value is not None:
-                    headers["ETag"] = str(etag_value)
+                    headers["ETag"] = RouteBase.quote_and_escape_string(
+                        etag_value
+                    )
 
             # Retornando a resposta da requuisição
             return (json_dumps(dict_data), 200, headers)
