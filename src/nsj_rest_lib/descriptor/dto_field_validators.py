@@ -18,7 +18,7 @@ class DTOFieldValidators:
             raise ValueError(
                 f"{dto_field.storage_name} deve ser do tipo string. Valor recebido: {value}.")
 
-        value = self._remove_not_number_chars(value)
+        value = self._enforce_alphanumeric_chars(value)
 
         if len(value) == 11:
             return self.validate_cpf(dto_field, value)
@@ -37,7 +37,7 @@ class DTOFieldValidators:
             raise ValueError(
                 f"{dto_field.storage_name} deve ser do tipo string. Valor recebido: {value}.")
 
-        value = self._remove_not_number(value)
+        value = self._enforce_numeric_chars(value)
 
         if self._is_cpf(value):
             return value
@@ -57,7 +57,7 @@ class DTOFieldValidators:
             raise ValueError(
                 f"{dto_field.storage_name} deve ser do tipo string. Valor recebido: {value}.")
 
-        value = self._remove_not_number_chars(value)
+        value = self._enforce_alphanumeric_chars(value)
 
         if self._is_cnpj(value):
             return value.upper()
@@ -112,10 +112,10 @@ class DTOFieldValidators:
     # Métodos Auxiliares #
     ######################
 
-    def _remove_not_number(self, value):
+    def _enforce_numeric_chars(self, value):
         return re.sub("[^0-9]", "", value)
 
-    def _remove_not_number_chars(self, value):
+    def _enforce_alphanumeric_chars(self, value):
         return re.sub("[^0-9A-Za-z]", "", value)
 
     def _is_cpf(self, cpf: str) -> bool:
@@ -126,7 +126,7 @@ class DTOFieldValidators:
             return False
 
         # Removing not number chars:
-        cpf = self._remove_not_number(cpf)
+        cpf = self._enforce_numeric_chars(cpf)
 
         # Verify if CPF number is equal
         if cpf in [
@@ -194,7 +194,7 @@ class DTOFieldValidators:
         lista_validacao_dois = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
 
         # Removing not number chars:
-        cnpj = self._remove_not_number_chars(cnpj)
+        cnpj = self._enforce_alphanumeric_chars(cnpj)
         cnpj = cnpj.upper()
 
         # finding out the digits
