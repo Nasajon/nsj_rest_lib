@@ -151,48 +151,21 @@ class GetRoute(RouteBase):
                 )
             function_params = None if function_object is not None else args
 
-            etag_header: Optional[str] = request.headers.get("If-None-Match")
-            etag_field_name: Optional[str] = self._dto_class.etag_field_name
-            if (
-                etag_header is not None
-                and etag_field_name is not None
-            ):
-                # NOTE: This is to make sure Etag is returned if the values do
-                #           not match
-                fields['root'].add(etag_field_name)
-
-                # NOTE: Doing a shallow fetch to save on IO to DB
-                etag_fields = {
-                    'root': {etag_field_name, self._dto_class.pk_field}
-                }
-                etag_dto = service.get(
-                    id=id,
-                    partition_fields=partition_fields,
-                    fields=etag_fields,
-                    expands={'root': set()},
-                    function_params=function_params,
-                    function_object=function_object,
-                    function_name=self._get_function_name,
-                    custom_json_response=False,
-                )
-                etag_value = getattr(etag_dto, etag_field_name, None)
-                if etag_value is not None:
-                    vals: ty.List[str] = RouteBase.parse_if_none_match(
-                        etag_header
-                    )
-                    if str(etag_value) in vals:
-                        return (
-                            "",
-                            304,
-                            {
-                                **DEFAULT_RESP_HEADERS,
-                                "ETag": (
-                                    "W/" + RouteBase.quote_and_escape_string(
-                                        etag_value
-                                    )
-                                )
-                            }
-                        )
+            _res: ty.Any = None
+            fields, _res = RouteBase.handle_if_none_match(
+                id_=id,
+                service=service,
+                dto_class=self._dto_class,
+                header_val=request.headers.get("If-None-Match"),
+                fields=fields,
+                # Data for service.get
+                partition_fields=partition_fields,
+                function_params=function_params,
+                function_object=function_object,
+                function_name=self._get_function_name,
+            )
+            if _res is not None:
+                return _res
 
             # Chamando o service (método get)
             # TODO Rever parametro order_fields abaixo
@@ -207,19 +180,14 @@ class GetRoute(RouteBase):
                 custom_json_response=self.custom_json_response,
             )
 
+            headers: ty.Dict[str, str] = {**DEFAULT_RESP_HEADERS}
+            RouteBase.add_etag_header_if_needed(headers, data)
+
             if self.custom_json_response and self._get_function_name is not None:
-                return (json_dumps(data), 200, {**DEFAULT_RESP_HEADERS})
+                return (json_dumps(data), 200, headers)
 
             # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
             dict_data = data.convert_to_dict(fields, expands)
-
-            headers = {**DEFAULT_RESP_HEADERS}
-            if etag_field_name is not None:
-                etag_value = getattr(data, etag_field_name, None)
-                if etag_value is not None:
-                    headers["ETag"] = "W/" + RouteBase.quote_and_escape_string(
-                        etag_value
-                    )
 
             # Retornando a resposta da requuisição
             return (json_dumps(dict_data), 200, headers)

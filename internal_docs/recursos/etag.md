@@ -27,6 +27,7 @@ class ClienteDTO(DTOBase):
 
 ## Resposta com ETag
 - Quando o campo configurado possui valor, o GET por ID inclui o header `ETag`.
+- O header e sempre retornado como weak etag, com prefixo `W/`.
 - O valor e sempre retornado entre aspas e com escape de `"`.
 
 ## If-None-Match
@@ -35,5 +36,6 @@ class ClienteDTO(DTOBase):
 - O header aceita multiplos valores entre aspas, separados por virgula, e suporta valores com `W/` (weak etag).
 
 ## Observacoes de execucao
-- Para comparar o ETag, o GetRoute faz uma leitura rasa com `fields={'root': {etag_field_name, pk_field}}` e sem expands.
+- Para comparar o ETag, o `RouteBase.handle_if_none_match` faz uma leitura rasa com `fields={'root': {etag_field_name, pk_field}}` e sem expands.
 - O campo de ETag e sempre incluido no conjunto de fields, mesmo quando nao e solicitado na query.
+- O header `ETag` e adicionado via `RouteBase.add_etag_header_if_needed` quando o DTO define `etag_field_name`.
