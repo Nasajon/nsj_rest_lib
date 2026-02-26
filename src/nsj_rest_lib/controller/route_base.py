@@ -1,8 +1,9 @@
-from typing import Callable, Dict, List, Optional, Any
+from typing import Callable, Dict, List, Optional, Any, Type, Tuple
 
 from nsj_audit_lib.util.audit_config import AuditConfig
 from nsj_audit_lib.util.audit_request_util import AuditRequestUtil
 
+from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
 from nsj_rest_lib.controller.funtion_route_wrapper import FunctionRouteWrapper
 from nsj_rest_lib.dao.dao_base import DAOBase
 from nsj_rest_lib.dto.dto_base import DTOBase
@@ -290,6 +291,126 @@ class RouteBase:
             filters[field] = value
 
         return filters, search_query
+
+    @staticmethod
+    def handle_if_none_match(
+        id_: Any,
+        service: Any,
+        dto_class: Type[DTOBase],
+        header_val: Optional[str],
+        fields: FieldsTree,
+        # Data for service.get
+        partition_fields: Any,
+        function_params: Any,
+        function_object: Any,
+        function_name: Any,
+    ) -> Tuple[FieldsTree, Optional[Any]]:
+        """
+        Avalia o header If-None-Match para GET por id.
+
+        Faz uma busca rasa (PK + ETag) quando o DTO define
+        ``etag_field_name`` e o header foi informado. Se houver match,
+        retorna uma resposta 304 com ETag e evita o GET completo.
+        Sempre adiciona o campo ETag em ``fields`` para garantir o
+        retorno do header em respostas 200.
+
+        Exemplo:
+        >>> class DummyDTO:
+        ...     etag_field_name = "version"
+        ...     pk_field = "id"
+        >>> class DummyService:
+        ...     def __init__(self, version):
+        ...         self._version = version
+        ...     def get(self, **kwargs):
+        ...         class Obj:
+        ...             def __init__(self, version):
+        ...                 self.version = version
+        ...         return Obj(self._version)
+        >>> fields = {"root": set()}
+        >>> fields, resp = RouteBase.handle_if_none_match(
+        ...     id_="1",
+        ...     service=DummyService("abc"),
+        ...     dto_class=DummyDTO,
+        ...     header_val='"abc"',
+        ...     fields=fields,
+        ...     partition_fields={},
+        ...     function_params=None,
+        ...     function_object=None,
+        ...     function_name=None,
+        ... )
+        >>> resp[1]
+        304
+        >>> resp[2]["ETag"]
+        'W/"abc"'
+        >>> "version" in fields["root"]
+        True
+        """
+        etag_header: Optional[str] = header_val
+        etag_field_name: Optional[str] = dto_class.etag_field_name
+        if etag_header is None or etag_field_name is None:
+            return fields, None
+
+        # NOTE: This is to make sure Etag is returned if the values do
+        #           not match
+        fields['root'].add(etag_field_name)
+
+        # NOTE: Doing a shallow fetch to save on IO to DB
+        etag_fields = {
+            'root': {etag_field_name, dto_class.pk_field}
+        }
+        etag_dto = service.get(
+            id=id_,
+            partition_fields=partition_fields,
+            fields=etag_fields,
+            expands={'root': set()},
+            function_params=function_params,
+            function_object=function_object,
+            function_name=function_name,
+            custom_json_response=False,
+        )
+
+        etag_value = getattr(etag_dto, etag_field_name, None)
+        if etag_value is None:
+            return fields, None
+
+        vals: List[str] = RouteBase.parse_if_none_match(etag_header)
+        if str(etag_value) not in vals:
+            return fields, None
+
+        headers: Dict[str, str] = {**DEFAULT_RESP_HEADERS}
+        RouteBase.add_etag_header_if_needed(headers, etag_dto)
+        return fields, ("", 304, headers)
+
+    @staticmethod
+    def add_etag_header_if_needed(
+        headers: Dict[str, str],
+        dto: DTOBase
+    ) -> None:
+        """
+        Adiciona o header ETag (weak) se o DTO define ``etag_field_name``.
+
+        Modifica o dicionário ``headers`` in-place.
+
+        Exemplo:
+        >>> class DummyDTO:
+        ...     etag_field_name = "version"
+        ...     def __init__(self, version):
+        ...         self.version = version
+        >>> headers = {}
+        >>> RouteBase.add_etag_header_if_needed(headers, DummyDTO("1"))
+        >>> headers["ETag"]
+        'W/"1"'
+        """
+        fname: Optional[str] = dto.etag_field_name
+        if fname is None:
+            return
+        etag_value = getattr(dto, fname, None)
+        if etag_value is None:
+            return
+        headers["ETag"] = "W/" + RouteBase.quote_and_escape_string(
+            etag_value
+        )
+        pass
 
     def _validade_data_override_parameters(self, args):
         """
