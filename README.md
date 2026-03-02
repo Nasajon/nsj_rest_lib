@@ -168,6 +168,10 @@ E em torno na rota ficaria: `/pai/<id_pai>/filho/<id>`
 
 ## Histórico de versões
 
+### 6.4.0
+
+- Suporte a CNPJ alfanumérico.
+
 ### 6.3.0
 
 - Implementação do suporte a auditoria nativa (ver projeto [nsj-audit-lib](https://github.com/Nasajon/nsj-audit-lib)).
