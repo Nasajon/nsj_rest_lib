@@ -22,7 +22,6 @@ A classe `DTOField` representa uma propriedade de um objeto DTO e define várias
 - `search [bool = True]`: Indica que esse campo é passível de busca, por meio do argumento "search" passado num GET List, como query string (por hora, apenas pesquisas simples, por meio de operador like, estão implementadas).
 - `read_only [bool = False]`: Permite declarar propriedades que estão disponíveis no GET (list ou unitário), mas que não poderão ser usadas para gravação (POST, PUT ou PATCH).
 - `metric_label [bool = False]`: Permite indicar quais campos serão enviados como métricas para o OpenTelemetry Collector, como padrão sempre será enviado o tenant e grupo_empresarial.
-- `etag_field [bool = False]`: Indica que este campo deve ser usado como fonte de ETag para GET unitários.
 
 **Exemplo:**
 ```

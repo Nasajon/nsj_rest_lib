@@ -4,7 +4,7 @@ import enum
 
 # import uuid
 
-from typing import Any, Dict, List, Set, Union, Optional, Tuple
+from typing import Any, Dict, List, Set, Union, Optional, Tuple, Literal
 
 from nsj_audit_lib.dto.dto_auditavel import DTOAuditavel
 
@@ -57,7 +57,8 @@ class DTOBase(abc.ABC, DTOAuditavel):
     data_override_group: list[str]
     data_override_fields: list[str]
     return_hidden_fields: dict[str, any] = {}
-    etag_field_name: Optional[str] = None
+    etag_fields: Set[str] = set()
+    etag_type: Union[Literal["RAW"], Literal["DATE"], Literal["HASH"]] = "HASH"
 
     def __init__(
         self,
