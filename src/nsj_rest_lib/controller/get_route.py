@@ -2,7 +2,7 @@ import os
 import typing as ty
 
 from flask import request
-from typing import Callable
+from typing import Callable, Optional
 
 from nsj_audit_lib.util.audit_config import AuditConfig
 from nsj_gcf_utils.json_util import json_dumps
@@ -110,11 +110,12 @@ class GetRoute(RouteBase):
             else:
                 args = query_args
 
-            # Tratando dos fields
-            fields = args.get("fields")
-            fields = RouteBase.parse_fields(self._dto_class, fields)
-
-            expands = RouteBase.parse_expands(self._dto_class, args.get("expand"))
+            fields = RouteBase.parse_fields(
+                self._dto_class, args.get("fields", '')
+            )
+            expands = RouteBase.parse_expands(
+                self._dto_class, args.get("expand", '')
+            )
             merge_fields_tree(fields, expands)
 
             partition_fields = kwargs.copy()
@@ -150,6 +151,22 @@ class GetRoute(RouteBase):
                 )
             function_params = None if function_object is not None else args
 
+            _res: ty.Any = None
+            fields, _res = RouteBase.handle_if_none_match(
+                id_=id,
+                service=service,
+                dto_class=self._dto_class,
+                header_val=request.headers.get("If-None-Match"),
+                fields=fields,
+                # Data for service.get
+                partition_fields=partition_fields,
+                function_params=function_params,
+                function_object=function_object,
+                function_name=self._get_function_name,
+            )
+            if _res is not None:
+                return _res
+
             # Chamando o service (método get)
             # TODO Rever parametro order_fields abaixo
             data = service.get(
@@ -163,14 +180,17 @@ class GetRoute(RouteBase):
                 custom_json_response=self.custom_json_response,
             )
 
+            headers: ty.Dict[str, str] = {**DEFAULT_RESP_HEADERS}
+            RouteBase.add_etag_header_if_needed(headers, data)
+
             if self.custom_json_response and self._get_function_name is not None:
-                return (json_dumps(data), 200, {**DEFAULT_RESP_HEADERS})
+                return (json_dumps(data), 200, headers)
 
             # Convertendo para o formato de dicionário (permitindo omitir campos do DTO)
             dict_data = data.convert_to_dict(fields, expands)
 
             # Retornando a resposta da requuisição
-            return (json_dumps(dict_data), 200, {**DEFAULT_RESP_HEADERS})
+            return (json_dumps(dict_data), 200, headers)
         except MissingParameterException as e:
             get_logger().warning(e)
             if self._handle_exception is not None:
