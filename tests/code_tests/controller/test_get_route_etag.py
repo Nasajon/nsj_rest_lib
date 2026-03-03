@@ -9,6 +9,7 @@ for path in (SRC_ROOT, REPO_ROOT):
         sys.path.insert(0, str(path))
 
 from nsj_rest_lib.controller.get_route import GetRoute
+from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.decorator.dto import DTO
 from nsj_rest_lib.decorator.entity import Entity
 from nsj_rest_lib.descriptor.dto_field import DTOField
@@ -63,10 +64,10 @@ class RecordingService:
         return self.responses[-1]
 
 
-@DTO()
+@DTO(etag_fields={"version"})
 class SampleDTO(DTOBase):
     id: int = DTOField(pk=True, resume=True)
-    version: str = DTOField(etag_field=True)
+    version: str = DTOField()
     name: str = DTOField()
 
 
@@ -95,39 +96,57 @@ def build_dto(version, name="sample"):
     return SampleDTO(id=1, version=version, name=name, escape_validator=True)
 
 
+def build_etag_header(dto):
+    headers = {}
+    RouteBase.add_etag_header_if_needed(headers, dto)
+    return headers.get("ETag")
+
+
+def build_etag_value(dto):
+    return RouteBase.get_etag_value(dto)
+
+
 def test_get_route_returns_etag_header_on_success():
-    service = RecordingService([build_dto("v1")])
+    dto = build_dto("v1")
+    service = RecordingService([dto])
     route = build_route(service)
 
     with application.test_request_context("/samples/1", method="GET"):
         body, status, headers = route.handle_request(id="1")
 
     assert status == 200
-    assert headers.get("ETag") == 'W/"v1"'
+    assert headers.get("ETag") == build_etag_header(dto)
     assert len(service.calls) == 1
     assert json.loads(body)["id"] == 1
 
 
 def test_get_route_if_none_match_returns_304_and_skips_full_fetch():
-    service = RecordingService([build_dto("v1")])
+    dto = build_dto("v1")
+    service = RecordingService([dto])
     route = build_route(service)
 
     with application.test_request_context(
         "/samples/1",
         method="GET",
-        headers={"If-None-Match": '"v1"'},
+        headers={
+            "If-None-Match": RouteBase.quote_and_escape_string(
+                build_etag_value(dto)
+            )
+        },
     ):
         body, status, headers = route.handle_request(id="1")
 
     assert status == 304
     assert body == ""
-    assert headers.get("ETag") == 'W/"v1"'
+    assert headers.get("ETag") == build_etag_header(dto)
     assert len(service.calls) == 1
     assert service.calls[0]["fields"]["root"] == {"version", "id"}
 
 
 def test_get_route_if_none_match_mismatch_fetches_full_data_and_sets_etag():
-    service = RecordingService([build_dto("v1"), build_dto("v2", name="full")])
+    dto_initial = build_dto("v1")
+    dto_full = build_dto("v2", name="full")
+    service = RecordingService([dto_initial, dto_full])
     route = build_route(service)
 
     with application.test_request_context(
@@ -138,24 +157,29 @@ def test_get_route_if_none_match_mismatch_fetches_full_data_and_sets_etag():
         body, status, headers = route.handle_request(id="1")
 
     assert status == 200
-    assert headers.get("ETag") == 'W/"v2"'
+    assert headers.get("ETag") == build_etag_header(dto_full)
     assert len(service.calls) == 2
     assert "version" in service.calls[1]["fields"]["root"]
     assert json.loads(body)["id"] == 1
 
 
 def test_get_route_if_none_match_multiple_values_returns_304():
-    service = RecordingService([build_dto("v1")])
+    dto = build_dto("v1")
+    service = RecordingService([dto])
     route = build_route(service)
 
     with application.test_request_context(
         "/samples/1",
         method="GET",
-        headers={"If-None-Match": '"v0", "v1", "v2"'},
+        headers={
+            "If-None-Match": (
+                f'"v0", {RouteBase.quote_and_escape_string(build_etag_value(dto))}, "v2"'
+            )
+        },
     ):
         body, status, headers = route.handle_request(id="1")
 
     assert status == 304
     assert body == ""
-    assert headers.get("ETag") == 'W/"v1"'
+    assert headers.get("ETag") == build_etag_header(dto)
     assert len(service.calls) == 1

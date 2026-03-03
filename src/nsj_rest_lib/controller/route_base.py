@@ -1,4 +1,8 @@
-from typing import Callable, Dict, List, Optional, Any, Type, Tuple
+import hashlib
+from typing import (
+    Callable, Dict, List, Optional, Any, Type, Tuple, Set, Union, Literal
+)
+import datetime as dt
 
 from nsj_audit_lib.util.audit_config import AuditConfig
 from nsj_audit_lib.util.audit_request_util import AuditRequestUtil
@@ -309,14 +313,15 @@ class RouteBase:
         Avalia o header If-None-Match para GET por id.
 
         Faz uma busca rasa (PK + ETag) quando o DTO define
-        ``etag_field_name`` e o header foi informado. Se houver match,
+        ``etag_fields`` e o header foi informado. Se houver match,
         retorna uma resposta 304 com ETag e evita o GET completo.
         Sempre adiciona o campo ETag em ``fields`` para garantir o
         retorno do header em respostas 200.
 
         Exemplo:
         >>> class DummyDTO:
-        ...     etag_field_name = "version"
+        ...     etag_fields = {"version"}
+        ...     etag_type = "RAW"
         ...     pk_field = "id"
         >>> class DummyService:
         ...     def __init__(self, version):
@@ -346,22 +351,22 @@ class RouteBase:
         True
         """
         etag_header: Optional[str] = header_val
-        etag_field_name: Optional[str] = dto_class.etag_field_name
-        if etag_header is None or etag_field_name is None:
+        etag_fields: Set[str] = dto_class.etag_fields
+        if etag_header is None or len(etag_fields) == 0:
             return fields, None
 
         # NOTE: This is to make sure Etag is returned if the values do
         #           not match
-        fields['root'].add(etag_field_name)
+        fields['root'].update(etag_fields)
 
         # NOTE: Doing a shallow fetch to save on IO to DB
-        etag_fields = {
-            'root': {etag_field_name, dto_class.pk_field}
+        fetch_fields: FieldsTree = {
+            'root': {dto_class.pk_field} | etag_fields
         }
         etag_dto = service.get(
             id=id_,
             partition_fields=partition_fields,
-            fields=etag_fields,
+            fields=fetch_fields,
             expands={'root': set()},
             function_params=function_params,
             function_object=function_object,
@@ -369,12 +374,13 @@ class RouteBase:
             custom_json_response=False,
         )
 
-        etag_value = getattr(etag_dto, etag_field_name, None)
-        if etag_value is None:
-            return fields, None
-
+        etag_value: str = RouteBase.get_etag_value(etag_dto)
         vals: List[str] = RouteBase.parse_if_none_match(etag_header)
-        if str(etag_value) not in vals:
+        if not RouteBase.is_etag_value_in_list(
+            dto_class.etag_type,
+            etag_value,
+            vals
+        ):
             return fields, None
 
         headers: Dict[str, str] = {**DEFAULT_RESP_HEADERS}
@@ -382,18 +388,95 @@ class RouteBase:
         return fields, ("", 304, headers)
 
     @staticmethod
+    def is_etag_value_in_list(
+        etag_type: Union[Literal["RAW"], Literal["DATE"], Literal["HASH"]],
+        val: str,
+        vals: List[str]
+    ) -> bool:
+        """
+        Verifica se um valor de ETag bate com a lista informada.
+
+        Exemplo:
+        >>> RouteBase.is_etag_value_in_list("RAW", "abc", ["abc", "def"])
+        True
+        >>> RouteBase.is_etag_value_in_list("RAW", "abc", ["def"])
+        False
+        >>> RouteBase.is_etag_value_in_list(
+        ...     "DATE",
+        ...     "2024-01-02T00:00:00",
+        ...     ["2024-01-01T00:00:00"],
+        ... )
+        True
+        >>> RouteBase.is_etag_value_in_list(
+        ...     "DATE",
+        ...     "2024-01-01T00:00:00",
+        ...     ["2024-01-02T00:00:00"],
+        ... )
+        False
+        >>> RouteBase.is_etag_value_in_list("HASH", "abc", ["abc"])
+        True
+        >>> RouteBase.is_etag_value_in_list("HASH", "abc", ["def"])
+        False
+        """
+        def _to_datetime(s: str) -> dt.datetime:
+            try:
+                return dt.datetime.fromisoformat(s)
+            except:
+                return dt.datetime.min
+            pass
+
+        if etag_type == "DATE":
+            vald: dt.datetime = _to_datetime(val)
+            for v in vals:
+                if vald >= _to_datetime(v):
+                    return True
+                pass
+            return False
+
+        return val in vals
+
+    @staticmethod
+    def get_etag_value(dto: DTOBase) -> str:
+        """
+        Gera o valor do ETag a partir dos campos configurados no DTO.
+
+        Exemplo:
+        >>> class DummyDTO:
+        ...     etag_fields = {"version"}
+        ...     etag_type = "RAW"
+        ...     def __init__(self, version):
+        ...         self.version = version
+        >>> RouteBase.get_etag_value(DummyDTO("v1"))
+        'v1'
+        >>> DummyDTO.etag_type = "HASH"
+        >>> RouteBase.get_etag_value(DummyDTO("v1"))
+        '3bfc269594ef649228e9a74bab00f042efc91d5acc6fbee31a382e80d42388fe'
+        >>> DummyDTO.etag_type = "DATE"
+        >>> RouteBase.get_etag_value(DummyDTO("2024-01-01T00:00:00"))
+        '2024-01-01T00:00:00'
+        """
+        etag_value: str = ""
+        for f in dto.etag_fields:
+            etag_value += str(getattr(dto, f, None))
+            pass
+        if dto.etag_type == "HASH":
+            return hashlib.sha256(etag_value.encode('utf-8')).hexdigest()
+        return etag_value
+
+    @staticmethod
     def add_etag_header_if_needed(
         headers: Dict[str, str],
         dto: DTOBase
     ) -> None:
         """
-        Adiciona o header ETag (weak) se o DTO define ``etag_field_name``.
+        Adiciona o header ETag (weak) se o DTO define ``etag_fields``.
 
         Modifica o dicionário ``headers`` in-place.
 
         Exemplo:
         >>> class DummyDTO:
-        ...     etag_field_name = "version"
+        ...     etag_fields = {"version"}
+        ...     etag_type = "RAW"
         ...     def __init__(self, version):
         ...         self.version = version
         >>> headers = {}
@@ -401,14 +484,11 @@ class RouteBase:
         >>> headers["ETag"]
         'W/"1"'
         """
-        fname: Optional[str] = dto.etag_field_name
-        if fname is None:
-            return
-        etag_value = getattr(dto, fname, None)
-        if etag_value is None:
+        fields: Set[str] = dto.etag_fields
+        if len(fields) == 0:
             return
         headers["ETag"] = "W/" + RouteBase.quote_and_escape_string(
-            etag_value
+            RouteBase.get_etag_value(dto)
         )
         pass
 
