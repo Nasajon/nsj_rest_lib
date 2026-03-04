@@ -1,0 +1,21 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+py_library(
+    name = "nsj_rest_lib",
+    srcs = glob(["**/*.py"]),
+    # Faz o Python enxergar "libs/" como raiz de imports,
+    # então "import nsj_rest_lib" encontra libs/nsj_rest_lib
+    imports = [".."],  # adiciona "libs/" no sys.path deste target
+    visibility = ["//visibility:public"],
+    deps = [
+        "@pip//flask",
+        "@pip//sqlalchemy",
+        "@pip//pg8000",
+        "@pip//pymysql",
+        "@pip//py_healthcheck",
+        "@pip//unidecode",
+        "@pip//opentelemetry_exporter_otlp",
+        "@pip//pyyaml",
+        "//libs/nsj_gcf_utils:nsj_gcf_utils",
+    ],
+)
