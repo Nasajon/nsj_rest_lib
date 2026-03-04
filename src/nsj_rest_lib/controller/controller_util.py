@@ -7,7 +7,14 @@ DEFAULT_RESP_HEADERS = {"Content-Type": "application/json; charset=utf-8"}
 
 def _extract_postgres_code_and_message(exc: Exception) -> Tuple[Optional[str], str]:
     """
-    Extrai SQLSTATE e mensagem de erro para excecoes do SQLAlchemy/pg8000.
+    Extrai SQLSTATE e mensagem de erro de excecoes SQLAlchemy/pg8000.
+
+    Args:
+        exc: Excecao original capturada na camada de controller/DAO.
+
+    Returns:
+        Tupla (sqlstate, mensagem). Quando nao houver codigo identificado,
+        sqlstate sera None.
     """
     orig = getattr(exc, "orig", None)
 
@@ -56,7 +63,13 @@ def _extract_postgres_code_and_message(exc: Exception) -> Tuple[Optional[str], s
 def map_db_exception_to_http(exc: Exception) -> Optional[Tuple[int, str]]:
     """
     Mapeia erros de banco para status HTTP e mensagem de API.
-    Retorna None quando nao ha mapeamento.
+
+    Args:
+        exc: Excecao do banco (ex.: IntegrityError/ProgrammingError).
+
+    Returns:
+        Tupla (status_http, mensagem) quando houver mapeamento.
+        Retorna None quando o codigo SQLSTATE nao estiver mapeado.
     """
     code, db_message = _extract_postgres_code_and_message(exc)
 

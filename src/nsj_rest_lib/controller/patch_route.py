@@ -63,7 +63,16 @@ class PatchRoute(RouteBase):
         **kwargs: ty.Any,
     ):
         """
-        Tratando requisições HTTP Put para inserir uma instância de uma entidade.
+        Processa requisicao HTTP PATCH para atualizacao parcial de entidade.
+
+        Args:
+            id: Identificador da entidade (URL).
+            query_args: Query params no modo ERP SQL.
+            body: Corpo da requisicao no modo ERP SQL.
+            **kwargs: Filtros adicionais injetados pela rota/framework.
+
+        Returns:
+            Tupla Flask (body, status_code, headers).
         """
 
         try:
