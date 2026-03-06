@@ -2,13 +2,17 @@ import os
 import typing as ty
 
 from flask import request
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from typing import Callable
 
 from nsj_audit_lib.util.audit_config import AuditConfig
 from nsj_gcf_utils.json_util import json_dumps, JsonLoadException
 from nsj_gcf_utils.rest_error_util import format_json_error
 
-from nsj_rest_lib.controller.controller_util import DEFAULT_RESP_HEADERS
+from nsj_rest_lib.controller.controller_util import (
+    DEFAULT_RESP_HEADERS,
+    map_db_exception_to_http,
+)
 from nsj_rest_lib.controller.route_base import RouteBase
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.dto.queued_data_dto import QueuedDataDTO
@@ -59,7 +63,16 @@ class PatchRoute(RouteBase):
         **kwargs: ty.Any,
     ):
         """
-        Tratando requisições HTTP Put para inserir uma instância de uma entidade.
+        Processa requisicao HTTP PATCH para atualizacao parcial de entidade.
+
+        Args:
+            id: Identificador da entidade (URL).
+            query_args: Query params no modo ERP SQL.
+            body: Corpo da requisicao no modo ERP SQL.
+            **kwargs: Filtros adicionais injetados pela rota/framework.
+
+        Returns:
+            Tupla Flask (body, status_code, headers).
         """
 
         try:
@@ -168,6 +181,16 @@ class PatchRoute(RouteBase):
                 return self._handle_exception(e)
             else:
                 return (format_json_error(e), 404, {**DEFAULT_RESP_HEADERS})
+        except (IntegrityError, ProgrammingError) as e:
+            # Converte erros de persistencia do banco para resposta HTTP coerente.
+            get_logger().warning(e)
+            mapped = map_db_exception_to_http(e)
+            if mapped is None:
+                raise
+            status_code, message = mapped
+            if self._handle_exception is not None:
+                return self._handle_exception(e)
+            return (format_json_error(message), status_code, {**DEFAULT_RESP_HEADERS})
         except Exception as e:
             get_logger().exception(e)
             if self._handle_exception is not None:
