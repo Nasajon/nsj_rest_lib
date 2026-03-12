@@ -17,5 +17,6 @@ py_library(
         "@pip//opentelemetry_exporter_otlp",
         "@pip//pyyaml",
         "//platform/libs/nsj_gcf_utils:nsj_gcf_utils",
+        "//platform/libs/nsj-audit-lib:nsj-audit-lib",
     ],
 )

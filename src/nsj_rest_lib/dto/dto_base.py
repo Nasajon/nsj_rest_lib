@@ -214,14 +214,23 @@ class DTOBase(abc.ABC, DTOAuditavel):
 
         for oto_key, oto_field in self.__class__.one_to_one_fields_map.items():
             field = oto_field.entity_field
-            if field not in kwargs or kwargs[field] is None:
+
+            # Entrada vinda da API: prefere o nome do DTO (ex.: "ativo_ti").
+            # Entrada vinda de entity/kwargs_as_entity: aceita o campo fisico
+            # correspondente (ex.: "id_ativo_ti").
+            if oto_key in kwargs:
+                oto_value = kwargs[oto_key]
+            elif field in kwargs:
+                oto_value = kwargs[field]
+            else:
+                oto_value = None
+
+            if oto_value is None:
                 setattr(self, oto_key, None)
                 continue
-            if not isinstance(kwargs[field], (dict, oto_field.expected_type)):
-                set_field(oto_field.field, oto_key)
-                continue
 
-            setattr(self, oto_key, kwargs[field])
+            # Delega toda a validacao/conversao ao descriptor.
+            setattr(self, oto_key, oto_value)
             pass
 
         for k, v in self.__class__.aggregator_fields_map.items():
