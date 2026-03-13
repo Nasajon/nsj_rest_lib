@@ -594,9 +594,6 @@ class DTO:
             child_dto.integrity_check_fields_map[key_in_child] = attr
             pass
 
-        # Setting fixed filters
-        setattr(cls, "fixed_filters", self._fixed_filters)
-
         # Setting tipo de Conjunto
         setattr(cls, "conjunto_type", self._conjunto_type)
         setattr(cls, "conjunto_field", self._conjunto_field)
@@ -607,7 +604,19 @@ class DTO:
         # Checking data_override properties exists as DTOFields
         self._validate_data_override_properties(cls)
 
+        # Setting fixed filters (inherit from partial parent when applicable; child overrides in conflict)
+        effective_fixed_filters = self._fixed_filters
+
         if partial_parent_dto is not None:
+            parent_fixed_filters = getattr(partial_parent_dto, "fixed_filters", None)
+            if parent_fixed_filters:
+                if effective_fixed_filters is None:
+                    effective_fixed_filters = copy.deepcopy(parent_fixed_filters)
+                else:
+                    merged = copy.deepcopy(parent_fixed_filters)
+                    merged.update(effective_fixed_filters)
+                    effective_fixed_filters = merged
+
             partial_extension_fields = {
                 field_name
                 for field_name in getattr(cls, "fields_map").keys()
@@ -627,6 +636,9 @@ class DTO:
             )
         else:
             setattr(cls, "partial_dto_config", None)
+
+        # Setting fixed filters
+        setattr(cls, "fixed_filters", effective_fixed_filters)
 
         for operation in ("insert", "update", "get", "list", "delete"):
             self._build_function_field_lookup(cls, operation=operation)
