@@ -181,7 +181,10 @@ class GetRoute(RouteBase):
             )
 
             headers: ty.Dict[str, str] = {**DEFAULT_RESP_HEADERS}
-            RouteBase.add_etag_header_if_needed(headers, data)
+            if isinstance(data, DTOBase):
+                # NOTE: data will not be a DTO if custom_json_response is set
+                RouteBase.add_etag_header_if_needed(headers, data)
+                pass
 
             if self.custom_json_response and self._get_function_name is not None:
                 return (json_dumps(data), 200, headers)
