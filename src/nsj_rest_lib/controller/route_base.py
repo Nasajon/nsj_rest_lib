@@ -456,7 +456,7 @@ class RouteBase:
         '2024-01-01T00:00:00'
         """
         etag_value: str = ""
-        for f in dto.etag_fields:
+        for f in sorted(dto.etag_fields):
             etag_value += str(getattr(dto, f, None))
             pass
         if dto.etag_type == "HASH":
