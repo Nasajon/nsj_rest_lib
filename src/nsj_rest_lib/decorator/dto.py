@@ -2,7 +2,7 @@ import uuid
 import copy
 import functools
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Set, Type
+from typing import Any, Dict, Optional, Set, Type, Union, Literal
 
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
@@ -36,6 +36,10 @@ class DTO:
         conjunto_field: str = None,
         filter_aliases: Dict[str, Any] = None,
         data_override: dict[str, list[str]] = None,
+        etag_fields: Union[bool, Set[str]] = True,
+        etag_type: Union[
+            Literal["RAW"], Literal["DATE"], Literal["HASH"]
+        ] = "HASH",
         partial_of: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
@@ -114,6 +118,8 @@ class DTO:
         self._conjunto_field = conjunto_field
         self._filter_aliases = filter_aliases
         self._partial_of_config = partial_of
+        self._etag_fields = etag_fields
+        self._etag_type = etag_type
 
         # Validando os parâmetros de data_override
         self._validate_data_override(data_override)
@@ -267,6 +273,9 @@ class DTO:
         # Criando a propriedade "metric_fields" na classe "cls", se necessário
         self._check_class_attribute(cls, "metric_fields", set())
 
+        # Criando a propriedade "etag_fields" na classe "cls", se necessário
+        self._check_class_attribute(cls, "etag_fields", set())
+
         # Criando a propriedade "data_override_group"
         self._check_class_attribute(
             cls, "data_override_group", self._data_override_group
@@ -369,9 +378,8 @@ class DTO:
 
                 # Checking if it is a resume field (to store)
                 if attr.resume:
-                    resume_fields = getattr(cls, "resume_fields")
-                    if key not in resume_fields:
-                        resume_fields.add(key)
+                    cls.resume_fields.add(key)
+                    pass
 
                 # TODO Refatorar para suportar PKs compostas
                 # Setting PK info
@@ -560,6 +568,23 @@ class DTO:
                     cls.partition_fields.add(key)
                     pass
                 pass
+
+        if self._etag_fields is not False:
+            if self._etag_type == "DATE":
+                assert (
+                    isinstance(self._etag_fields, set)
+                    and len(self._etag_fields) == 1
+                ), ("When etag_type is 'DATE' the etag_fields must have"
+                    " only one field")
+            else:
+                cls.etag_fields.update(cls.resume_fields)
+                pass
+            if isinstance(self._etag_fields, set):
+                cls.etag_fields.update(self._etag_fields)
+                pass
+            cls.etag_type = self._etag_type
+            pass
+
 
         for k, v in cls.list_fields_map.items():
             # TODO: Check if child already has a field with same name
