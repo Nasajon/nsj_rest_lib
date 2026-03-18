@@ -221,6 +221,9 @@ class RouteBase:
                 while i < header_size:
                     if header[i] == '\\':
                         i += 1
+                        if i >= header_size:
+                            # NOTE: Checking if header ends with '\'
+                            break
                         buf.append(header[i])
                         i += 1
                         continue
