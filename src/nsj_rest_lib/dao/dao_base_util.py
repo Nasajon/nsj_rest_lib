@@ -186,14 +186,16 @@ class DAOBaseUtil:
                 )
 
                 multiple_values = len(filters[filter_field]) > 1 or (
-                    isinstance(condiction.value, set) and len(condiction.value) > 1
+                    isinstance(condiction.value, set) and len(
+                        condiction.value) > 1
                 )
 
                 # Storing field filter where
                 if operator == "=" and multiple_values:
                     field_filter_where_in.append(condiction_alias_subtituir)
                 elif operator == "<>" and multiple_values:
-                    field_filter_where_not_in.append(condiction_alias_subtituir)
+                    field_filter_where_not_in.append(
+                        condiction_alias_subtituir)
                 elif operator == "=" or operator == "like" or operator == "ilike":
                     field_filter_where_or.append(condiction_buffer)
                 elif operator == "in":
@@ -291,9 +293,18 @@ class DAOBaseUtil:
         for join_aux in joins_aux:
             # Ajustando os fields
             if join_aux.fields:
-                fields_sql = self._sql_fields(
-                    fields=join_aux.fields, table_alias=join_aux.alias
-                )
+                # NOTE: For partial extensions (Entity.partial_of / DTO.partial_of),
+                # we need selected column names to match entity field names
+                # (e.g. `id_tipo_contratacao`). The default aliasing strategy would
+                # generate `partial_join_id_tipo_contratacao`, which does not map.
+                if join_aux.alias == PARTIAL_JOIN_ALIAS:
+                    fields_sql = ", ".join(
+                        f"{join_aux.alias}.{field}" for field in join_aux.fields
+                    )
+                else:
+                    fields_sql = self._sql_fields(
+                        fields=join_aux.fields, table_alias=join_aux.alias
+                    )
 
                 # Adicionando os fields no SQL geral
                 sql_join_fields = f"{sql_join_fields},\n{fields_sql}"
