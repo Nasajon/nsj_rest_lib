@@ -245,6 +245,14 @@ class PostRoute(RouteBase):
             if self._handle_exception is not None:
                 return self._handle_exception(e)
             else:
+                details = getattr(e, "details", None)
+                status_code = int(getattr(e, "status_code", 400) or 400)
+                if details is not None:
+                    return (
+                        json_dumps({"error": str(e), "details": details}),
+                        status_code,
+                        {**DEFAULT_RESP_HEADERS},
+                    )
                 return (format_json_error(e), 400, {**DEFAULT_RESP_HEADERS})
         except ConflictException as e:
             get_logger().warning(e)
@@ -271,3 +279,4 @@ class PostRoute(RouteBase):
                     500,
                     {**DEFAULT_RESP_HEADERS},
                 )
+
