@@ -5,6 +5,7 @@ import typing as ty
 from typing import Any, Dict, List, Set, Tuple
 
 from nsj_rest_lib.descriptor.dto_field import DTOFieldFilter
+from nsj_rest_lib.descriptor.dto_left_join_field import EntityRelationOwner
 from nsj_rest_lib.descriptor.filter_operator import FilterOperator
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
@@ -16,6 +17,13 @@ from nsj_rest_lib.validator.validate_data import validate_uuid
 
 
 class ServiceBaseUtil:
+    @staticmethod
+    def _build_one_to_one_filter_alias(field_name: str) -> str:
+        safe_name = "".join(
+            character if character.isalnum() or character == "_" else "_"
+            for character in str(field_name)
+        )
+        return f"oto_{safe_name}"
 
     def _resolve_field_key(
         self,
@@ -186,9 +194,13 @@ class ServiceBaseUtil:
                 is_entity_filter = False
                 is_conjunto_filter = False
                 is_sql_join_filter = False
+                is_one_to_one_filter = False
                 is_length_filter = False
                 dto_field = None
                 dto_sql_join_field = None
+                dto_one_to_one_field = None
+                one_to_one_dto_class = None
+                one_to_one_entity_class = None
                 table_alias = None
                 is_partial_extension_field = False
 
@@ -330,6 +342,40 @@ class ServiceBaseUtil:
                             is_partial_extension_field = True
                             pass
                         pass
+                    elif left_part in self._dto_class.one_to_one_fields_map:
+                        dto_one_to_one_field = self._dto_class.one_to_one_fields_map[
+                            left_part
+                        ]
+                        if (
+                            dto_one_to_one_field.entity_relation_owner
+                            != EntityRelationOwner.SELF
+                        ):
+                            continue
+
+                        is_one_to_one_filter = True
+                        one_to_one_dto_class = dto_one_to_one_field.expected_type
+                        one_to_one_entity_class = dto_one_to_one_field.entity_type
+                        table_alias = self._build_one_to_one_filter_alias(left_part)
+
+                        if right_part in one_to_one_dto_class.field_filters_map:
+                            field_filter = one_to_one_dto_class.field_filters_map[
+                                right_part
+                            ]
+                            aux = field_filter.field_name
+                            dto_field = one_to_one_dto_class.fields_map[aux]
+                            is_length_filter = field_filter.operator in [
+                                FilterOperator.LENGTH_GREATER_OR_EQUAL_THAN,
+                                FilterOperator.LENGTH_LESS_OR_EQUAL_THAN,
+                            ]
+                        elif right_part in one_to_one_dto_class.fields_map:
+                            field_filter = DTOFieldFilter(right_part)
+                            field_filter.set_field_name(right_part)
+                            dto_field = one_to_one_dto_class.fields_map[right_part]
+                        elif right_part in one_to_one_entity_class().__dict__:
+                            is_entity_filter = True
+                            filter = right_part
+                        else:
+                            continue
 
                 # TODO Refatorar para usar um mapa de fields do entity
                 elif filter in self._entity_class().__dict__:
@@ -344,9 +390,15 @@ class ServiceBaseUtil:
                     not is_entity_filter
                     and not is_conjunto_filter
                     and not is_sql_join_filter
+                    and not is_one_to_one_filter
                 ):
                     entity_field_name = self._convert_to_entity_field(
                         field_filter.field_name
+                    )
+                elif is_one_to_one_filter and not is_entity_filter:
+                    entity_field_name = self._convert_to_entity_field(
+                        field_filter.field_name,
+                        dto_class=one_to_one_dto_class,
                     )
                 elif is_sql_join_filter:
                     # TODO Verificar se precisa de um if dto_sql_join_field.related_dto_field in dto_sql_join_field.dto_type.fields_map
@@ -368,11 +420,15 @@ class ServiceBaseUtil:
                     if is_sql_join_filter:
                         aux_dto_class = dto_sql_join_field.dto_type
                         aux_entity_class = dto_sql_join_field.entity_type
+                    elif is_one_to_one_filter:
+                        aux_dto_class = one_to_one_dto_class
+                        aux_entity_class = one_to_one_entity_class
 
                     # Convertendo os valores para o formato esperado no entity
                     if (
                         not is_entity_filter
                         and not is_sql_join_filter
+                        and not is_one_to_one_filter
                         and not is_length_filter
                     ):
                         converted_values = aux_dto_class.custom_convert_value_to_entity(
@@ -391,6 +447,22 @@ class ServiceBaseUtil:
                             )
                             converted_values = {entity_field_name: value}
 
+                    elif not is_entity_filter and is_one_to_one_filter and not is_length_filter:
+                        converted_values = aux_dto_class.custom_convert_value_to_entity(
+                            value,
+                            dto_field,
+                            entity_field_name,
+                            False,
+                            aux_filters,
+                        )
+                        if len(converted_values) <= 0:
+                            value = aux_dto_class.convert_value_to_entity(
+                                value,
+                                dto_field,
+                                False,
+                                aux_entity_class,
+                            )
+                            converted_values = {entity_field_name: value}
                     else:
                         converted_values = {entity_field_name: value}
 
@@ -402,6 +474,7 @@ class ServiceBaseUtil:
                             not is_entity_filter
                             and not is_conjunto_filter
                             and not is_sql_join_filter
+                            and not is_one_to_one_filter
                         ):
                             alias = None
                             if is_partial_extension_field:
@@ -411,7 +484,7 @@ class ServiceBaseUtil:
                             entity_filter = Filter(
                                 field_filter.operator, converted_value, alias
                             )
-                        elif is_sql_join_filter:
+                        elif is_sql_join_filter or is_one_to_one_filter:
                             entity_filter = Filter(
                                 field_filter.operator, converted_value, table_alias
                             )

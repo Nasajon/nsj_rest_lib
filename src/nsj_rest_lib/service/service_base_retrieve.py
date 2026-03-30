@@ -303,6 +303,34 @@ class ServiceBaseRetrieve(ServiceBasePartialOf):
 
             joins_aux.append(join_aux)
 
+        for field_name, oto_field in self._dto_class.one_to_one_fields_map.items():
+            if oto_field.entity_relation_owner != EntityRelationOwner.SELF:
+                continue
+
+            alias = self._build_one_to_one_filter_alias(field_name)
+            join_required = False
+            if entity_filters is not None:
+                for filter_list in entity_filters.values():
+                    for condiction in filter_list:
+                        if condiction.table_alias == alias:
+                            join_required = True
+                            break
+                    if join_required:
+                        break
+
+            if not join_required:
+                continue
+
+            join_aux = JoinAux()
+            other_entity = oto_field.entity_type()
+            join_aux.table = other_entity.get_table_name()
+            join_aux.type = "inner"
+            join_aux.alias = alias
+            join_aux.fields = []
+            join_aux.self_field = oto_field.entity_field
+            join_aux.other_field = oto_field.relation_field
+            joins_aux.append(join_aux)
+
         partial_config = getattr(self._dto_class, "partial_dto_config", None)
         partial_entity_config = getattr(
             self._entity_class, "partial_entity_config", None
