@@ -99,14 +99,20 @@ class TypeValidatorUtil:
         elif obj.expected_type is relativedelta and isinstance(value, str):
             match_time = matcher_duration.search(value)
             if match_time:
-                day, mon, yea, hor, min, sec = match_time.groups()
+                yea, mon, day, hor, min, sec = match_time.groups()
+
+                seconds = float(sec) if sec else 0.0
+                seconds_int = int(seconds)
+                microseconds = int(round((seconds - seconds_int) * 1000000))
+
                 value = relativedelta(
                     days=int(day) if day else 0,
                     months=int(mon) if mon else 0,
                     years=int(yea) if yea else 0,
                     hours=int(hor) if hor else 0,
                     minutes=int(min) if min else 0,
-                    seconds=int(sec) if sec else 0,
+                    seconds=seconds_int,
+                    microseconds=microseconds,
                 )
             else:
                 erro_tipo = True
@@ -151,7 +157,8 @@ class TypeValidatorUtil:
         ):
             # Datetime
             # Assumindo hora 0, minuto 0 e segundo 0 (quanto é recebida uma data para campo data + hora)
-            value = datetime.datetime(value.year, value.month, value.day, 0, 0, 0)
+            value = datetime.datetime(
+                value.year, value.month, value.day, 0, 0, 0)
         elif obj.expected_type is datetime.date and isinstance(
             value, datetime.datetime
         ):
