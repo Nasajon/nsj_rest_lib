@@ -93,17 +93,9 @@ class DAOBaseUtil:
             return f"{safe_alias}_{safe_column}"
         return safe_column
 
-    def _make_filters_sql(
+    def _make_plain_filters_sql(
         self, filters: Dict[str, List[Filter]], with_and: bool = True
     ) -> Tuple[str, Dict[str, Any]]:
-        """
-        Interpreta os filtros, retornando uma tupla com formato (filters_where, filter_values_map), onde
-        filters_where: Parte do SQL, a ser adicionada na cláusula where, para realização dos filtros
-        filter_values_map: Dicionário com os valores dos filtros, a serem enviados na excução da query
-
-        Se receber o parâmetro filters nulo ou vazio, retorna ('', {}).
-        """
-
         filters_where = ""
         filter_values_map = {}
 
@@ -278,6 +270,85 @@ class DAOBaseUtil:
 
         # Formating all filters (with AND)
         filters_where = "\n and ".join(filters_where)
+
+        if filters_where.strip() != "" and with_and:
+            filters_where = f"and {filters_where}"
+
+        return (filters_where, filter_values_map)
+
+    def _make_filters_sql(
+        self, filters: Dict[str, List[Filter]], with_and: bool = True
+    ) -> Tuple[str, Dict[str, Any]]:
+        """
+        Interpreta os filtros, retornando uma tupla com formato (filters_where, filter_values_map), onde
+        filters_where: Parte do SQL, a ser adicionada na cláusula where, para realização dos filtros
+        filter_values_map: Dicionário com os valores dos filtros, a serem enviados na excução da query
+
+        Se receber o parâmetro filters nulo ou vazio, retorna ('', {}).
+        """
+
+        filters_where = ""
+        filter_values_map = {}
+
+        if filters is None:
+            return (filters_where, filter_values_map)
+
+        plain_filters: Dict[str, List[Filter]] = {}
+        relation_filters: Dict[
+            Tuple[str, str, str, str], Dict[str, List[Filter]]
+        ] = {}
+
+        for filter_field, filter_list in filters.items():
+            for condiction in filter_list:
+                if condiction.relation_mode == "exists":
+                    relation_key = (
+                        condiction.table_alias or "t0",
+                        condiction.relation_table,
+                        condiction.relation_parent_field,
+                        condiction.relation_child_field,
+                    )
+                    relation_group = relation_filters.setdefault(relation_key, {})
+                    relation_group.setdefault(filter_field, []).append(condiction)
+                else:
+                    plain_filters.setdefault(filter_field, []).append(condiction)
+
+        filters_where_parts: List[str] = []
+
+        plain_where, plain_values_map = self._make_plain_filters_sql(
+            plain_filters if plain_filters else None,
+            with_and=False,
+        )
+        if plain_where.strip() != "":
+            filters_where_parts.append(plain_where)
+        filter_values_map.update(plain_values_map)
+
+        for (
+            relation_alias,
+            relation_table,
+            relation_parent_field,
+            relation_child_field,
+        ), relation_group in relation_filters.items():
+            relation_where, relation_values = self._make_plain_filters_sql(
+                relation_group,
+                with_and=False,
+            )
+            filter_values_map.update(relation_values)
+
+            if relation_where.strip() == "":
+                continue
+
+            exists_sql = f"""
+exists (
+    select 1
+    from {relation_table} as {relation_alias}
+    where {relation_alias}.{relation_child_field} = t0.{relation_parent_field}
+      and {relation_where}
+)""".strip()
+            filters_where_parts.append(exists_sql)
+
+        filters_where = "\n and ".join(
+            part for part in filters_where_parts if part.strip() != ""
+        )
 
         if filters_where.strip() != "" and with_and:
             filters_where = f"and {filters_where}"

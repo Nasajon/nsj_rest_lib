@@ -25,6 +25,14 @@ class ServiceBaseUtil:
         )
         return f"oto_{safe_name}"
 
+    @staticmethod
+    def _build_list_filter_alias(field_name: str) -> str:
+        safe_name = "".join(
+            character if character.isalnum() or character == "_" else "_"
+            for character in str(field_name)
+        )
+        return f"lst_{safe_name}"
+
     def _resolve_field_key(
         self,
         id_value: Any,
@@ -195,12 +203,18 @@ class ServiceBaseUtil:
                 is_conjunto_filter = False
                 is_sql_join_filter = False
                 is_one_to_one_filter = False
+                is_list_filter = False
                 is_length_filter = False
                 dto_field = None
                 dto_sql_join_field = None
                 dto_one_to_one_field = None
+                dto_list_field = None
                 one_to_one_dto_class = None
                 one_to_one_entity_class = None
+                list_dto_class = None
+                list_entity_class = None
+                relation_parent_field = None
+                relation_child_field = None
                 table_alias = None
                 is_partial_extension_field = False
 
@@ -376,6 +390,50 @@ class ServiceBaseUtil:
                             filter = right_part
                         else:
                             continue
+                    elif left_part in self._dto_class.list_fields_map:
+                        dto_list_field = self._dto_class.list_fields_map[left_part]
+                        if (
+                            dto_list_field.service_name is not None
+                            or dto_list_field.entity_type is None
+                        ):
+                            continue
+
+                        is_list_filter = True
+                        list_dto_class = dto_list_field.dto_type
+                        list_entity_class = dto_list_field.entity_type
+                        table_alias = self._build_list_filter_alias(left_part)
+
+                        relation_key_field = (
+                            dto_list_field.relation_key_field
+                            or self._dto_class.pk_field
+                        )
+                        if relation_key_field is None:
+                            continue
+
+                        relation_parent_field = self._convert_to_entity_field(
+                            relation_key_field
+                        )
+                        relation_child_field = dto_list_field.related_entity_field
+
+                        if right_part in list_dto_class.field_filters_map:
+                            field_filter = list_dto_class.field_filters_map[
+                                right_part
+                            ]
+                            aux = field_filter.field_name
+                            dto_field = list_dto_class.fields_map[aux]
+                            is_length_filter = field_filter.operator in [
+                                FilterOperator.LENGTH_GREATER_OR_EQUAL_THAN,
+                                FilterOperator.LENGTH_LESS_OR_EQUAL_THAN,
+                            ]
+                        elif right_part in list_dto_class.fields_map:
+                            field_filter = DTOFieldFilter(right_part)
+                            field_filter.set_field_name(right_part)
+                            dto_field = list_dto_class.fields_map[right_part]
+                        elif right_part in list_entity_class().__dict__:
+                            is_entity_filter = True
+                            filter = right_part
+                        else:
+                            continue
 
                 # TODO Refatorar para usar um mapa de fields do entity
                 elif filter in self._entity_class().__dict__:
@@ -391,6 +449,7 @@ class ServiceBaseUtil:
                     and not is_conjunto_filter
                     and not is_sql_join_filter
                     and not is_one_to_one_filter
+                    and not is_list_filter
                 ):
                     entity_field_name = self._convert_to_entity_field(
                         field_filter.field_name
@@ -399,6 +458,11 @@ class ServiceBaseUtil:
                     entity_field_name = self._convert_to_entity_field(
                         field_filter.field_name,
                         dto_class=one_to_one_dto_class,
+                    )
+                elif is_list_filter and not is_entity_filter:
+                    entity_field_name = self._convert_to_entity_field(
+                        field_filter.field_name,
+                        dto_class=list_dto_class,
                     )
                 elif is_sql_join_filter:
                     # TODO Verificar se precisa de um if dto_sql_join_field.related_dto_field in dto_sql_join_field.dto_type.fields_map
@@ -423,12 +487,16 @@ class ServiceBaseUtil:
                     elif is_one_to_one_filter:
                         aux_dto_class = one_to_one_dto_class
                         aux_entity_class = one_to_one_entity_class
+                    elif is_list_filter:
+                        aux_dto_class = list_dto_class
+                        aux_entity_class = list_entity_class
 
                     # Convertendo os valores para o formato esperado no entity
                     if (
                         not is_entity_filter
                         and not is_sql_join_filter
                         and not is_one_to_one_filter
+                        and not is_list_filter
                         and not is_length_filter
                     ):
                         converted_values = aux_dto_class.custom_convert_value_to_entity(
@@ -447,7 +515,11 @@ class ServiceBaseUtil:
                             )
                             converted_values = {entity_field_name: value}
 
-                    elif not is_entity_filter and is_one_to_one_filter and not is_length_filter:
+                    elif (
+                        not is_entity_filter
+                        and (is_one_to_one_filter or is_list_filter)
+                        and not is_length_filter
+                    ):
                         converted_values = aux_dto_class.custom_convert_value_to_entity(
                             value,
                             dto_field,
@@ -475,6 +547,7 @@ class ServiceBaseUtil:
                             and not is_conjunto_filter
                             and not is_sql_join_filter
                             and not is_one_to_one_filter
+                            and not is_list_filter
                         ):
                             alias = None
                             if is_partial_extension_field:
@@ -483,6 +556,16 @@ class ServiceBaseUtil:
                                     alias = None
                             entity_filter = Filter(
                                 field_filter.operator, converted_value, alias
+                            )
+                        elif is_list_filter:
+                            entity_filter = Filter(
+                                field_filter.operator,
+                                converted_value,
+                                table_alias,
+                                relation_mode="exists",
+                                relation_table=list_entity_class().get_table_name(),
+                                relation_parent_field=relation_parent_field,
+                                relation_child_field=relation_child_field,
                             )
                         elif is_sql_join_filter or is_one_to_one_filter:
                             entity_filter = Filter(

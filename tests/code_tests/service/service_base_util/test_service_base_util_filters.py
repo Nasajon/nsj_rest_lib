@@ -7,6 +7,7 @@ from nsj_rest_lib.decorator.dto import DTO
 from nsj_rest_lib.decorator.entity import Entity
 from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
 from nsj_rest_lib.descriptor.dto_field import DTOField
+from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_one_to_one_field import (
     DTOOneToOneField,
     OTORelationType,
@@ -58,6 +59,21 @@ class WorkerEntity(EntityBase):
     funcao_id: int = None
 
 
+@Entity(table_name="dependent", pk_field="id", default_order_fields=["id"])
+class DependentEntity(EntityBase):
+    id: int = None
+    worker_id: int = None
+    codigo: str = None
+    status: str = None
+
+
+@DTO()
+class DependentDTO(DTOBase):
+    id: int = DTOField(pk=True)
+    codigo: str = DTOField()
+    status: str = DTOField()
+
+
 @DTO()
 class WorkerDTO(DTOBase):
     id: int = DTOField(pk=True)
@@ -70,6 +86,11 @@ class WorkerDTO(DTOBase):
         entity_type=JobLevelEntity,
         relation_type=OTORelationType.AGGREGATION,
         entity_field="funcao_id",
+    )
+    dependentes: list[DependentDTO] = DTOListField(
+        dto_type=DependentDTO,
+        entity_type=DependentEntity,
+        related_entity_field="worker_id",
     )
 
 
@@ -131,6 +152,82 @@ def test_resolve_sql_join_fields_adds_join_for_one_to_one_filter():
     assert join_aux.fields == []
     assert join_aux.self_field == "cargo_id"
     assert join_aux.other_field == "id"
+
+
+def test_entity_filters_accept_dot_notation_for_list_field():
+    service = _build_worker_service()
+    filters = service._create_entity_filters({"dependentes.codigo": "DEP001"})
+
+    assert "codigo" in filters
+    entity_filter = filters["codigo"][0]
+    assert entity_filter.operator == FilterOperator.EQUALS
+    assert entity_filter.value == "DEP001"
+    assert entity_filter.table_alias == "lst_dependentes"
+    assert entity_filter.relation_mode == "exists"
+    assert entity_filter.relation_table == "dependent"
+    assert entity_filter.relation_parent_field == "id"
+    assert entity_filter.relation_child_field == "worker_id"
+
+
+def test_make_filters_sql_builds_exists_clause_for_list_relation():
+    dao_util = DAOBaseUtil(db=Mock(), entity_class=WorkerEntity)
+    filters = {
+        "codigo": [
+            Filter(
+                FilterOperator.EQUALS,
+                "DEP001",
+                "lst_dependentes",
+                relation_mode="exists",
+                relation_table="dependent",
+                relation_parent_field="id",
+                relation_child_field="worker_id",
+            )
+        ]
+    }
+
+    sql, params = dao_util._make_filters_sql(filters)
+
+    assert "exists (" in sql
+    assert "from dependent as lst_dependentes" in sql
+    assert "lst_dependentes.worker_id = t0.id" in sql
+    assert "lst_dependentes.codigo = :ft_equals_lst_dependentes_codigo_0" in sql
+    assert params["ft_equals_lst_dependentes_codigo_0"] == "DEP001"
+
+
+def test_make_filters_sql_groups_list_relation_filters_in_single_exists():
+    dao_util = DAOBaseUtil(db=Mock(), entity_class=WorkerEntity)
+    filters = {
+        "codigo": [
+            Filter(
+                FilterOperator.EQUALS,
+                "DEP001",
+                "lst_dependentes",
+                relation_mode="exists",
+                relation_table="dependent",
+                relation_parent_field="id",
+                relation_child_field="worker_id",
+            )
+        ],
+        "status": [
+            Filter(
+                FilterOperator.EQUALS,
+                "ativo",
+                "lst_dependentes",
+                relation_mode="exists",
+                relation_table="dependent",
+                relation_parent_field="id",
+                relation_child_field="worker_id",
+            )
+        ],
+    }
+
+    sql, params = dao_util._make_filters_sql(filters)
+
+    assert sql.count("exists (") == 1
+    assert "lst_dependentes.codigo = :ft_equals_lst_dependentes_codigo_0" in sql
+    assert "lst_dependentes.status = :ft_equals_lst_dependentes_status_0" in sql
+    assert params["ft_equals_lst_dependentes_codigo_0"] == "DEP001"
+    assert params["ft_equals_lst_dependentes_status_0"] == "ativo"
 
 
 def test_make_filters_sql_keeps_alias_groups_separated():
