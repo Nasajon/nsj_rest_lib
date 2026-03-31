@@ -126,16 +126,19 @@ class ServiceBaseSaveByFunction:
             )
 
         insert_object = function_type_class()
-        dto_values = dto.__dict__
-
         for function_field_name, (dto_field_name, descriptor) in mapping.items():
-            if not hasattr(dto, dto_field_name):
+            field_exists, field_value, field_owner = self._resolve_dto_field_value(
+                dto,
+                dto_field_name,
+            )
+
+            if not field_exists:
                 raise ValueError(
                     f"DTO '{dto.__class__.__name__}' não possui o campo '{dto_field_name}' utilizado em '{function_type_class.__name__}'."
                 )
 
-            field_value = getattr(dto, dto_field_name, None)
             value = coerce_enum_value(field_value)
+            dto_values = getattr(field_owner, "__dict__", dto.__dict__)
 
             convert_to_function = getattr(
                 descriptor, "convert_to_function", None)
@@ -173,6 +176,39 @@ class ServiceBaseSaveByFunction:
             setattr(insert_object, function_field_name, value)
 
         return insert_object
+
+    def _resolve_dto_field_value(
+        self,
+        dto: DTOBase,
+        dto_field_name: str,
+    ) -> tuple[bool, ty.Any, ty.Any]:
+        """
+        Resolves a DTO value, supporting dotted paths produced by FunctionType
+        mappings for aggregator fields (for example
+        `situacao_fiscal.indicador_inscricao_estadual`).
+
+        Returns a tuple `(field_exists, field_value, field_owner)` so callers
+        can keep using the descriptor owner's `__dict__` when invoking
+        `convert_to_function`.
+        """
+        field_path = dto_field_name.split(".")
+        current_value: ty.Any = dto
+        current_owner: ty.Any = dto
+
+        for index, field_name in enumerate(field_path):
+            if current_value is None:
+                return True, None, current_owner
+
+            if not hasattr(current_value, field_name):
+                return False, None, current_value
+
+            current_owner = current_value
+            current_value = getattr(current_value, field_name, None)
+
+            if current_value is None and index < len(field_path) - 1:
+                return True, None, current_owner
+
+        return True, current_value, current_owner
 
     def _build_function_relation_value(
         self,

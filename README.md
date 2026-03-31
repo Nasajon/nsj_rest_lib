@@ -168,6 +168,10 @@ E em torno na rota ficaria: `/pai/<id_pai>/filho/<id>`
 
 ## Histórico de versões
 
+### 6.4.1
+
+- Ajuste no mapeamento de `FunctionType` para suportar cadeias `partial_of`, campos aninhados em `DTOAggregator` e relacionamentos herdados que dependem do `related_type` declarado no próprio `FunctionType`.
+
 ### 6.4.0
 
 - Suporte a CNPJ alfanumérico.
@@ -278,4 +282,3 @@ E em torno na rota ficaria: `/pai/<id_pai>/filho/<id>`
 
 
 ## TODO
-
