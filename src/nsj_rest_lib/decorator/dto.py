@@ -339,24 +339,7 @@ class DTO:
                 getattr(partial_parent_dto, "fields_map", {}).keys()
             )
 
-            for key, attr in partial_parent_dto.__dict__.items():
-                if key in cls.__dict__:
-                    continue
-
-                if isinstance(
-                    attr,
-                    (
-                        DTOField,
-                        DTOListField,
-                        DTOLeftJoinField,
-                        DTOSQLJoinField,
-                        DTOObjectField,
-                        DTOAggregator,
-                    ),
-                ):
-                    setattr(cls, key, copy.deepcopy(attr))
-                    if isinstance(attr, DTOField):
-                        partial_parent_fields.add(key)
+            self._copy_partial_parent_descriptors(cls, partial_parent_dto)
 
         # Iterating for the class attributes
         for key, attr in cls.__dict__.items():
@@ -714,6 +697,43 @@ class DTO:
         if attr_name not in cls.__dict__:
             setattr(cls, attr_name, default_value)
 
+    def _copy_partial_parent_descriptors(
+        self,
+        cls: Type[DTOBase],
+        partial_parent_dto: Type[DTOBase],
+    ) -> None:
+        """
+        Copies descriptors from the partial parent using the parent's populated
+        descriptor maps instead of only `__dict__`.
+
+        This preserves fields inherited transitively by the parent (for example
+        partial_of -> partial_of chains), which would otherwise be invisible to
+        the child class decoration step.
+        """
+        complex_descriptor_names: Set[str] = set()
+        descriptor_maps = (
+            "one_to_one_fields_map",
+            "list_fields_map",
+            "left_join_fields_map",
+            "sql_join_fields_map",
+            "object_fields_map",
+            "aggregator_fields_map",
+        )
+
+        for descriptor_map_name in descriptor_maps:
+            for key, descriptor in getattr(
+                partial_parent_dto, descriptor_map_name, {}
+            ).items():
+                if key in cls.__dict__:
+                    continue
+                setattr(cls, key, copy.deepcopy(descriptor))
+                complex_descriptor_names.add(key)
+
+        for key, descriptor in getattr(partial_parent_dto, "fields_map", {}).items():
+            if key in cls.__dict__ or key in complex_descriptor_names:
+                continue
+            setattr(cls, key, copy.deepcopy(descriptor))
+
     def _build_function_field_lookup(self, cls: object, operation: str):
         lookup = {}
 
@@ -806,6 +826,21 @@ class DTO:
             if descriptor.get_function_type(operation) is None:
                 continue
             process_descriptor(field_name, descriptor)
+
+        for aggregator_name, aggregator_descriptor in getattr(
+            cls, "aggregator_fields_map"
+        ).items():
+            aggregator_dto = getattr(aggregator_descriptor, "expected_type", None)
+            if aggregator_dto is None:
+                continue
+
+            # FunctionType definitions flatten aggregator fields, so the lookup
+            # needs to expose dotted paths that can be resolved later while
+            # building the function payload.
+            for field_name, descriptor in getattr(
+                aggregator_dto, "fields_map", {}
+            ).items():
+                process_descriptor(f"{aggregator_name}.{field_name}", descriptor)
 
         setattr(cls, lookup_attr, lookup)
 

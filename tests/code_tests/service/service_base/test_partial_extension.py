@@ -2,9 +2,15 @@ from unittest.mock import Mock
 
 from nsj_rest_lib.decorator.dto import DTO
 from nsj_rest_lib.decorator.entity import Entity
+from nsj_rest_lib.decorator.update_function_type import UpdateFunctionType
+from nsj_rest_lib.descriptor.dto_aggregator import DTOAggregator
 from nsj_rest_lib.descriptor.dto_field import DTOField
+from nsj_rest_lib.descriptor.dto_list_field import DTOListField
+from nsj_rest_lib.descriptor.function_field import FunctionField
+from nsj_rest_lib.descriptor.function_relation_field import FunctionRelationField
 from nsj_rest_lib.dto.dto_base import DTOBase
 from nsj_rest_lib.entity.entity_base import EntityBase
+from nsj_rest_lib.entity.function_type_base import UpdateFunctionTypeBase
 from nsj_rest_lib.service.service_base import ServiceBase
 from nsj_rest_lib.exception import NotFoundException
 from nsj_rest_lib.settings import ENV_MULTIDB
@@ -49,6 +55,118 @@ class FarmacoDTO(DTOBase):
     id_produto: int = DTOField()
     registro_anvisa: str = DTOField()
     tenant: int = DTOField(partition_data=True)
+
+
+@DTO()
+class PessoaBaseDTO(DTOBase):
+    id: int = DTOField(pk=True)
+    indicador_inscricao_estadual: str = DTOField()
+
+
+@DTO(
+    partial_of={
+        "dto": PessoaBaseDTO,
+        "relation_field": "id_pessoa",
+        "related_entity_field": "id",
+    }
+)
+class TecnicoBaseDTO(DTOBase):
+    id_pessoa: int = DTOField()
+    tecnico_ativado: bool = DTOField()
+
+
+@DTO(
+    partial_of={
+        "dto": TecnicoBaseDTO,
+        "relation_field": "id_pessoa",
+        "related_entity_field": "id",
+    }
+)
+class ProfissionalChainDTO(DTOBase):
+    id_pessoa: int = DTOField()
+    foto: str = DTOField()
+
+
+@UpdateFunctionType(type_name="teste.t_profissional_chain_upd")
+class ProfissionalChainUpdateType(UpdateFunctionTypeBase):
+    indicador_inscricao_estadual: str = FunctionField()
+    tecnico_ativado: bool = FunctionField()
+    foto: str = FunctionField()
+
+
+@DTO()
+class SituacaoFiscalDTO(DTOBase):
+    indicador_inscricao_estadual: str = DTOField()
+    inscricao_estadual: str = DTOField()
+
+
+@DTO()
+class TecnicoWithAggregatorDTO(DTOBase):
+    id: int = DTOField(pk=True)
+    tecnico_ativado: bool = DTOField()
+    situacao_fiscal: SituacaoFiscalDTO = DTOAggregator(SituacaoFiscalDTO)
+
+
+@DTO(
+    partial_of={
+        "dto": TecnicoWithAggregatorDTO,
+        "relation_field": "id_pessoa",
+        "related_entity_field": "id",
+    }
+)
+class ProfissionalWithAggregatorDTO(DTOBase):
+    id_pessoa: int = DTOField()
+    foto: str = DTOField()
+
+
+@UpdateFunctionType(type_name="teste.t_profissional_aggregator_upd")
+class ProfissionalWithAggregatorUpdateType(UpdateFunctionTypeBase):
+    indicador_inscricao_estadual: str = FunctionField()
+    inscricao_estadual: str = FunctionField()
+    tecnico_ativado: bool = FunctionField()
+    foto: str = FunctionField()
+
+
+@DTO()
+class EnderecoBaseDTO(DTOBase):
+    logradouro: str = DTOField()
+    numero: str = DTOField()
+
+
+@DTO()
+class TecnicoWithInheritedRelationsDTO(DTOBase):
+    id: int = DTOField(pk=True)
+    tecnico_ativado: bool = DTOField()
+    enderecos: list[EnderecoBaseDTO] = DTOListField(
+        dto_type=EnderecoBaseDTO,
+        entity_type=ProdutoEntity,
+        related_entity_field="id_pessoa",
+    )
+
+
+@DTO(
+    partial_of={
+        "dto": TecnicoWithInheritedRelationsDTO,
+        "relation_field": "id_pessoa",
+        "related_entity_field": "id",
+    }
+)
+class ProfissionalWithInheritedRelationsDTO(DTOBase):
+    id_pessoa: int = DTOField()
+    foto: str = DTOField()
+
+
+@UpdateFunctionType(type_name="teste.t_endereco_relacao_upd")
+class EnderecoRelationUpdateType(UpdateFunctionTypeBase):
+    logradouro: str = FunctionField()
+    numero: str = FunctionField()
+
+
+@UpdateFunctionType(type_name="teste.t_profissional_relacao_upd")
+class ProfissionalWithInheritedRelationsUpdateType(UpdateFunctionTypeBase):
+    tecnico_ativado: bool = FunctionField()
+    foto: str = FunctionField()
+    enderecos: list[EnderecoRelationUpdateType] = FunctionRelationField()
 
 
 def build_service_with_mock():
@@ -196,3 +314,90 @@ def test_partial_patch_updates_only_provided_extension_fields():
     dao.update_partial_extension_record.assert_called_once()
     args_call, _ = dao.update_partial_extension_record.call_args
     assert args_call[3] == {"registro_anvisa": "PATCHED"}
+
+
+def test_partial_of_inherits_transitive_parent_fields_for_update_function_mapping():
+    class DummyDAO:
+        _db = None
+
+    service = ServiceBase(
+        None,
+        DummyDAO(),
+        ProfissionalChainDTO,
+        ProdutoEntity,
+        update_function_type_class=ProfissionalChainUpdateType,
+        update_function_name="teste.fn_profissional_chain_upd",
+    )
+
+    dto = ProfissionalChainDTO(
+        indicador_inscricao_estadual="ISENTO",
+        tecnico_ativado=True,
+        foto="avatar.png",
+    )
+
+    assert hasattr(dto, "indicador_inscricao_estadual")
+
+    update_object = service._build_update_function_type_object(dto)
+
+    assert update_object.indicador_inscricao_estadual == "ISENTO"
+    assert update_object.tecnico_ativado is True
+    assert update_object.foto == "avatar.png"
+
+
+def test_partial_of_maps_aggregator_fields_into_update_function_mapping():
+    class DummyDAO:
+        _db = None
+
+    service = ServiceBase(
+        None,
+        DummyDAO(),
+        ProfissionalWithAggregatorDTO,
+        ProdutoEntity,
+        update_function_type_class=ProfissionalWithAggregatorUpdateType,
+        update_function_name="teste.fn_profissional_aggregator_upd",
+    )
+
+    dto = ProfissionalWithAggregatorDTO(
+        tecnico_ativado=True,
+        foto="avatar.png",
+        situacao_fiscal={
+            "indicador_inscricao_estadual": "ISENTO",
+            "inscricao_estadual": "123",
+        },
+    )
+
+    update_object = service._build_update_function_type_object(dto)
+
+    assert update_object.indicador_inscricao_estadual == "ISENTO"
+    assert update_object.inscricao_estadual == "123"
+    assert update_object.tecnico_ativado is True
+    assert update_object.foto == "avatar.png"
+
+
+def test_partial_of_infers_relation_function_type_from_update_function():
+    class DummyDAO:
+        _db = None
+
+    service = ServiceBase(
+        None,
+        DummyDAO(),
+        ProfissionalWithInheritedRelationsDTO,
+        ProdutoEntity,
+        update_function_type_class=ProfissionalWithInheritedRelationsUpdateType,
+        update_function_name="teste.fn_profissional_relacao_upd",
+    )
+
+    dto = ProfissionalWithInheritedRelationsDTO(
+        tecnico_ativado=True,
+        foto="avatar.png",
+        enderecos=[{"logradouro": "Rua A", "numero": "10"}],
+    )
+
+    update_object = service._build_update_function_type_object(dto)
+
+    assert update_object.tecnico_ativado is True
+    assert update_object.foto == "avatar.png"
+    assert len(update_object.enderecos) == 1
+    assert isinstance(update_object.enderecos[0], EnderecoRelationUpdateType)
+    assert update_object.enderecos[0].logradouro == "Rua A"
+    assert update_object.enderecos[0].numero == "10"

@@ -1,4 +1,5 @@
 import abc
+import copy
 import typing as ty
 
 from nsj_rest_lib.descriptor.function_field import FunctionField
@@ -116,14 +117,87 @@ class FunctionTypeBase(abc.ABC):
         fields_map = getattr(cls, "fields_map", {})
         mapping: ty.Dict[str, ty.Tuple[str, ty.Any]] = {}
 
-        for field_name in fields_map.keys():
+        for field_name, function_descriptor in fields_map.items():
             if field_name not in lookup:
-                raise ValueError(
-                    f"O campo '{field_name}' do FunctionType '{cls.__name__}' não existe no DTO '{dto_class.__name__}'."
+                inferred_mapping = cls._infer_relation_mapping(
+                    dto_class,
+                    field_name,
+                    function_descriptor,
                 )
+                if inferred_mapping is None:
+                    raise ValueError(
+                        f"O campo '{field_name}' do FunctionType '{cls.__name__}' não existe no DTO '{dto_class.__name__}'."
+                    )
+                mapping[field_name] = inferred_mapping
+                continue
+
             mapping[field_name] = lookup[field_name]
 
         return mapping
+
+    @classmethod
+    def _infer_relation_mapping(
+        cls,
+        dto_class: ty.Type["DTOBase"],
+        field_name: str,
+        function_descriptor: FunctionField,
+    ) -> ty.Optional[ty.Tuple[str, ty.Any]]:
+        """
+        Rebuilds missing relation mappings when the DTO inherited the relation
+        descriptor but not the explicit insert/update FunctionType metadata.
+
+        This keeps FunctionType definitions as the source of truth for relation
+        payloads while remaining backward compatible with DTOs compiled from
+        partial extensions.
+        """
+        related_type = getattr(function_descriptor, "related_type", None)
+        if related_type is None:
+            return None
+
+        operation = cls._get_lookup_operation()
+        if operation not in {"insert", "update"}:
+            return None
+
+        for relation_map_name in (
+            "list_fields_map",
+            "object_fields_map",
+            "one_to_one_fields_map",
+        ):
+            relation_map = getattr(dto_class, relation_map_name, {}) or {}
+
+            for dto_field_name, descriptor in relation_map.items():
+                candidate_names = {dto_field_name}
+                get_function_field_name = getattr(
+                    descriptor,
+                    "get_function_field_name",
+                    None,
+                )
+                if callable(get_function_field_name):
+                    candidate_names.add(get_function_field_name(operation))
+
+                if field_name not in candidate_names:
+                    continue
+
+                inferred_descriptor = copy.deepcopy(descriptor)
+                if operation == "update":
+                    setattr(inferred_descriptor, "update_function_type", related_type)
+                else:
+                    setattr(inferred_descriptor, "insert_function_type", related_type)
+
+                return (dto_field_name, inferred_descriptor)
+
+        return None
+
+    @classmethod
+    def _get_lookup_operation(cls) -> ty.Optional[str]:
+        operation_by_lookup = {
+            "insert_function_field_lookup": "insert",
+            "update_function_field_lookup": "update",
+            "get_function_field_lookup": "get",
+            "list_function_field_lookup": "list",
+            "delete_function_field_lookup": "delete",
+        }
+        return operation_by_lookup.get(getattr(cls, "dto_lookup_attribute", ""))
 
 
 class InsertFunctionTypeBase(FunctionTypeBase):
