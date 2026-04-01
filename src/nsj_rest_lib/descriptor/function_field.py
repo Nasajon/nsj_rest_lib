@@ -3,6 +3,9 @@ class FunctionField:
     Descriptor responsável por representar um campo do type usado em funções no banco
     de dados (insert/update). Mantém metadados mínimos seguindo o mesmo padrão das
     demais declarações da biblioteca.
+
+    `binding_source` permite preencher o campo a partir de uma origem externa ao
+    DTO, como `args.<nome>` na query string da request atual.
     """
 
     _ref_counter = 0
@@ -12,11 +15,13 @@ class FunctionField:
         type_field_name: str | None = None,
         description: str = "",
         pk: bool = False,
+        binding_source: str | None = None,
     ):
         self.type_field_name = type_field_name
         self.description = description
         self.expected_type = None
         self.pk = pk
+        self.binding_source = binding_source
         self.name: str | None = None
 
         self.storage_name = (
@@ -40,3 +45,6 @@ class FunctionField:
         if self.type_field_name:
             return self.type_field_name
         return self.name
+
+    def get_binding_source(self) -> str | None:
+        return self.binding_source
