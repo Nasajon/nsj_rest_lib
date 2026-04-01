@@ -1,5 +1,7 @@
 import enum
+import uuid
 
+from flask import Flask
 from nsj_rest_lib.dao.dao_base_save_by_function import DAOBaseSaveByFunction
 from nsj_rest_lib.decorator.dto import DTO
 from nsj_rest_lib.decorator.entity import Entity
@@ -75,6 +77,12 @@ class AddressInsertType(InsertFunctionTypeBase):
     numero: str = FunctionField()
 
 
+@InsertFunctionType(type_name="teste.tendereco_alias")
+class AddressAliasInsertType(InsertFunctionTypeBase):
+    tipologradouro: str = FunctionField()
+    enderecopadrao: str = FunctionField()
+
+
 @InsertFunctionType(type_name="teste.tdocumento")
 class DocumentInsertType(InsertFunctionTypeBase):
     numero: str = FunctionField()
@@ -121,10 +129,34 @@ class CustomerWithRelationsUpdateType(UpdateFunctionTypeBase):
     documento_update: DocumentUpdateType = FunctionRelationField()
 
 
+@InsertFunctionType(type_name="teste.tendereco_null")
+class AddressInsertWithNullType(InsertFunctionTypeBase):
+    idpessoa: uuid.UUID = FunctionField(binding_source="literal:null")
+    rua: str = FunctionField()
+
+
+@InsertFunctionType(type_name="teste.tcliente_relacionado_null")
+class CustomerWithNullRelationInsertType(InsertFunctionTypeBase):
+    nome: str = FunctionField()
+    enderecos: list[AddressInsertWithNullType] = FunctionRelationField()
+
+
+@InsertFunctionType(type_name="teste.tcliente_relacionado_alias")
+class CustomerWithEntityFieldAliasInsertType(InsertFunctionTypeBase):
+    nome: str = FunctionField()
+    enderecos: list[AddressAliasInsertType] = FunctionRelationField()
+
+
 @DTO()
 class AddressDTO(DTOBase):
     rua: str = DTOField()
     numero: str = DTOField()
+
+
+@DTO()
+class AddressAliasDTO(DTOBase):
+    tipo_logradouro: str = DTOField(entity_field="tipologradouro")
+    padrao: str = DTOField(entity_field="enderecopadrao")
 
 
 @DTO()
@@ -156,6 +188,21 @@ class CustomerWithRelationsDTO(DTOBase):
         insert_function_type=DocumentInsertType,
         update_function_field="documento_update",
         update_function_type=DocumentUpdateType,
+    )
+
+
+@DTO()
+class CustomerWithEntityFieldAliasDTO(DTOBase):
+    id: int = DTOField(pk=True)
+    nome: str = DTOField()
+
+    enderecos: list[AddressAliasDTO] = DTOListField(
+        dto_type=AddressAliasDTO,
+        entity_type=DummyEntity,
+        related_entity_field="cliente_id",
+        relation_key_field="id",
+        insert_function_field="enderecos",
+        insert_function_type=AddressAliasInsertType,
     )
 
 
@@ -300,6 +347,88 @@ def test_build_update_function_type_object_with_relations():
     assert update_object.enderecos_update[0].rua == "Rua A"
     assert isinstance(update_object.documento_update, DocumentUpdateType)
     assert update_object.documento_update.numero == "123"
+
+
+@UpdateFunctionType(type_name="teste.tdummy_args_upd")
+class DummyArgsUpdateType(UpdateFunctionTypeBase):
+    valor_update: int = FunctionField()
+    grupo_empresarial: uuid.UUID = FunctionField(
+        binding_source="args.grupo_empresarial"
+    )
+
+
+def test_build_update_function_type_object_with_query_arg_binding():
+    app = Flask(__name__)
+    service = ServiceBase(
+        FakeInjector(),
+        DummyDAO(),
+        DummyDTO,
+        DummyEntity,
+        update_function_type_class=DummyArgsUpdateType,
+        update_function_name="teste.fn_dummy_args_upd",
+    )
+
+    dto = DummyDTO()
+    dto.valor = 7
+
+    grupo = str(uuid.uuid4())
+    with app.test_request_context(f"/dummy?grupo_empresarial={grupo}"):
+        update_object = service._build_update_function_type_object(dto)
+
+    assert update_object.valor_update == 7
+    assert update_object.grupo_empresarial == uuid.UUID(grupo)
+
+
+def test_build_insert_function_type_object_with_literal_null_binding_in_relation():
+    service = ServiceBase(
+        FakeInjector(),
+        DummyDAO(),
+        CustomerWithRelationsDTO,
+        DummyEntity,
+        insert_function_type_class=CustomerWithNullRelationInsertType,
+        insert_function_name="teste.fn_cliente_relacionado_null",
+    )
+
+    dto = CustomerWithRelationsDTO()
+    dto.nome = "Cliente Teste"
+
+    addr = AddressDTO()
+    addr.rua = "Rua Nula"
+    addr.numero = "10"
+    dto.enderecos = [addr]
+
+    insert_object = service._build_insert_function_type_object(dto)
+
+    assert isinstance(insert_object.enderecos, list)
+    assert len(insert_object.enderecos) == 1
+    assert insert_object.enderecos[0].rua == "Rua Nula"
+    assert insert_object.enderecos[0].idpessoa is None
+
+
+def test_build_insert_function_type_object_with_entity_field_alias_in_relation():
+    service = ServiceBase(
+        FakeInjector(),
+        DummyDAO(),
+        CustomerWithEntityFieldAliasDTO,
+        DummyEntity,
+        insert_function_type_class=CustomerWithEntityFieldAliasInsertType,
+        insert_function_name="teste.fn_cliente_relacionado_alias",
+    )
+
+    dto = CustomerWithEntityFieldAliasDTO()
+    dto.nome = "Cliente Alias"
+
+    addr = AddressAliasDTO()
+    addr.tipo_logradouro = "AV"
+    addr.padrao = "SIM"
+    dto.enderecos = [addr]
+
+    insert_object = service._build_insert_function_type_object(dto)
+
+    assert isinstance(insert_object.enderecos, list)
+    assert len(insert_object.enderecos) == 1
+    assert insert_object.enderecos[0].tipologradouro == "AV"
+    assert insert_object.enderecos[0].enderecopadrao == "SIM"
 
 
 def test_sql_function_type_with_relations():

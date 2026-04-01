@@ -119,11 +119,20 @@ class FunctionTypeBase(abc.ABC):
 
         for field_name, function_descriptor in fields_map.items():
             if field_name not in lookup:
-                inferred_mapping = cls._infer_relation_mapping(
+                inferred_mapping = cls._infer_field_mapping(
                     dto_class,
                     field_name,
-                    function_descriptor,
                 )
+                if inferred_mapping is None:
+                    inferred_mapping = cls._infer_relation_mapping(
+                        dto_class,
+                        field_name,
+                        function_descriptor,
+                    )
+                if inferred_mapping is None:
+                    inferred_mapping = cls._infer_external_mapping(
+                        function_descriptor
+                    )
                 if inferred_mapping is None:
                     raise ValueError(
                         f"O campo '{field_name}' do FunctionType '{cls.__name__}' não existe no DTO '{dto_class.__name__}'."
@@ -131,9 +140,99 @@ class FunctionTypeBase(abc.ABC):
                 mapping[field_name] = inferred_mapping
                 continue
 
-            mapping[field_name] = lookup[field_name]
+            mapping[field_name] = cls._override_relation_mapping(
+                lookup[field_name],
+                function_descriptor,
+            )
 
         return mapping
+
+    @classmethod
+    def _infer_field_mapping(
+        cls,
+        dto_class: ty.Type["DTOBase"],
+        field_name: str,
+    ) -> ty.Optional[ty.Tuple[str, ty.Any]]:
+        """
+        Tenta localizar um campo do FunctionType fora do lookup direto do DTO.
+
+        Esse fallback cobre três cenários recorrentes:
+        - aliases físicos vindos de `entity_field`;
+        - nomes de campos específicos de função (`insert/update_function_field`);
+        - campos expostos por aggregators, retornando um caminho pontilhado.
+        """
+        operation = cls._get_lookup_operation()
+        if operation is None:
+            return None
+
+        for dto_field_name, descriptor in getattr(dto_class, "fields_map", {}).items():
+            candidate_names = {dto_field_name}
+
+            entity_field = getattr(descriptor, "entity_field", None)
+            if entity_field:
+                candidate_names.add(entity_field)
+
+            get_function_field_name = getattr(
+                descriptor,
+                "get_function_field_name",
+                None,
+            )
+            if callable(get_function_field_name):
+                candidate_names.add(get_function_field_name(operation))
+
+            if field_name in candidate_names:
+                return (dto_field_name, descriptor)
+
+        for aggregator_name, aggregator_descriptor in getattr(
+            dto_class, "aggregator_fields_map", {}
+        ).items():
+            aggregator_dto = getattr(aggregator_descriptor, "expected_type", None)
+            if aggregator_dto is None:
+                continue
+
+            for dto_field_name, descriptor in getattr(
+                aggregator_dto, "fields_map", {}
+            ).items():
+                dotted_name = f"{aggregator_name}.{dto_field_name}"
+                candidate_names = {dto_field_name, dotted_name}
+
+                entity_field = getattr(descriptor, "entity_field", None)
+                if entity_field:
+                    candidate_names.add(entity_field)
+
+                get_function_field_name = getattr(
+                    descriptor,
+                    "get_function_field_name",
+                    None,
+                )
+                if callable(get_function_field_name):
+                    candidate_names.add(get_function_field_name(operation))
+
+                if field_name in candidate_names:
+                    return (dotted_name, descriptor)
+
+        return None
+
+    @classmethod
+    def _override_relation_mapping(
+        cls,
+        current_mapping: ty.Tuple[str, ty.Any],
+        function_descriptor: FunctionField,
+    ) -> ty.Tuple[str, ty.Any]:
+        dto_field_name, current_descriptor = current_mapping
+        related_type = getattr(function_descriptor, "related_type", None)
+        operation = cls._get_lookup_operation()
+
+        if related_type is None or operation not in {"insert", "update"}:
+            return current_mapping
+
+        inferred_descriptor = copy.deepcopy(current_descriptor)
+        if operation == "update":
+            setattr(inferred_descriptor, "update_function_type", related_type)
+        else:
+            setattr(inferred_descriptor, "insert_function_type", related_type)
+
+        return (dto_field_name, inferred_descriptor)
 
     @classmethod
     def _infer_relation_mapping(
@@ -187,6 +286,20 @@ class FunctionTypeBase(abc.ABC):
                 return (dto_field_name, inferred_descriptor)
 
         return None
+
+    @classmethod
+    def _infer_external_mapping(
+        cls,
+        function_descriptor: FunctionField,
+    ) -> ty.Optional[ty.Tuple[str, ty.Any]]:
+        """
+        Permite que o FunctionType declare campos resolvidos fora do DTO,
+        como bindings vindos de `args.<nome>` ou literais controlados.
+        """
+        binding_source = getattr(function_descriptor, "binding_source", None)
+        if not binding_source:
+            return None
+        return (binding_source, function_descriptor)
 
     @classmethod
     def _get_lookup_operation(cls) -> ty.Optional[str]:

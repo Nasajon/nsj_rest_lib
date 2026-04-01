@@ -1,4 +1,8 @@
+import datetime
 import typing as ty
+import uuid
+
+from flask import has_request_context, request
 
 from nsj_rest_lib.descriptor.dto_list_field import DTOListField
 from nsj_rest_lib.descriptor.dto_object_field import DTOObjectField
@@ -127,10 +131,19 @@ class ServiceBaseSaveByFunction:
 
         insert_object = function_type_class()
         for function_field_name, (dto_field_name, descriptor) in mapping.items():
-            field_exists, field_value, field_owner = self._resolve_dto_field_value(
-                dto,
-                dto_field_name,
-            )
+            if self._is_external_binding_source(dto_field_name):
+                field_exists, field_value, field_owner = (
+                    self._resolve_external_binding_value(
+                        dto,
+                        dto_field_name,
+                        descriptor,
+                    )
+                )
+            else:
+                field_exists, field_value, field_owner = self._resolve_dto_field_value(
+                    dto,
+                    dto_field_name,
+                )
 
             if not field_exists:
                 raise ValueError(
@@ -177,6 +190,15 @@ class ServiceBaseSaveByFunction:
 
         return insert_object
 
+    def _is_external_binding_source(self, binding_source: ty.Any) -> bool:
+        """
+        Identifica bindings que não devem ser lidos do DTO durante a montagem
+        do payload da função.
+        """
+        return isinstance(binding_source, str) and (
+            binding_source.startswith("args.") or binding_source == "literal:null"
+        )
+
     def _resolve_dto_field_value(
         self,
         dto: DTOBase,
@@ -209,6 +231,81 @@ class ServiceBaseSaveByFunction:
                 return True, None, current_owner
 
         return True, current_value, current_owner
+
+    def _resolve_external_binding_value(
+        self,
+        dto: DTOBase,
+        binding_source: str,
+        descriptor: ty.Any,
+    ) -> tuple[bool, ty.Any, ty.Any]:
+        """
+        Resolve bindings declarados fora do DTO.
+
+        No momento suportamos `args.<nome>`, usado por handlers insert/update
+        que dependem de parâmetros vindos da query string.
+        """
+        if not has_request_context():
+            if binding_source == "literal:null":
+                return True, None, dto
+            raise ValueError(
+                f"O binding externo '{binding_source}' requer um contexto HTTP ativo."
+            )
+
+        if binding_source == "literal:null":
+            return True, None, dto
+
+        if binding_source.startswith("args."):
+            arg_name = binding_source[5:]
+            raw_value = request.args.get(arg_name)
+            return True, self._coerce_external_binding_value(raw_value, descriptor), dto
+
+        raise ValueError(f"Binding externo '{binding_source}' não é suportado.")
+
+    def _coerce_external_binding_value(
+        self,
+        raw_value: ty.Any,
+        descriptor: ty.Any,
+    ) -> ty.Any:
+        """
+        Converte valores vindos de bindings externos usando o tipo esperado pelo
+        descriptor do FunctionType, preservando o mesmo contrato usado pelos
+        campos mapeados a partir do DTO.
+        """
+        if raw_value is None:
+            return None
+
+        expected_type = getattr(descriptor, "expected_type", None)
+        if expected_type is None:
+            return raw_value
+
+        origin = ty.get_origin(expected_type)
+        args = ty.get_args(expected_type)
+        if origin is ty.Union:
+            non_none_args = [arg for arg in args if arg is not type(None)]  # noqa: E721
+            if len(non_none_args) == 1:
+                expected_type = non_none_args[0]
+
+        if expected_type is uuid.UUID:
+            return uuid.UUID(str(raw_value))
+        if expected_type is int:
+            return int(raw_value)
+        if expected_type is float:
+            return float(raw_value)
+        if expected_type is bool:
+            normalized = str(raw_value).strip().lower()
+            if normalized in {"1", "true", "yes", "on"}:
+                return True
+            if normalized in {"0", "false", "no", "off"}:
+                return False
+            return raw_value
+        if expected_type is datetime.date:
+            return datetime.date.fromisoformat(str(raw_value))
+        if expected_type is datetime.datetime:
+            return datetime.datetime.fromisoformat(str(raw_value))
+        if expected_type is datetime.time:
+            return datetime.time.fromisoformat(str(raw_value))
+
+        return raw_value
 
     def _build_function_relation_value(
         self,
